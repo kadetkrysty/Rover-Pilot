@@ -9,6 +9,7 @@ import Setup from "@/pages/Setup";
 import Documentation from "@/pages/Documentation";
 import Navigation from "@/pages/Navigation";
 import GamepadControl from "@/pages/GamepadControl";
+import SystemDiagnostics from "@/pages/SystemDiagnostics";
 
 function Router() {
   return (
@@ -18,6 +19,7 @@ function Router() {
       <Route path="/docs" component={Documentation} />
       <Route path="/navigation" component={Navigation} />
       <Route path="/gamepad" component={GamepadControl} />
+      <Route path="/diagnostics" component={SystemDiagnostics} />
       <Route component={NotFound} />
     </Switch>
   );

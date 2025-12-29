@@ -4,7 +4,7 @@ import TelemetryPanel from '@/components/TelemetryPanel';
 import SensorStatus from '@/components/SensorStatus';
 import Joystick from '@/components/Joystick';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Wifi, Settings, FileText, Power } from 'lucide-react';
+import { Wifi, Settings, FileText, Power, Activity } from 'lucide-react';
 import { Link } from 'wouter';
 import { Button } from '@/components/ui/button';
 
@@ -38,6 +38,11 @@ export default function Dashboard() {
             <Link href="/navigation">
                 <Button variant="ghost" size="sm" className="font-mono text-xs hover:text-primary hover:bg-primary/10">
                     <FileText className="w-4 h-4 mr-2" /> NAVIGATION
+                </Button>
+            </Link>
+            <Link href="/diagnostics">
+                <Button variant="ghost" size="sm" className="font-mono text-xs hover:text-primary hover:bg-primary/10">
+                    <Activity className="w-4 h-4 mr-2" /> DIAGNOSTICS
                 </Button>
             </Link>
             <Link href="/docs">
