@@ -3,6 +3,9 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, Code, FileText, Cpu, Download } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import rpiPinout from '@assets/generated_images/raspberry_pi_gpio_pinout_diagram.png';
+import flySkyWiring from '@assets/generated_images/flysky_receiver_wiring_to_raspberry_pi.png';
+import flySkyOperation from '@assets/generated_images/flysky_transmitter_operation_guide.png';
 
 export default function Documentation() {
   return (
@@ -197,9 +200,9 @@ if __name__ == '__main__':
                      </ScrollArea>
                 </TabsContent>
 
-                <TabsContent value="flysky" className="flex-1 p-0 m-0 relative">
-                     <ScrollArea className="h-full">
-                        <div className="p-6 space-y-6">
+                <TabsContent value="flysky" className="flex-1 p-0 m-0 relative overflow-hidden">
+                     <ScrollArea className="h-full w-full">
+                        <div className="p-6 space-y-6 pr-4">
                             <div>
                                 <h3 className="text-lg font-display text-primary mb-3">FLYSKY FS-I6x 10-CHANNEL SETUP TUTORIAL</h3>
                                 <p className="text-sm text-muted-foreground font-mono mb-4">
@@ -207,14 +210,14 @@ if __name__ == '__main__':
                                 </p>
                             </div>
 
-                            <div className="space-y-4">
+                            <div className="space-y-6">
                                 <div>
                                     <h4 className="font-display text-primary mb-2">1. GPIO PINOUT REFERENCE</h4>
                                     <p className="text-xs text-muted-foreground mb-3">
                                         Raspberry Pi GPIO pins required for 10-channel receiver connection
                                     </p>
                                     <div className="bg-black/50 p-3 rounded border border-border overflow-hidden">
-                                        <img src="/assets/generated_images/raspberry_pi_gpio_pinout_diagram.png" alt="Raspberry Pi GPIO Pinout" className="w-full rounded" />
+                                        <img src={rpiPinout} alt="Raspberry Pi GPIO Pinout" className="w-full rounded" />
                                     </div>
                                 </div>
 
@@ -224,7 +227,7 @@ if __name__ == '__main__':
                                         FlySky FS-IA10B receiver PWM connections with 3.3V-5V level shifter
                                     </p>
                                     <div className="bg-black/50 p-3 rounded border border-border overflow-hidden">
-                                        <img src="/assets/generated_images/flysky_receiver_wiring_to_raspberry_pi.png" alt="FlySky Receiver Wiring" className="w-full rounded" />
+                                        <img src={flySkyWiring} alt="FlySky Receiver Wiring" className="w-full rounded" />
                                     </div>
                                 </div>
 
@@ -234,7 +237,7 @@ if __name__ == '__main__':
                                         How to use FlySky FS-I6x transmitter for manual and autonomous rover control
                                     </p>
                                     <div className="bg-black/50 p-3 rounded border border-border overflow-hidden">
-                                        <img src="/assets/generated_images/flysky_transmitter_operation_guide.png" alt="FlySky Transmitter Operation" className="w-full rounded" />
+                                        <img src={flySkyOperation} alt="FlySky Transmitter Operation" className="w-full rounded" />
                                     </div>
                                 </div>
 
@@ -281,10 +284,10 @@ if __name__ == '__main__':
                                         </div>
                                     </div>
                                 </div>
-                            </div>
 
-                            <div className="text-xs text-muted-foreground/70 pt-4 border-t border-border">
-                                Full documentation available in FLYSKY_SETUP_GUIDE.md (2500+ lines with detailed troubleshooting)
+                                <div className="text-xs text-muted-foreground/70 pt-4 border-t border-border">
+                                    Full documentation available in FLYSKY_SETUP_GUIDE.md (2500+ lines with detailed troubleshooting)
+                                </div>
                             </div>
                         </div>
                      </ScrollArea>
