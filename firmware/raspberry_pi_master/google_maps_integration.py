@@ -16,7 +16,7 @@ class GoogleMapsRouter:
         Initialize Google Maps router
         api_key: Google Maps API key (from environment variable GOOGLE_MAPS_API_KEY)
         """
-        self.api_key = api_key or os.environ.get('GOOGLE_MAPS_API_KEY')
+        self.api_key = api_key or os.environ.get('')
         self.base_url = "https://maps.googleapis.com/maps/api"
         self.enabled = bool(self.api_key)
     
