@@ -35,9 +35,9 @@ export default function Dashboard() {
                     <FileText className="w-4 h-4 mr-2" /> GAMEPAD
                 </Button>
             </Link>
-            <Link href="/flybaby">
+            <Link href="/flysky">
                 <Button variant="ghost" size="sm" className="font-mono text-xs hover:text-primary hover:bg-primary/10">
-                    <Radio className="w-4 h-4 mr-2" /> FLYBABY
+                    <Radio className="w-4 h-4 mr-2" /> FLYSKY
                 </Button>
             </Link>
             <Link href="/navigation">

@@ -49,7 +49,7 @@ export default function Documentation() {
                         <TabsTrigger value="wiring" className="font-mono">WIRING_DIAGRAM.MD</TabsTrigger>
                         <TabsTrigger value="arduino" className="font-mono">ARDUINO_CONTROLLER.INO</TabsTrigger>
                         <TabsTrigger value="python" className="font-mono">RPI_MASTER.PY</TabsTrigger>
-                        <TabsTrigger value="flybaby" className="font-mono">FLYBABY_SETUP.MD</TabsTrigger>
+                        <TabsTrigger value="flysky" className="font-mono">FLYSKY_RECEIVER_SETUP</TabsTrigger>
                     </TabsList>
                 </div>
                 
@@ -194,6 +194,99 @@ if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
 `}
                         </pre>
+                     </ScrollArea>
+                </TabsContent>
+
+                <TabsContent value="flysky" className="flex-1 p-0 m-0 relative">
+                     <ScrollArea className="h-full">
+                        <div className="p-6 space-y-6">
+                            <div>
+                                <h3 className="text-lg font-display text-primary mb-3">FLYSKY FS-I6x 10-CHANNEL SETUP TUTORIAL</h3>
+                                <p className="text-sm text-muted-foreground font-mono mb-4">
+                                    Complete guide with wiring diagrams and operation instructions
+                                </p>
+                            </div>
+
+                            <div className="space-y-4">
+                                <div>
+                                    <h4 className="font-display text-primary mb-2">1. GPIO PINOUT REFERENCE</h4>
+                                    <p className="text-xs text-muted-foreground mb-3">
+                                        Raspberry Pi GPIO pins required for 10-channel receiver connection
+                                    </p>
+                                    <div className="bg-black/50 p-3 rounded border border-border overflow-hidden">
+                                        <img src="/assets/generated_images/raspberry_pi_gpio_pinout_diagram.png" alt="Raspberry Pi GPIO Pinout" className="w-full rounded" />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <h4 className="font-display text-primary mb-2">2. RECEIVER WIRING TO RASPBERRY PI</h4>
+                                    <p className="text-xs text-muted-foreground mb-3">
+                                        FlySky FS-IA10B receiver PWM connections with 3.3V-5V level shifter
+                                    </p>
+                                    <div className="bg-black/50 p-3 rounded border border-border overflow-hidden">
+                                        <img src="/assets/generated_images/flysky_receiver_wiring_to_raspberry_pi.png" alt="FlySky Receiver Wiring" className="w-full rounded" />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <h4 className="font-display text-primary mb-2">3. TRANSMITTER OPERATION GUIDE</h4>
+                                    <p className="text-xs text-muted-foreground mb-3">
+                                        How to use FlySky FS-I6x transmitter for manual and autonomous rover control
+                                    </p>
+                                    <div className="bg-black/50 p-3 rounded border border-border overflow-hidden">
+                                        <img src="/assets/generated_images/flysky_transmitter_operation_guide.png" alt="FlySky Transmitter Operation" className="w-full rounded" />
+                                    </div>
+                                </div>
+
+                                <div className="bg-secondary/10 border border-secondary/30 p-4 rounded">
+                                    <h4 className="font-display text-secondary mb-2">CHANNEL MAPPING (10 TOTAL)</h4>
+                                    <div className="text-xs font-mono space-y-1 text-muted-foreground">
+                                        <div>CH1 (GPIO 17) → Roll/Steering</div>
+                                        <div>CH2 (GPIO 27) → Pitch/Forward-Back</div>
+                                        <div>CH3 (GPIO 22) → Throttle</div>
+                                        <div>CH4 (GPIO 23) → Yaw/Rotation</div>
+                                        <div>CH5 (GPIO 24) → Switch A</div>
+                                        <div>CH6 (GPIO 25) → Switch B / Mode Select</div>
+                                        <div>CH7 (GPIO 26) → Auxiliary Channel 1</div>
+                                        <div>CH8 (GPIO 19) → Auxiliary Channel 2</div>
+                                        <div>CH9 (GPIO 20) → Auxiliary Channel 3</div>
+                                        <div>CH10 (GPIO 21) → Auxiliary Channel 4</div>
+                                    </div>
+                                </div>
+
+                                <div className="bg-accent/10 border border-accent/30 p-4 rounded">
+                                    <h4 className="font-display text-accent mb-2">QUICK SETUP STEPS</h4>
+                                    <ol className="text-xs font-mono space-y-1 text-muted-foreground list-decimal list-inside">
+                                        <li>Install Python RPi.GPIO library on Raspberry Pi</li>
+                                        <li>Wire FS-IA10B receiver to GPIO pins (use level shifter!)</li>
+                                        <li>Bind FS-IA10B to FS-I6x transmitter</li>
+                                        <li>Configure transmitter channels (CH1-6)</li>
+                                        <li>Calibrate all sticks and switches</li>
+                                        <li>Copy flysky_receiver.py to Raspberry Pi</li>
+                                        <li>Update rover_controller.py with FlySky routes</li>
+                                        <li>Verify all 10 channels in dashboard</li>
+                                    </ol>
+                                </div>
+
+                                <div className="bg-card/50 border border-border p-4 rounded">
+                                    <h4 className="font-display text-primary mb-2">CONTROL MODES</h4>
+                                    <div className="text-xs font-mono space-y-2 text-muted-foreground">
+                                        <div>
+                                            <span className="text-secondary font-bold">Manual Mode (Switch B OFF):</span>
+                                            <div className="pl-4">Full joystick control, direct throttle input, real-time steering response</div>
+                                        </div>
+                                        <div>
+                                            <span className="text-accent font-bold">Autonomous Mode (Switch B ON):</span>
+                                            <div className="pl-4">Auto-navigation to waypoints, throttle controls speed, obstacle avoidance</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="text-xs text-muted-foreground/70 pt-4 border-t border-border">
+                                Full documentation available in FLYSKY_SETUP_GUIDE.md (2500+ lines with detailed troubleshooting)
+                            </div>
+                        </div>
                      </ScrollArea>
                 </TabsContent>
             </Tabs>

@@ -9,7 +9,7 @@ import Setup from "@/pages/Setup";
 import Documentation from "@/pages/Documentation";
 import Navigation from "@/pages/Navigation";
 import GamepadControl from "@/pages/GamepadControl";
-import FlyBabyControl from "@/pages/FlyBabyControl";
+import FlySkyControl from "@/pages/FlySkyControl";
 import SystemDiagnostics from "@/pages/SystemDiagnostics";
 
 function Router() {
@@ -20,7 +20,7 @@ function Router() {
       <Route path="/docs" component={Documentation} />
       <Route path="/navigation" component={Navigation} />
       <Route path="/gamepad" component={GamepadControl} />
-      <Route path="/flybaby" component={FlyBabyControl} />
+      <Route path="/flysky" component={FlySkyControl} />
       <Route path="/diagnostics" component={SystemDiagnostics} />
       <Route component={NotFound} />
     </Switch>
