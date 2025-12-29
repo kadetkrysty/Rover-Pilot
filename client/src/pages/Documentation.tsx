@@ -49,6 +49,7 @@ export default function Documentation() {
                         <TabsTrigger value="wiring" className="font-mono">WIRING_DIAGRAM.MD</TabsTrigger>
                         <TabsTrigger value="arduino" className="font-mono">ARDUINO_CONTROLLER.INO</TabsTrigger>
                         <TabsTrigger value="python" className="font-mono">RPI_MASTER.PY</TabsTrigger>
+                        <TabsTrigger value="flybaby" className="font-mono">FLYBABY_SETUP.MD</TabsTrigger>
                     </TabsList>
                 </div>
                 
