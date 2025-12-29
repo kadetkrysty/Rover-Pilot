@@ -8,6 +8,7 @@ import Dashboard from "@/pages/Dashboard";
 import Setup from "@/pages/Setup";
 import Documentation from "@/pages/Documentation";
 import Navigation from "@/pages/Navigation";
+import GamepadControl from "@/pages/GamepadControl";
 
 function Router() {
   return (
@@ -16,6 +17,7 @@ function Router() {
       <Route path="/setup" component={Setup} />
       <Route path="/docs" component={Documentation} />
       <Route path="/navigation" component={Navigation} />
+      <Route path="/gamepad" component={GamepadControl} />
       <Route component={NotFound} />
     </Switch>
   );
