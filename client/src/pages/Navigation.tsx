@@ -26,6 +26,8 @@ export default function Navigation() {
   const [currentWaypoint, setCurrentWaypoint] = useState(0);
   const [distance, setDistance] = useState(0);
   const [eta, setEta] = useState('--:--');
+  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
   const data = useRoverData();
   const mapRef = useRef<HTMLDivElement>(null);
 
@@ -72,6 +74,37 @@ export default function Navigation() {
 
   const removeWaypoint = (id: string) => {
     setWaypoints(waypoints.filter(wp => wp.id !== id));
+  };
+
+  const handleDragStart = (id: string) => {
+    setDraggedId(id);
+  };
+
+  const handleDragOver = (id: string) => {
+    setDragOverId(id);
+  };
+
+  const handleDragLeave = () => {
+    setDragOverId(null);
+  };
+
+  const handleDrop = (targetId: string) => {
+    if (!draggedId || draggedId === targetId) {
+      setDraggedId(null);
+      setDragOverId(null);
+      return;
+    }
+
+    const draggedIndex = waypoints.findIndex(wp => wp.id === draggedId);
+    const targetIndex = waypoints.findIndex(wp => wp.id === targetId);
+
+    const newWaypoints = [...waypoints];
+    const [draggedItem] = newWaypoints.splice(draggedIndex, 1);
+    newWaypoints.splice(targetIndex, 0, draggedItem);
+
+    setWaypoints(newWaypoints);
+    setDraggedId(null);
+    setDragOverId(null);
   };
 
   const startNavigation = () => {
@@ -219,24 +252,36 @@ export default function Navigation() {
               {waypoints.map((wp, idx) => (
                 <div
                   key={wp.id}
-                  className={`p-3 border rounded text-xs font-mono cursor-pointer transition-all ${
-                    idx === currentWaypoint
+                  draggable
+                  onDragStart={() => handleDragStart(wp.id)}
+                  onDragOver={() => handleDragOver(wp.id)}
+                  onDragLeave={handleDragLeave}
+                  onDrop={() => handleDrop(wp.id)}
+                  className={`p-3 border rounded text-xs font-mono cursor-move transition-all ${
+                    draggedId === wp.id
+                      ? 'opacity-50 border-primary/50'
+                      : dragOverId === wp.id
+                      ? 'border-primary bg-primary/20'
+                      : idx === currentWaypoint
                       ? 'border-primary bg-primary/10 text-foreground'
                       : 'border-border bg-card/50 text-muted-foreground hover:border-primary/50'
                   }`}
                   onClick={() => setCurrentWaypoint(idx)}
                 >
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <div className="font-bold text-foreground">{idx + 1}. {wp.name}</div>
-                      <div className="text-[10px] text-muted-foreground/70 mt-1">
-                        {wp.lat.toFixed(4)}° {wp.lng.toFixed(4)}°
+                  <div className="flex justify-between items-start gap-2">
+                    <div className="flex items-start gap-2 flex-1">
+                      <div className="text-primary/50 mt-0.5">⋮⋮</div>
+                      <div>
+                        <div className="font-bold text-foreground">{idx + 1}. {wp.name}</div>
+                        <div className="text-[10px] text-muted-foreground/70 mt-1">
+                          {wp.lat.toFixed(4)}° {wp.lng.toFixed(4)}°
+                        </div>
                       </div>
                     </div>
                     <Button
                       size="sm"
                       variant="destructive"
-                      className="h-6 w-6 p-0"
+                      className="h-6 w-6 p-0 flex-shrink-0"
                       onClick={(e) => {
                         e.stopPropagation();
                         removeWaypoint(wp.id);
