@@ -30,6 +30,11 @@ export default function Dashboard() {
         </div>
         
         <nav className="flex items-center gap-2">
+            <Link href="/navigation">
+                <Button variant="ghost" size="sm" className="font-mono text-xs hover:text-primary hover:bg-primary/10">
+                    <FileText className="w-4 h-4 mr-2" /> NAVIGATION
+                </Button>
+            </Link>
             <Link href="/docs">
                 <Button variant="ghost" size="sm" className="font-mono text-xs hover:text-primary hover:bg-primary/10">
                     <FileText className="w-4 h-4 mr-2" /> SYSTEM_DOCS

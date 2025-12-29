@@ -13,6 +13,7 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 from datetime import datetime
 import math
+from pathfinding import GPSPoint, WaypointRouter, ObstacleAvoidance
 
 # ===== CONFIGURATION =====
 ARDUINO_PORT = '/dev/ttyACM0'  # USB serial port (may be ttyACM1, etc.)
@@ -73,6 +74,7 @@ class RoverState:
         }
 
 rover = RoverState()
+router = WaypointRouter()
 arduino = None
 
 # ===== ARDUINO COMMUNICATION =====
@@ -207,6 +209,125 @@ def system_info():
             'ultrasonic': 5
         }
     })
+
+# ===== WAYPOINT NAVIGATION API =====
+@app.route('/api/navigation/waypoints', methods=['GET'])
+def get_waypoints():
+    """Get all waypoints"""
+    waypoints = []
+    for wp in router.waypoints:
+        waypoints.append({
+            'lat': wp.lat,
+            'lng': wp.lng,
+            'name': wp.name
+        })
+    return jsonify({'waypoints': waypoints})
+
+@app.route('/api/navigation/waypoints', methods=['POST'])
+def add_waypoint():
+    """Add a waypoint"""
+    data = request.json
+    lat = data.get('lat')
+    lng = data.get('lng')
+    name = data.get('name', f'Waypoint {len(router.waypoints) + 1}')
+    
+    router.add_waypoint(lat, lng, name)
+    return jsonify({'status': 'added', 'total_waypoints': len(router.waypoints)})
+
+@app.route('/api/navigation/waypoints/<int:idx>', methods=['DELETE'])
+def delete_waypoint(idx):
+    """Delete a waypoint by index"""
+    if 0 <= idx < len(router.waypoints):
+        router.waypoints.pop(idx)
+        return jsonify({'status': 'deleted'})
+    return jsonify({'error': 'Invalid waypoint index'}), 400
+
+@app.route('/api/navigation/route', methods=['POST'])
+def plan_route():
+    """Plan optimal route through waypoints"""
+    route = router.plan_route()
+    route_data = []
+    for wp in route:
+        route_data.append({
+            'lat': wp.lat,
+            'lng': wp.lng,
+            'name': wp.name
+        })
+    
+    total_distance = router.get_total_distance()
+    
+    return jsonify({
+        'route': route_data,
+        'total_distance': total_distance,
+        'waypoints_count': len(route)
+    })
+
+@app.route('/api/navigation/progress', methods=['GET'])
+def get_progress():
+    """Get current mission progress"""
+    progress = router.get_mission_progress()
+    next_target = router.get_next_target(GPSPoint(rover.gps_lat, rover.gps_lon))
+    
+    return jsonify({
+        'progress': progress,
+        'next_target': {
+            'name': next_target.name,
+            'lat': next_target.lat,
+            'lng': next_target.lng
+        } if next_target else None
+    })
+
+@app.route('/api/navigation/start', methods=['POST'])
+def start_navigation():
+    """Start autonomous waypoint navigation"""
+    if len(router.waypoints) == 0:
+        return jsonify({'error': 'No waypoints planned'}), 400
+    
+    router.plan_route()
+    rover.mode = "AUTONOMOUS"
+    return jsonify({'status': 'navigation_started', 'waypoints': len(router.route)})
+
+@app.route('/api/navigation/command', methods=['GET'])
+def get_nav_command():
+    """Get next navigation command based on current position"""
+    if rover.mode != "AUTONOMOUS":
+        return jsonify({'throttle': 0, 'steering': 0})
+    
+    current_pos = GPSPoint(rover.gps_lat, rover.gps_lon)
+    
+    # Check for obstacles
+    obstacle_detected, description = ObstacleAvoidance.check_obstacles(rover.ultrasonic)
+    
+    if obstacle_detected:
+        # Avoid obstacle
+        steering_delta = ObstacleAvoidance.get_avoidance_steering(rover.ultrasonic)
+        return jsonify({
+            'throttle': 30,
+            'steering': steering_delta,
+            'obstacle': description
+        })
+    
+    # Get waypoint navigation command
+    throttle, steering = router.get_navigation_command(current_pos, rover.heading)
+    
+    # Check if waypoint reached
+    waypoint_reached = router.update_current_position(current_pos)
+    
+    return jsonify({
+        'throttle': throttle,
+        'steering': steering,
+        'waypoint_reached': waypoint_reached,
+        'current_waypoint': router.current_waypoint_idx,
+        'total_waypoints': len(router.route)
+    })
+
+@app.route('/api/navigation/abort', methods=['POST'])
+def abort_navigation():
+    """Abort autonomous navigation"""
+    rover.mode = "MANUAL"
+    stop_rover()
+    router.clear_waypoints()
+    return jsonify({'status': 'navigation_aborted'})
 
 # ===== MAIN =====
 if __name__ == '__main__':
