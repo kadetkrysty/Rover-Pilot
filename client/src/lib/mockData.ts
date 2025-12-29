@@ -16,12 +16,6 @@ export interface RoverData {
     gps: boolean;
   };
   log: string[];
-  stats: {
-    totalDistance: number;
-    waypointCount: number;
-    avgSpeed: number;
-    bearing: number;
-  };
 }
 
 export const useRoverData = () => {
@@ -47,13 +41,7 @@ export const useRoverData = () => {
       "[SENSORS] Lidar active.",
       "[NETWORK] Connected to Rover-AP-5G",
       "[AI] Husky Lens object detection active"
-    ],
-    stats: {
-      totalDistance: 0.09,
-      waypointCount: 3,
-      avgSpeed: 9.0,
-      bearing: 53
-    }
+    ]
   });
 
   useEffect(() => {
@@ -69,12 +57,6 @@ export const useRoverData = () => {
         sensors: {
             ...prev.sensors,
             ultrasonic: prev.sensors.ultrasonic.map(v => Math.max(0, v + (Math.random() - 0.5) * 10)) as [number, number, number, number, number]
-        },
-        stats: {
-          totalDistance: prev.stats.totalDistance + (Math.random() * 0.001),
-          waypointCount: prev.stats.waypointCount,
-          avgSpeed: Math.max(0, prev.stats.avgSpeed + (Math.random() - 0.5) * 0.5),
-          bearing: (prev.stats.bearing + (Math.random() - 0.5) * 2) % 360
         },
         log: Math.random() > 0.9 
           ? [`[TELEMETRY] Ping: ${Math.floor(Math.random() * 50)}ms`, ...prev.log.slice(0, 9)] 

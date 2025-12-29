@@ -103,6 +103,30 @@ export default function Navigation() {
         </Link>
       </header>
 
+      {/* Summary Panels */}
+      <div className="grid grid-cols-4 gap-3 mb-6">
+        <div className="hud-panel p-4 text-center">
+          <div className="text-xs font-display text-primary/50 mb-2">TOTAL DISTANCE</div>
+          <div className="text-3xl font-mono font-bold text-primary">{calculateTotalDistance()}</div>
+          <div className="text-xs text-muted-foreground">km</div>
+        </div>
+        <div className="hud-panel p-4 text-center">
+          <div className="text-xs font-display text-primary/50 mb-2">WAYPOINTS</div>
+          <div className="text-3xl font-mono font-bold text-secondary">{waypoints.length}</div>
+          <div className="text-xs text-muted-foreground">ACTIVE</div>
+        </div>
+        <div className="hud-panel p-4 text-center">
+          <div className="text-xs font-display text-primary/50 mb-2">AVG SPEED</div>
+          <div className="text-3xl font-mono font-bold text-accent">{data.speed.toFixed(1)}</div>
+          <div className="text-xs text-muted-foreground">km/h</div>
+        </div>
+        <div className="hud-panel p-4 text-center">
+          <div className="text-xs font-display text-primary/50 mb-2">CURRENT BEARING</div>
+          <div className="text-3xl font-mono font-bold text-cyan-400">{Math.floor(data.heading)}°</div>
+          <div className="text-xs text-muted-foreground">HEADING</div>
+        </div>
+      </div>
+
       <div className="grid grid-cols-12 gap-6">
         {/* Map Area */}
         <div className="col-span-8 hud-panel p-4 h-[600px] relative">
@@ -248,25 +272,6 @@ export default function Navigation() {
         </div>
       </div>
 
-      {/* Route Statistics */}
-      <div className="grid grid-cols-4 gap-4 mt-6">
-        <Card className="hud-panel p-4 text-center">
-          <div className="text-xs text-muted-foreground font-mono mb-2">TOTAL DISTANCE</div>
-          <div className="text-2xl font-mono font-bold text-primary">{calculateTotalDistance()} km</div>
-        </Card>
-        <Card className="hud-panel p-4 text-center">
-          <div className="text-xs text-muted-foreground font-mono mb-2">WAYPOINTS</div>
-          <div className="text-2xl font-mono font-bold text-secondary">{waypoints.length}</div>
-        </Card>
-        <Card className="hud-panel p-4 text-center">
-          <div className="text-xs text-muted-foreground font-mono mb-2">AVG SPEED</div>
-          <div className="text-2xl font-mono font-bold text-accent">{data.speed.toFixed(1)} km/h</div>
-        </Card>
-        <Card className="hud-panel p-4 text-center">
-          <div className="text-xs text-muted-foreground font-mono mb-2">CURRENT BEARING</div>
-          <div className="text-2xl font-mono font-bold text-primary">{Math.floor(data.heading)}°</div>
-        </Card>
-      </div>
     </div>
   );
 }
