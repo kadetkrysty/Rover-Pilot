@@ -66,8 +66,35 @@ export default function Dashboard() {
         </nav>
       </header>
 
+      {/* Summary Panels */}
+      <div className="grid grid-cols-4 gap-3 px-4 pt-4">
+        <div className="hud-panel p-4 text-center">
+          <div className="text-xs font-display text-primary/50 mb-2">TOTAL DISTANCE</div>
+          <div className="text-3xl font-mono font-bold text-primary">{data.stats.totalDistance.toFixed(2)}</div>
+          <div className="text-xs text-muted-foreground">km</div>
+        </div>
+        
+        <div className="hud-panel p-4 text-center">
+          <div className="text-xs font-display text-primary/50 mb-2">WAYPOINTS</div>
+          <div className="text-3xl font-mono font-bold text-secondary">{data.stats.waypointCount}</div>
+          <div className="text-xs text-muted-foreground">ACTIVE</div>
+        </div>
+        
+        <div className="hud-panel p-4 text-center">
+          <div className="text-xs font-display text-primary/50 mb-2">AVG SPEED</div>
+          <div className="text-3xl font-mono font-bold text-accent">{data.stats.avgSpeed.toFixed(1)}</div>
+          <div className="text-xs text-muted-foreground">km/h</div>
+        </div>
+        
+        <div className="hud-panel p-4 text-center">
+          <div className="text-xs font-display text-primary/50 mb-2">CURRENT BEARING</div>
+          <div className="text-3xl font-mono font-bold text-cyan-400">{data.stats.bearing}°</div>
+          <div className="text-xs text-muted-foreground">HEADING</div>
+        </div>
+      </div>
+
       {/* Main Grid */}
-      <main className="grid grid-cols-12 gap-4 p-4 h-[calc(100vh-3.5rem)]">
+      <main className="grid grid-cols-12 gap-4 p-4 h-[calc(100vh-11rem)]">
         
         {/* Left Column: Status & Map (3 cols) */}
         <div className="col-span-3 flex flex-col gap-4">
