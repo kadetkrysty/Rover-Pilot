@@ -322,6 +322,7 @@ export default function Navigation() {
                         </div>
 
                         {/* Rover Position Marker */}
+                        {map && (
                         <Marker
                             position={{ lat: data.gps.lat, lng: data.gps.lng }}
                             icon={{
@@ -333,6 +334,7 @@ export default function Navigation() {
                                 rotation: data.heading
                             }}
                         />
+                        )}
 
                         {/* Waypoints */}
                         {waypoints.map((wp, idx) => (
