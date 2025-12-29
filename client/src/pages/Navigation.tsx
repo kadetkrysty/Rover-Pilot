@@ -4,9 +4,27 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, MapPin, Trash2, Play, Pause, RotateCcw, Search, Key, Save } from 'lucide-react';
+import { ArrowLeft, MapPin, Trash2, Play, Pause, RotateCcw, Search, Key, Save, Download, Upload } from 'lucide-react';
 import { useRoverData } from '@/lib/mockData';
 import { GoogleMap, LoadScript, Marker, Polyline, Autocomplete } from '@react-google-maps/api';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { getRoutes, createRoute, createWaypoints, getWaypoints, deleteRoute, startNavigation as apiStartNavigation } from '@/lib/api';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { toast } from 'sonner';
 
 interface Waypoint {
   id: string;
@@ -29,11 +47,7 @@ const defaultCenter = {
 const libraries: ("places")[] = ["places"];
 
 export default function Navigation() {
-  const [waypoints, setWaypoints] = useState<Waypoint[]>([
-    { id: '1', lat: 34.0522, lng: -118.2437, name: 'Start', description: 'Rover starting position' },
-    { id: '2', lat: 34.0525, lng: -118.2435, name: 'Checkpoint 1', description: 'Rock formation' },
-    { id: '3', lat: 34.0528, lng: -118.2440, name: 'End Point', description: 'Final destination' }
-  ]);
+  const [waypoints, setWaypoints] = useState<Waypoint[]>([]);
   const [newWaypointName, setNewWaypointName] = useState('');
   const [navigationMode, setNavigationMode] = useState<'MANUAL' | 'WAYPOINT' | 'AUTONOMOUS'>('MANUAL');
   const [currentWaypoint, setCurrentWaypoint] = useState(0);
@@ -41,6 +55,13 @@ export default function Navigation() {
   const [eta, setEta] = useState('--:--');
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
+  
+  // Route Save/Load State
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  const [loadDialogOpen, setLoadDialogOpen] = useState(false);
+  const [routeName, setRouteName] = useState('');
+  const [routeDescription, setRouteDescription] = useState('');
+  const [currentRouteId, setCurrentRouteId] = useState<number | null>(null);
   
   // Google Maps State
   const [mapApiKey, setMapApiKey] = useState(() => localStorage.getItem('google_maps_api_key') || '');
@@ -50,6 +71,90 @@ export default function Navigation() {
   
   const data = useRoverData();
   const mapRef = useRef<HTMLDivElement>(null);
+  const queryClient = useQueryClient();
+
+  // Fetch saved routes
+  const { data: savedRoutes = [] } = useQuery({
+    queryKey: ['routes'],
+    queryFn: getRoutes,
+  });
+
+  // Save route mutation
+  const saveRouteMutation = useMutation({
+    mutationFn: async () => {
+      if (waypoints.length === 0) {
+        throw new Error('No waypoints to save');
+      }
+
+      const totalDistance = parseFloat(calculateTotalDistance());
+      const route = await createRoute({
+        name: routeName,
+        description: routeDescription || undefined,
+        totalDistance,
+      });
+
+      const waypointsToSave = waypoints.map((wp, idx) => ({
+        routeId: route.id,
+        name: wp.name,
+        description: wp.description,
+        latitude: wp.lat,
+        longitude: wp.lng,
+        order: idx,
+      }));
+
+      await createWaypoints(waypointsToSave);
+      return route;
+    },
+    onSuccess: (route) => {
+      queryClient.invalidateQueries({ queryKey: ['routes'] });
+      setCurrentRouteId(route.id);
+      setSaveDialogOpen(false);
+      setRouteName('');
+      setRouteDescription('');
+      toast.success(`Route "${route.name}" saved successfully`);
+    },
+    onError: (error) => {
+      toast.error(`Failed to save route: ${error.message}`);
+    },
+  });
+
+  // Load route mutation
+  const loadRouteMutation = useMutation({
+    mutationFn: async (routeId: number) => {
+      const loadedWaypoints = await getWaypoints(routeId);
+      return { routeId, waypoints: loadedWaypoints };
+    },
+    onSuccess: ({ routeId, waypoints: loadedWaypoints }) => {
+      const convertedWaypoints: Waypoint[] = loadedWaypoints.map((wp) => ({
+        id: wp.id.toString(),
+        lat: wp.latitude,
+        lng: wp.longitude,
+        name: wp.name,
+        description: wp.description || undefined,
+      }));
+      setWaypoints(convertedWaypoints);
+      setCurrentRouteId(routeId);
+      setCurrentWaypoint(0);
+      setLoadDialogOpen(false);
+      const route = savedRoutes.find(r => r.id === routeId);
+      toast.success(`Route "${route?.name}" loaded successfully`);
+    },
+    onError: (error) => {
+      toast.error(`Failed to load route: ${error.message}`);
+    },
+  });
+
+  // Delete route mutation
+  const deleteRouteMutation = useMutation({
+    mutationFn: deleteRoute,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['routes'] });
+      toast.success('Route deleted successfully');
+    },
+    onError: (error) => {
+      toast.error(`Failed to delete route: ${error.message}`);
+    },
+  });
 
   // Calculate distance between two GPS points (Haversine)
   const calculateDistance = (lat1: number, lng1: number, lat2: number, lng2: number) => {
@@ -129,10 +234,25 @@ export default function Navigation() {
     setDragOverId(null);
   };
 
-  const startNavigation = () => {
-    if (waypoints.length > 0) {
+  const startNavigation = async () => {
+    if (waypoints.length === 0) {
+      toast.error('No waypoints defined');
+      return;
+    }
+
+    if (!currentRouteId) {
+      toast.error('Please save the route first');
+      setSaveDialogOpen(true);
+      return;
+    }
+
+    try {
+      await apiStartNavigation(currentRouteId);
       setNavigationMode('WAYPOINT');
       setCurrentWaypoint(0);
+      toast.success('Navigation started');
+    } catch (error) {
+      toast.error('Failed to start navigation');
     }
   };
 
@@ -402,10 +522,30 @@ export default function Navigation() {
           {/* Controls */}
           <div className="hud-panel p-4 space-y-3">
             <h3 className="font-display text-sm text-primary">MISSION CONTROL</h3>
+            <div className="grid grid-cols-2 gap-2 mb-3">
+              <Button
+                variant="outline"
+                className="font-mono text-xs h-8"
+                onClick={() => setSaveDialogOpen(true)}
+                disabled={waypoints.length === 0}
+                data-testid="button-save-route"
+              >
+                <Save className="w-3 h-3 mr-1" /> SAVE ROUTE
+              </Button>
+              <Button
+                variant="outline"
+                className="font-mono text-xs h-8"
+                onClick={() => setLoadDialogOpen(true)}
+                data-testid="button-load-route"
+              >
+                <Download className="w-3 h-3 mr-1" /> LOAD ROUTE
+              </Button>
+            </div>
             <Button
               className="w-full bg-secondary hover:bg-secondary/90 text-secondary-foreground font-mono font-bold h-10"
               onClick={startNavigation}
               disabled={waypoints.length === 0}
+              data-testid="button-start-navigation"
             >
               <Play className="w-4 h-4 mr-2" /> START NAVIGATION
             </Button>
@@ -492,6 +632,109 @@ export default function Navigation() {
           </div>
         </div>
       </div>
+
+      {/* Save Route Dialog */}
+      <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="font-display">Save Route</DialogTitle>
+            <DialogDescription>
+              Save this route with {waypoints.length} waypoints for later use
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label htmlFor="route-name" className="text-sm font-mono">Route Name</Label>
+              <Input
+                id="route-name"
+                value={routeName}
+                onChange={(e) => setRouteName(e.target.value)}
+                placeholder="e.g., Campus Tour Route"
+                className="mt-1"
+                data-testid="input-route-name"
+              />
+            </div>
+            <div>
+              <Label htmlFor="route-description" className="text-sm font-mono">Description (optional)</Label>
+              <Input
+                id="route-description"
+                value={routeDescription}
+                onChange={(e) => setRouteDescription(e.target.value)}
+                placeholder="Add notes about this route"
+                className="mt-1"
+                data-testid="input-route-description"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSaveDialogOpen(false)} data-testid="button-cancel-save">
+              Cancel
+            </Button>
+            <Button
+              onClick={() => saveRouteMutation.mutate()}
+              disabled={!routeName.trim() || saveRouteMutation.isPending}
+              data-testid="button-confirm-save"
+            >
+              {saveRouteMutation.isPending ? 'Saving...' : 'Save Route'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Load Route Dialog */}
+      <Dialog open={loadDialogOpen} onOpenChange={setLoadDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="font-display">Load Route</DialogTitle>
+            <DialogDescription>
+              Select a saved route to load waypoints
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            {savedRoutes.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">No saved routes yet</p>
+            ) : (
+              <div className="space-y-2 max-h-64 overflow-auto">
+                {savedRoutes.map((route) => (
+                  <div
+                    key={route.id}
+                    className="flex items-center justify-between p-3 border rounded hover:bg-accent cursor-pointer"
+                    data-testid={`route-item-${route.id}`}
+                  >
+                    <div className="flex-1" onClick={() => loadRouteMutation.mutate(route.id)}>
+                      <div className="font-mono font-bold text-sm">{route.name}</div>
+                      {route.description && (
+                        <div className="text-xs text-muted-foreground mt-1">{route.description}</div>
+                      )}
+                      <div className="text-xs text-muted-foreground mt-1">
+                        {route.totalDistance.toFixed(2)} km • {new Date(route.createdAt).toLocaleDateString()}
+                      </div>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (confirm(`Delete route "${route.name}"?`)) {
+                          deleteRouteMutation.mutate(route.id);
+                        }
+                      }}
+                      data-testid={`button-delete-route-${route.id}`}
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setLoadDialogOpen(false)} data-testid="button-close-load">
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
     </div>
   );
