@@ -1,0 +1,30 @@
+{
+	"appId": "com.roverostech.rover",
+	"appName": "RoverOS",
+	"webDir": "dist",
+	"bundledWebRuntime": false,
+	"server": {
+		"url": "http://localhost:5000",
+		"cleartext": true
+	},
+	"android": {
+		"allowMixedContent": true,
+		"webContentsDebuggingEnabled": true
+	},
+	"ios": {
+		"contentInset": "automatic"
+	},
+	"plugins": {
+		"Geolocation": {
+			"permissions": [
+				"location"
+			]
+		},
+		"Camera": {
+			"permissions": [
+				"camera"
+			]
+		},
+		"Haptics": {}
+	}
+}
