@@ -64,7 +64,6 @@ export default function Navigation() {
   const [currentRouteId, setCurrentRouteId] = useState<number | null>(null);
   
   // Google Maps State
-  const [mapApiKey, setMapApiKey] = useState(() => localStorage.getItem('google_maps_api_key') || '');
   const [tempApiKey, setTempApiKey] = useState('');
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const [autocomplete, setAutocomplete] = useState<google.maps.places.Autocomplete | null>(null);
@@ -72,6 +71,20 @@ export default function Navigation() {
   const data = useRoverData();
   const mapRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
+
+  // Fetch Google Maps API key from server
+  const { data: apiKeyConfig } = useQuery({
+    queryKey: ['config', 'google_maps_api_key'],
+    queryFn: async () => {
+      try {
+        return await import('@/lib/api').then(m => m.getConfig('google_maps_api_key'));
+      } catch {
+        return null;
+      }
+    },
+  });
+
+  const mapApiKey = apiKeyConfig?.value || '';
 
   // Fetch saved routes
   const { data: savedRoutes = [] } = useQuery({
@@ -303,17 +316,44 @@ export default function Navigation() {
     }
   };
 
+  // Save API key mutation
+  const saveApiKeyMutation = useMutation({
+    mutationFn: async (key: string) => {
+      const { setConfig } = await import('@/lib/api');
+      return setConfig({
+        key: 'google_maps_api_key',
+        value: key.trim(),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['config', 'google_maps_api_key'] });
+      setTempApiKey('');
+      toast.success('API key saved successfully');
+    },
+    onError: (error) => {
+      toast.error(`Failed to save API key: ${error.message}`);
+    },
+  });
+
   const saveApiKey = () => {
     if (tempApiKey.trim()) {
-      localStorage.setItem('google_maps_api_key', tempApiKey.trim());
-      setMapApiKey(tempApiKey.trim());
+      saveApiKeyMutation.mutate(tempApiKey);
     }
   };
 
-  const clearApiKey = () => {
-    localStorage.removeItem('google_maps_api_key');
-    setMapApiKey('');
-    setTempApiKey('');
+  const clearApiKey = async () => {
+    try {
+      const { setConfig } = await import('@/lib/api');
+      await setConfig({
+        key: 'google_maps_api_key',
+        value: '',
+      });
+      queryClient.invalidateQueries({ queryKey: ['config', 'google_maps_api_key'] });
+      setTempApiKey('');
+      toast.success('API key cleared');
+    } catch (error) {
+      toast.error('Failed to clear API key');
+    }
   };
 
   return (
