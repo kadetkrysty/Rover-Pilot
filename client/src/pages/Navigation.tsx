@@ -1,11 +1,12 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Link } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, MapPin, Trash2, Play, Pause, RotateCcw } from 'lucide-react';
+import { ArrowLeft, MapPin, Trash2, Play, Pause, RotateCcw, Search, Key, Save } from 'lucide-react';
 import { useRoverData } from '@/lib/mockData';
+import { GoogleMap, LoadScript, Marker, Polyline, Autocomplete } from '@react-google-maps/api';
 
 interface Waypoint {
   id: string;
@@ -14,6 +15,18 @@ interface Waypoint {
   name: string;
   description?: string;
 }
+
+const mapContainerStyle = {
+  width: '100%',
+  height: '100%'
+};
+
+const defaultCenter = {
+  lat: 34.0522,
+  lng: -118.2437
+};
+
+const libraries: ("places")[] = ["places"];
 
 export default function Navigation() {
   const [waypoints, setWaypoints] = useState<Waypoint[]>([
@@ -28,6 +41,13 @@ export default function Navigation() {
   const [eta, setEta] = useState('--:--');
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
+  
+  // Google Maps State
+  const [mapApiKey, setMapApiKey] = useState(() => localStorage.getItem('google_maps_api_key') || '');
+  const [tempApiKey, setTempApiKey] = useState('');
+  const [map, setMap] = useState<google.maps.Map | null>(null);
+  const [autocomplete, setAutocomplete] = useState<google.maps.places.Autocomplete | null>(null);
+  
   const data = useRoverData();
   const mapRef = useRef<HTMLDivElement>(null);
 
@@ -65,7 +85,7 @@ export default function Navigation() {
       id: Date.now().toString(),
       lat,
       lng,
-      name: newWaypointName || `Waypoint ${waypoints.length}`,
+      name: newWaypointName || `Waypoint ${waypoints.length + 1}`,
       description: ''
     };
     setWaypoints([...waypoints, newWaypoint]);
@@ -80,7 +100,8 @@ export default function Navigation() {
     setDraggedId(id);
   };
 
-  const handleDragOver = (id: string) => {
+  const handleDragOver = (e: React.DragEvent, id: string) => {
+    e.preventDefault(); // Critical for onDrop to fire
     setDragOverId(id);
   };
 
@@ -88,7 +109,8 @@ export default function Navigation() {
     setDragOverId(null);
   };
 
-  const handleDrop = (targetId: string) => {
+  const handleDrop = (e: React.DragEvent, targetId: string) => {
+    e.preventDefault();
     if (!draggedId || draggedId === targetId) {
       setDraggedId(null);
       setDragOverId(null);
@@ -120,6 +142,58 @@ export default function Navigation() {
       total += calculateDistance(waypoints[i].lat, waypoints[i].lng, waypoints[i + 1].lat, waypoints[i + 1].lng);
     }
     return (total / 1000).toFixed(2); // Convert to km
+  };
+
+  // Google Maps Handlers
+  const onMapLoad = useCallback((map: google.maps.Map) => {
+    setMap(map);
+  }, []);
+
+  const onUnmount = useCallback(() => {
+    setMap(null);
+  }, []);
+
+  const onMapClick = (e: google.maps.MapMouseEvent) => {
+    if (e.latLng) {
+      // Small delay to prevent conflict if clicking a marker
+      setTimeout(() => {
+        addWaypoint(e.latLng!.lat(), e.latLng!.lng());
+      }, 100);
+    }
+  };
+
+  const onAutocompleteLoad = (autocompleteInstance: google.maps.places.Autocomplete) => {
+    setAutocomplete(autocompleteInstance);
+  };
+
+  const onPlaceChanged = () => {
+    if (autocomplete !== null) {
+      const place = autocomplete.getPlace();
+      if (place.geometry && place.geometry.location) {
+        const lat = place.geometry.location.lat();
+        const lng = place.geometry.location.lng();
+        
+        map?.panTo({ lat, lng });
+        map?.setZoom(16);
+        
+        setNewWaypointName(place.name || '');
+        // Don't auto-add, let user verify location or click map
+        // addWaypoint(lat, lng); 
+      }
+    }
+  };
+
+  const saveApiKey = () => {
+    if (tempApiKey.trim()) {
+      localStorage.setItem('google_maps_api_key', tempApiKey.trim());
+      setMapApiKey(tempApiKey.trim());
+    }
+  };
+
+  const clearApiKey = () => {
+    localStorage.removeItem('google_maps_api_key');
+    setMapApiKey('');
+    setTempApiKey('');
   };
 
   return (
@@ -162,37 +236,133 @@ export default function Navigation() {
 
       <div className="grid grid-cols-12 gap-6">
         {/* Map Area */}
-        <div className="col-span-8 hud-panel p-4 h-[600px] relative">
-          <h2 className="text-sm font-display text-primary mb-3">MISSION MAP</h2>
-          <div ref={mapRef} className="w-full h-[calc(100%-3rem)] bg-black/50 border border-primary/20 rounded flex items-center justify-center relative">
-            {/* Map Placeholder - Leaflet would render here */}
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 p-4">
-              <div className="text-center">
-                <div className="text-4xl font-display text-primary/30 mb-2">🗺️</div>
-                <p className="text-sm text-muted-foreground font-mono">
-                  Leaflet Map Integration Ready
-                </p>
-                <p className="text-xs text-muted-foreground/50 mt-2">
-                  Current Position: {data.gps.lat.toFixed(4)}°, {data.gps.lng.toFixed(4)}°
-                </p>
-              </div>
-
-              {/* Simple waypoint visualization */}
-              <div className="grid grid-cols-3 gap-2 mt-4 text-center">
-                {waypoints.map((wp, idx) => (
-                  <div key={wp.id} className="text-xs p-2 bg-primary/10 border border-primary/30 rounded">
-                    <div className="text-primary font-bold">{idx + 1}</div>
-                    <div className="text-muted-foreground">{wp.name}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
+        <div className="col-span-8 hud-panel p-4 h-[600px] relative flex flex-col">
+          <div className="flex justify-between items-center mb-3">
+             <h2 className="text-sm font-display text-primary">MISSION MAP</h2>
+             {mapApiKey && (
+                 <Button variant="ghost" size="sm" onClick={clearApiKey} className="h-6 text-[10px] text-muted-foreground hover:text-destructive">
+                     CHANGE API KEY
+                 </Button>
+             )}
           </div>
+          
+          <div className="flex-1 bg-black/50 border border-primary/20 rounded overflow-hidden relative">
+            {!mapApiKey ? (
+                <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center bg-background/90 z-20">
+                    <Key className="w-12 h-12 text-primary mb-4" />
+                    <h3 className="text-xl font-display text-foreground mb-2">GOOGLE MAPS API KEY REQUIRED</h3>
+                    <p className="text-sm text-muted-foreground mb-6 max-w-md">
+                        To enable satellite navigation and POI search, please enter your Google Maps API Key. 
+                        This key is stored locally in your browser.
+                    </p>
+                    <div className="flex gap-2 w-full max-w-sm">
+                        <Input 
+                            type="password" 
+                            placeholder="Enter API Key (AIza...)" 
+                            value={tempApiKey}
+                            onChange={(e) => setTempApiKey(e.target.value)}
+                            className="font-mono text-sm"
+                        />
+                        <Button onClick={saveApiKey} disabled={!tempApiKey}>
+                            <Save className="w-4 h-4 mr-2" /> SAVE
+                        </Button>
+                    </div>
+                </div>
+            ) : (
+                <LoadScript googleMapsApiKey={mapApiKey} libraries={libraries}>
+                    <GoogleMap
+                        mapContainerStyle={mapContainerStyle}
+                        center={defaultCenter}
+                        zoom={18}
+                        onLoad={onMapLoad}
+                        onUnmount={onUnmount}
+                        onClick={onMapClick}
+                        options={{
+                            mapTypeId: 'hybrid',
+                            disableDefaultUI: false,
+                            streetViewControl: false,
+                            mapTypeControl: false,
+                            styles: [
+                                { elementType: "geometry", stylers: [{ color: "#242f3e" }] },
+                                { elementType: "labels.text.stroke", stylers: [{ color: "#242f3e" }] },
+                                { elementType: "labels.text.fill", stylers: [{ color: "#746855" }] },
+                                { featureType: "administrative.locality", elementType: "labels.text.fill", stylers: [{ color: "#d59563" }] },
+                                { featureType: "poi", elementType: "labels.text.fill", stylers: [{ color: "#d59563" }] },
+                                { featureType: "poi.park", elementType: "geometry", stylers: [{ color: "#263c3f" }] },
+                                { featureType: "poi.park", elementType: "labels.text.fill", stylers: [{ color: "#6b9a76" }] },
+                                { featureType: "road", elementType: "geometry", stylers: [{ color: "#38414e" }] },
+                                { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#212a37" }] },
+                                { featureType: "road", elementType: "labels.text.fill", stylers: [{ color: "#9ca5b3" }] },
+                                { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#746855" }] },
+                                { featureType: "road.highway", elementType: "geometry.stroke", stylers: [{ color: "#1f2835" }] },
+                                { featureType: "road.highway", elementType: "labels.text.fill", stylers: [{ color: "#f3d19c" }] },
+                                { featureType: "transit", elementType: "geometry", stylers: [{ color: "#2f3948" }] },
+                                { featureType: "transit.station", elementType: "labels.text.fill", stylers: [{ color: "#d59563" }] },
+                                { featureType: "water", elementType: "geometry", stylers: [{ color: "#17263c" }] },
+                                { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#515c6d" }] },
+                                { featureType: "water", elementType: "labels.text.stroke", stylers: [{ color: "#17263c" }] }
+                            ]
+                        }}
+                    >
+                        {/* Search Box */}
+                        <div className="absolute top-2 left-2 right-14 z-10">
+                            <Autocomplete
+                                onLoad={onAutocompleteLoad}
+                                onPlaceChanged={onPlaceChanged}
+                            >
+                                <div className="relative">
+                                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                                    <input
+                                        type="text"
+                                        placeholder="Search for a location or POI..."
+                                        className="w-full h-10 pl-9 pr-4 rounded-md border border-input bg-background/90 px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 font-mono shadow-md"
+                                    />
+                                </div>
+                            </Autocomplete>
+                        </div>
 
-          {/* Map Controls */}
-          <div className="absolute top-8 right-4 flex gap-2 z-10">
-            <Button size="sm" className="text-xs">+</Button>
-            <Button size="sm" className="text-xs">−</Button>
+                        {/* Rover Position Marker */}
+                        <Marker
+                            position={{ lat: data.gps.lat, lng: data.gps.lng }}
+                            icon={{
+                                path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+                                scale: 6,
+                                fillColor: "#00ff00",
+                                fillOpacity: 1,
+                                strokeWeight: 2,
+                                rotation: data.heading
+                            }}
+                        />
+
+                        {/* Waypoints */}
+                        {waypoints.map((wp, idx) => (
+                            <Marker
+                                key={wp.id}
+                                position={{ lat: wp.lat, lng: wp.lng }}
+                                label={{
+                                    text: (idx + 1).toString(),
+                                    color: "white",
+                                    fontWeight: "bold"
+                                }}
+                            />
+                        ))}
+
+                        {/* Path Polyline */}
+                        <Polyline
+                            path={[
+                                { lat: data.gps.lat, lng: data.gps.lng },
+                                ...waypoints.map(wp => ({ lat: wp.lat, lng: wp.lng }))
+                            ]}
+                            options={{
+                                strokeColor: "#0ea5e9", // Cyan color
+                                strokeOpacity: 0.8,
+                                strokeWeight: 4,
+                                geodesic: true,
+                            }}
+                        />
+                    </GoogleMap>
+                </LoadScript>
+            )}
           </div>
         </div>
 
@@ -247,16 +417,19 @@ export default function Navigation() {
 
           {/* Waypoints List */}
           <div className="hud-panel p-4 max-h-64 overflow-auto">
-            <h3 className="font-display text-sm text-primary mb-3">WAYPOINTS ({waypoints.length})</h3>
+            <div className="flex justify-between items-center mb-3">
+                <h3 className="font-display text-sm text-primary">WAYPOINTS ({waypoints.length})</h3>
+                <span className="text-[10px] text-muted-foreground uppercase">Drag to reorder</span>
+            </div>
             <div className="space-y-2">
               {waypoints.map((wp, idx) => (
                 <div
                   key={wp.id}
                   draggable
                   onDragStart={() => handleDragStart(wp.id)}
-                  onDragOver={() => handleDragOver(wp.id)}
+                  onDragOver={(e) => handleDragOver(e, wp.id)}
                   onDragLeave={handleDragLeave}
-                  onDrop={() => handleDrop(wp.id)}
+                  onDrop={(e) => handleDrop(e, wp.id)}
                   className={`p-3 border rounded text-xs font-mono cursor-move transition-all ${
                     draggedId === wp.id
                       ? 'opacity-50 border-primary/50'
@@ -270,7 +443,7 @@ export default function Navigation() {
                 >
                   <div className="flex justify-between items-start gap-2">
                     <div className="flex items-start gap-2 flex-1">
-                      <div className="text-primary/50 mt-0.5">⋮⋮</div>
+                      <div className="text-primary/50 mt-0.5 cursor-grab active:cursor-grabbing">⋮⋮</div>
                       <div>
                         <div className="font-bold text-foreground">{idx + 1}. {wp.name}</div>
                         <div className="text-[10px] text-muted-foreground/70 mt-1">
@@ -298,6 +471,7 @@ export default function Navigation() {
           {/* Add Waypoint */}
           <div className="hud-panel p-4 space-y-3">
             <h3 className="font-display text-sm text-primary">ADD WAYPOINT</h3>
+            <p className="text-[10px] text-muted-foreground">Click map or use search to add points</p>
             <div>
               <Label className="text-xs font-mono uppercase text-primary/70">Name</Label>
               <Input
