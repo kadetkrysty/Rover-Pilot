@@ -262,6 +262,11 @@ export class OccupancyGridMap {
     const gx1 = this.worldToGrid(x1, 'x');
     const gy1 = this.worldToGrid(y1, 'y');
 
+    if (gx0 === gx1 && gy0 === gy1) {
+      cells.push({ gx: gx0, gy: gy0 });
+      return cells;
+    }
+
     let x = gx0;
     let y = gy0;
     const dx = Math.abs(gx1 - gx0);
@@ -269,9 +274,13 @@ export class OccupancyGridMap {
     const sx = gx0 < gx1 ? 1 : -1;
     const sy = gy0 < gy1 ? 1 : -1;
     let err = dx - dy;
+    
+    const maxIterations = Math.max(dx, dy) * 2 + 10;
+    let iterations = 0;
 
-    while (true) {
+    while (iterations < maxIterations) {
       cells.push({ gx: x, gy: y });
+      iterations++;
       
       if (x === gx1 && y === gy1) break;
       

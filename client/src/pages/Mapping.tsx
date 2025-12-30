@@ -3,13 +3,17 @@ import { Link } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft, Map, Radar, Cpu, Activity, Wifi, Save, Download } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { ArrowLeft, Map, Radar, Cpu, Activity, Wifi, Save, Download, Radio } from 'lucide-react';
 import { SlamMapViewer } from '@/components/SlamMapViewer';
 import { useRoverData } from '@/lib/mockData';
+import { useWebSocket } from '@/lib/useWebSocket';
 
 export default function Mapping() {
   const data = useRoverData();
+  const { isConnected, telemetry, lidarScans } = useWebSocket();
   const [activeTab, setActiveTab] = useState('slam');
+  const [useRealData, setUseRealData] = useState(true);
 
   return (
     <div className="min-h-screen bg-background text-foreground font-sans p-6">
@@ -41,8 +45,31 @@ export default function Mapping() {
             </TabsList>
 
             <TabsContent value="slam" className="hud-panel p-4">
-              <h2 className="text-sm font-display text-primary mb-4">OCCUPANCY GRID MAP</h2>
-              <SlamMapViewer isSimulating={true} />
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-sm font-display text-primary">OCCUPANCY GRID MAP</h2>
+                <div className="flex items-center gap-3">
+                  <Badge variant={isConnected ? "default" : "secondary"} className="font-mono text-xs">
+                    <Radio className="w-3 h-3 mr-1" />
+                    {isConnected ? "LIVE" : "SIMULATION"}
+                  </Badge>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => setUseRealData(!useRealData)}
+                    className="font-mono text-xs"
+                    data-testid="button-toggle-data-source"
+                  >
+                    {useRealData ? "USE SIMULATION" : "USE LIVE DATA"}
+                  </Button>
+                </div>
+              </div>
+              <SlamMapViewer 
+                isSimulating={!useRealData || !isConnected}
+                lidarScans={useRealData && isConnected && telemetry ? lidarScans : undefined}
+                gpsData={useRealData && isConnected && telemetry ? telemetry.gps : undefined}
+                imuData={useRealData && isConnected && telemetry ? telemetry.imu : undefined}
+                ultrasonicData={useRealData && isConnected && telemetry ? telemetry.ultrasonic : undefined}
+              />
             </TabsContent>
 
             <TabsContent value="sensors" className="hud-panel p-4">
@@ -216,6 +243,18 @@ export default function Mapping() {
           <div className="hud-panel p-4">
             <h3 className="font-display text-sm text-primary mb-4">SYSTEM STATUS</h3>
             <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">WebSocket</span>
+                <span className={`px-2 py-0.5 text-xs font-mono rounded ${isConnected ? 'bg-green-500/20 text-green-500' : 'bg-red-500/20 text-red-500'}`}>
+                  {isConnected ? 'CONNECTED' : 'DISCONNECTED'}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Data Source</span>
+                <span className={`px-2 py-0.5 text-xs font-mono rounded ${useRealData && isConnected ? 'bg-primary/20 text-primary' : 'bg-secondary/20 text-secondary'}`}>
+                  {useRealData && isConnected ? 'LIVE ROVER' : 'SIMULATION'}
+                </span>
+              </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground">Sensor Fusion</span>
                 <span className="px-2 py-0.5 bg-green-500/20 text-green-500 text-xs font-mono rounded">ACTIVE</span>

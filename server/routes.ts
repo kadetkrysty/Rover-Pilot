@@ -1,5 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
 import { 
   insertRouteSchema, 
@@ -8,6 +9,38 @@ import {
   insertRoverConfigSchema
 } from "@shared/schema";
 import { z } from "zod";
+
+interface TelemetryData {
+  timestamp: number;
+  gps: { lat: number; lng: number; accuracy: number; speed: number };
+  imu: { heading: number; pitch: number; roll: number; accelX: number; accelY: number; accelZ: number };
+  lidar: Array<{ angle: number; distance: number }>;
+  ultrasonic: number[];
+  battery: number;
+  motorLeft: number;
+  motorRight: number;
+}
+
+type ClientRole = 'viewer' | 'operator' | 'rover';
+
+interface AuthenticatedClient {
+  ws: WebSocket;
+  role: ClientRole;
+  authenticated: boolean;
+  sessionId: string;
+}
+
+const connectedClients = new Map<WebSocket, AuthenticatedClient>();
+let latestTelemetry: TelemetryData | null = null;
+
+let cachedRoverToken: string | null = null;
+let cachedOperatorToken: string | null = null;
+let tokenCacheTime = 0;
+const TOKEN_CACHE_TTL = 60000;
+
+function generateSessionId(): string {
+  return Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
+}
 
 export async function registerRoutes(
   httpServer: Server,
@@ -335,6 +368,174 @@ export async function registerRoutes(
       res.status(500).json({ error: "Failed to start navigation" });
     }
   });
+
+  // WebSocket server for real-time telemetry streaming
+  const wss = new WebSocketServer({ server: httpServer, path: "/ws/telemetry" });
+
+  async function refreshTokenCache(): Promise<void> {
+    const now = Date.now();
+    if (now - tokenCacheTime < TOKEN_CACHE_TTL) return;
+    
+    const [roverConfig, operatorConfig] = await Promise.all([
+      storage.getConfig("rover_auth_token"),
+      storage.getConfig("operator_auth_token")
+    ]);
+    
+    cachedRoverToken = roverConfig?.value || null;
+    cachedOperatorToken = operatorConfig?.value || null;
+    tokenCacheTime = now;
+  }
+
+  async function getRoverToken(): Promise<string | null> {
+    await refreshTokenCache();
+    return cachedRoverToken;
+  }
+
+  async function getOperatorToken(): Promise<string | null> {
+    await refreshTokenCache();
+    return cachedOperatorToken;
+  }
+
+  wss.on("connection", (ws: WebSocket) => {
+    const sessionId = generateSessionId();
+    const client: AuthenticatedClient = {
+      ws,
+      role: 'viewer',
+      authenticated: false,
+      sessionId
+    };
+    connectedClients.set(ws, client);
+    console.log(`WebSocket client connected: ${sessionId} (unauthenticated viewer)`);
+
+    ws.send(JSON.stringify({ 
+      type: "auth_required", 
+      sessionId,
+      message: "Send auth message with role and token to unlock commands"
+    }));
+
+    ws.on("message", async (message: Buffer) => {
+      try {
+        const parsed = JSON.parse(message.toString());
+        const clientInfo = connectedClients.get(ws);
+        if (!clientInfo) return;
+        
+        if (parsed.type === "auth") {
+          const { role, token } = parsed;
+          
+          if (role === "rover") {
+            const roverToken = await getRoverToken();
+            if (roverToken && token === roverToken) {
+              clientInfo.role = 'rover';
+              clientInfo.authenticated = true;
+              console.log(`Client ${sessionId} authenticated as ROVER`);
+              ws.send(JSON.stringify({ type: "auth_success", role: "rover" }));
+              if (latestTelemetry) {
+                ws.send(JSON.stringify({ type: "telemetry", data: latestTelemetry }));
+              }
+            } else {
+              ws.send(JSON.stringify({ type: "auth_failed", message: "Invalid rover token" }));
+            }
+          } else if (role === "operator") {
+            const operatorToken = await getOperatorToken();
+            if (operatorToken && token === operatorToken) {
+              clientInfo.role = 'operator';
+              clientInfo.authenticated = true;
+              console.log(`Client ${sessionId} authenticated as OPERATOR`);
+              ws.send(JSON.stringify({ type: "auth_success", role: "operator" }));
+              if (latestTelemetry) {
+                ws.send(JSON.stringify({ type: "telemetry", data: latestTelemetry }));
+              }
+            } else {
+              ws.send(JSON.stringify({ type: "auth_failed", message: "Invalid operator token" }));
+            }
+          }
+          return;
+        }
+
+        if (parsed.type === "telemetry") {
+          if (clientInfo.role !== 'rover' || !clientInfo.authenticated) {
+            ws.send(JSON.stringify({ type: "error", message: "Only authenticated rover can send telemetry" }));
+            return;
+          }
+          latestTelemetry = parsed.data as TelemetryData;
+          broadcastTelemetry(latestTelemetry);
+        } else if (parsed.type === "command") {
+          if (clientInfo.role !== 'operator' || !clientInfo.authenticated) {
+            ws.send(JSON.stringify({ type: "error", message: "Only authenticated operator can send commands" }));
+            return;
+          }
+          console.log(`Command from operator ${sessionId}:`, parsed.command);
+          connectedClients.forEach((c) => {
+            if (c.role === 'rover' && c.authenticated && c.ws.readyState === WebSocket.OPEN) {
+              c.ws.send(JSON.stringify({ type: "command", command: parsed.command }));
+            }
+          });
+        } else if (parsed.type === "lidar_scan") {
+          if (clientInfo.role !== 'rover' || !clientInfo.authenticated) return;
+          broadcastToAuthenticatedClients({ type: "lidar_scan", data: parsed.data });
+        } else if (parsed.type === "slam_update") {
+          if (clientInfo.role !== 'rover' || !clientInfo.authenticated) return;
+          broadcastToAuthenticatedClients({ type: "slam_update", data: parsed.data });
+        }
+      } catch (error) {
+        console.error("Error parsing WebSocket message:", error);
+      }
+    });
+
+    ws.on("close", () => {
+      const clientInfo = connectedClients.get(ws);
+      console.log(`WebSocket client disconnected: ${clientInfo?.sessionId || 'unknown'}`);
+      connectedClients.delete(ws);
+    });
+
+    ws.on("error", (error) => {
+      console.error("WebSocket error:", error);
+      connectedClients.delete(ws);
+    });
+  });
+
+  function broadcastTelemetry(telemetry: TelemetryData) {
+    const message = JSON.stringify({ type: "telemetry", data: telemetry });
+    connectedClients.forEach((client) => {
+      if (client.ws.readyState === WebSocket.OPEN && client.authenticated) {
+        client.ws.send(message);
+      }
+    });
+  }
+
+  function broadcastToAuthenticatedClients(payload: object, excludeRoles?: ClientRole[]) {
+    const message = JSON.stringify(payload);
+    connectedClients.forEach((client) => {
+      if (client.ws.readyState === WebSocket.OPEN && 
+          client.authenticated && 
+          (!excludeRoles || !excludeRoles.includes(client.role))) {
+        client.ws.send(message);
+      }
+    });
+  }
+
+  // REST endpoint to get current telemetry (fallback for non-WebSocket clients)
+  app.get("/api/telemetry/current", async (_req, res) => {
+    if (latestTelemetry) {
+      res.json(latestTelemetry);
+    } else {
+      res.status(404).json({ error: "No telemetry data available" });
+    }
+  });
+
+  // REST endpoint to receive telemetry from Raspberry Pi (MQTT bridge alternative)
+  app.post("/api/telemetry/push", async (req, res) => {
+    try {
+      latestTelemetry = req.body as TelemetryData;
+      broadcastTelemetry(latestTelemetry);
+      res.json({ status: "received" });
+    } catch (error) {
+      console.error("Error receiving telemetry:", error);
+      res.status(500).json({ error: "Failed to process telemetry" });
+    }
+  });
+
+  console.log("WebSocket server initialized on /ws/telemetry");
 
   return httpServer;
 }
