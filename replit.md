@@ -37,11 +37,25 @@ Python modules in `firmware/raspberry_pi_master/` handle:
 - **pathfinding.py**: Waypoint navigation with Haversine distance calculations and bearing computation
 - **google_maps_integration.py**: Route optimization via Google Maps Directions API
 
+### Real-Time Communication (WebSocket)
+- **Endpoint**: `/ws/telemetry` - WebSocket server for live telemetry streaming
+- **Authentication**: Role-based (rover, operator, viewer) with token authentication
+  - Tokens stored in `rover_config` table (`rover_auth_token`, `operator_auth_token`)
+  - Only authenticated clients receive telemetry/SLAM broadcasts
+  - Commands only accepted from authenticated operators
+- **Protocol**: JSON messages with `type` field (auth, telemetry, command, lidar_scan, slam_update)
+- **Client Hook**: `useWebSocket()` in `client/src/lib/useWebSocket.ts`
+
+### Sensor Fusion & SLAM
+- **Extended Kalman Filter (EKF)**: 5-state vector (x, y, θ, v, gyro_bias) for pose estimation
+- **Occupancy Grid SLAM**: 200x200 grid, 5cm resolution, log-odds updates with Bresenham ray tracing
+- **Frontend Component**: `SlamMapViewer.tsx` with Canvas rendering, rover position, uncertainty ellipse
+
 ### Data Flow
 1. Sensors → Arduino Mega (I2C/Serial/Digital) → USB Serial → Raspberry Pi
-2. Raspberry Pi Python controller → Flask REST API (port 8080)
-3. Web dashboard polls Flask API for telemetry data
-4. User commands flow back through the same path to motor controllers
+2. Raspberry Pi Python controller → WebSocket/REST API (port 5000)
+3. Web dashboard receives real-time telemetry via WebSocket
+4. User commands flow back through WebSocket to authenticated rover clients
 
 ### Mobile/Native Support
 - **Capacitor**: Configured for Android APK builds
