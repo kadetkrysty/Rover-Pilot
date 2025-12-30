@@ -153,13 +153,20 @@ export async function registerRoutes(
       if (isNaN(id)) {
         return res.status(400).json({ error: "Invalid waypoint ID" });
       }
-      
-      const validatedData = insertWaypointSchema.partial().parse(req.body);
-      const waypoint = await storage.updateWaypoint(id, validatedData);
-      
-      if (!waypoint) {
+
+      const existingWaypoint = await storage.getWaypoint(id);
+      if (!existingWaypoint) {
         return res.status(404).json({ error: "Waypoint not found" });
       }
+
+      const validatedData = insertWaypointSchema.partial().parse(req.body);
+      
+      if (validatedData.routeId && validatedData.routeId !== existingWaypoint.routeId) {
+        return res.status(400).json({ error: "Cannot change waypoint's route. Delete and recreate instead." });
+      }
+      
+      const { routeId, ...updateData } = validatedData;
+      const waypoint = await storage.updateWaypoint(id, updateData);
       
       res.json(waypoint);
     } catch (error) {

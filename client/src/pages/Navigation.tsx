@@ -247,15 +247,20 @@ export default function Navigation() {
   };
 
   const setAsEndpoint = (id: string) => {
-    setSelectedEndWaypointId(id);
     const waypointIndex = waypoints.findIndex(wp => wp.id === id);
     if (waypointIndex >= 0 && waypointIndex < waypoints.length - 1) {
-      const reorderedWaypoints = [
-        ...waypoints.slice(0, waypointIndex + 1)
-      ];
-      setWaypoints(reorderedWaypoints);
-      setCurrentRouteId(null);
-      toast.success('Route endpoint set');
+      const waypointsToRemove = waypoints.length - waypointIndex - 1;
+      const confirmed = confirm(
+        `Setting this as the endpoint will remove ${waypointsToRemove} waypoint(s) after it. Continue?`
+      );
+      
+      if (confirmed) {
+        setSelectedEndWaypointId(id);
+        const trimmedWaypoints = waypoints.slice(0, waypointIndex + 1);
+        setWaypoints(trimmedWaypoints);
+        setCurrentRouteId(null);
+        toast.success('Route endpoint set');
+      }
     }
   };
 
