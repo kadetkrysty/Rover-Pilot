@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, MapPin, Trash2, Play, Pause, RotateCcw, Search, Key, Save, Download, Upload } from 'lucide-react';
+import { ArrowLeft, MapPin, Trash2, Play, Pause, RotateCcw, Search, Key, Save, Download, Upload, Navigation2, Flag, LocateFixed } from 'lucide-react';
 import { useRoverData } from '@/lib/mockData';
 import { GoogleMap, LoadScript, Marker, Polyline, Autocomplete } from '@react-google-maps/api';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -55,6 +55,8 @@ export default function Navigation() {
   const [eta, setEta] = useState('--:--');
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
+  const [useCurrentLocationAsStart, setUseCurrentLocationAsStart] = useState(true);
+  const [selectedEndWaypointId, setSelectedEndWaypointId] = useState<string | null>(null);
   
   // Route Save/Load State
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
@@ -212,6 +214,49 @@ export default function Navigation() {
 
   const removeWaypoint = (id: string) => {
     setWaypoints(waypoints.filter(wp => wp.id !== id));
+    if (selectedEndWaypointId === id) {
+      setSelectedEndWaypointId(null);
+    }
+  };
+
+  const updateWaypointPosition = (id: string, lat: number, lng: number) => {
+    setWaypoints(waypoints.map(wp => 
+      wp.id === id ? { ...wp, lat, lng } : wp
+    ));
+    setCurrentRouteId(null);
+  };
+
+  const handleMarkerDragEnd = (id: string, e: google.maps.MapMouseEvent) => {
+    if (e.latLng) {
+      updateWaypointPosition(id, e.latLng.lat(), e.latLng.lng());
+      toast.success('Waypoint position updated');
+    }
+  };
+
+  const setAsStartFromCurrentLocation = () => {
+    const startWaypoint: Waypoint = {
+      id: Date.now().toString(),
+      lat: data.gps.lat,
+      lng: data.gps.lng,
+      name: 'Start (Current Location)',
+      description: 'Starting point from rover current position'
+    };
+    setWaypoints([startWaypoint, ...waypoints]);
+    setCurrentRouteId(null);
+    toast.success('Added current location as start point');
+  };
+
+  const setAsEndpoint = (id: string) => {
+    setSelectedEndWaypointId(id);
+    const waypointIndex = waypoints.findIndex(wp => wp.id === id);
+    if (waypointIndex >= 0 && waypointIndex < waypoints.length - 1) {
+      const reorderedWaypoints = [
+        ...waypoints.slice(0, waypointIndex + 1)
+      ];
+      setWaypoints(reorderedWaypoints);
+      setCurrentRouteId(null);
+      toast.success('Route endpoint set');
+    }
   };
 
   const handleDragStart = (id: string) => {
@@ -496,16 +541,34 @@ export default function Navigation() {
                         />
                         )}
 
-                        {/* Waypoints */}
+                        {/* Waypoints - Draggable */}
                         {waypoints.map((wp, idx) => (
                             <Marker
                                 key={wp.id}
                                 position={{ lat: wp.lat, lng: wp.lng }}
+                                draggable={true}
+                                onDragEnd={(e) => handleMarkerDragEnd(wp.id, e)}
                                 label={{
                                     text: (idx + 1).toString(),
                                     color: "white",
                                     fontWeight: "bold"
                                 }}
+                                icon={idx === 0 ? {
+                                    path: google.maps.SymbolPath.CIRCLE,
+                                    scale: 12,
+                                    fillColor: "#22c55e",
+                                    fillOpacity: 1,
+                                    strokeColor: "#fff",
+                                    strokeWeight: 2,
+                                } : idx === waypoints.length - 1 ? {
+                                    path: google.maps.SymbolPath.BACKWARD_CLOSED_ARROW,
+                                    scale: 8,
+                                    fillColor: "#ef4444",
+                                    fillOpacity: 1,
+                                    strokeColor: "#fff",
+                                    strokeWeight: 2,
+                                    rotation: 180
+                                } : undefined}
                             />
                         ))}
 
@@ -597,6 +660,22 @@ export default function Navigation() {
             </Button>
           </div>
 
+          {/* Route Settings */}
+          <div className="hud-panel p-4 space-y-3">
+            <h3 className="font-display text-sm text-primary">ROUTE SETTINGS</h3>
+            <Button
+              variant="outline"
+              className="w-full font-mono text-xs h-8 justify-start"
+              onClick={setAsStartFromCurrentLocation}
+              data-testid="button-set-start-current"
+            >
+              <LocateFixed className="w-3 h-3 mr-2 text-green-500" /> SET CURRENT LOCATION AS START
+            </Button>
+            <p className="text-[10px] text-muted-foreground">
+              Drag map pins to adjust waypoint positions. First waypoint (green) is start, last waypoint (red) is end.
+            </p>
+          </div>
+
           {/* Waypoints List */}
           <div className="hud-panel p-4 max-h-64 overflow-auto">
             <div className="flex justify-between items-center mb-3">
@@ -627,23 +706,45 @@ export default function Navigation() {
                     <div className="flex items-start gap-2 flex-1">
                       <div className="text-primary/50 mt-0.5 cursor-grab active:cursor-grabbing">⋮⋮</div>
                       <div>
-                        <div className="font-bold text-foreground">{idx + 1}. {wp.name}</div>
+                        <div className="font-bold text-foreground flex items-center gap-2">
+                          {idx === 0 && <span className="text-green-500 text-[10px]">START</span>}
+                          {idx === waypoints.length - 1 && waypoints.length > 1 && <span className="text-red-500 text-[10px]">END</span>}
+                          {idx + 1}. {wp.name}
+                        </div>
                         <div className="text-[10px] text-muted-foreground/70 mt-1">
                           {wp.lat.toFixed(4)}° {wp.lng.toFixed(4)}°
                         </div>
                       </div>
                     </div>
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      className="h-6 w-6 p-0 flex-shrink-0"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        removeWaypoint(wp.id);
-                      }}
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </Button>
+                    <div className="flex gap-1 flex-shrink-0">
+                      {idx < waypoints.length - 1 && waypoints.length > 1 && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-6 w-6 p-0"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setAsEndpoint(wp.id);
+                          }}
+                          title="Set as route endpoint"
+                          data-testid={`button-set-endpoint-${wp.id}`}
+                        >
+                          <Flag className="w-3 h-3 text-red-500" />
+                        </Button>
+                      )}
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        className="h-6 w-6 p-0"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeWaypoint(wp.id);
+                        }}
+                        data-testid={`button-delete-waypoint-${wp.id}`}
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
               ))}
