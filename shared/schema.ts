@@ -95,3 +95,104 @@ export const insertRoverConfigSchema = createInsertSchema(roverConfig).omit({
 
 export type InsertRoverConfig = z.infer<typeof insertRoverConfigSchema>;
 export type RoverConfig = typeof roverConfig.$inferSelect;
+
+// Fused Telemetry - Sensor fusion processed data
+export const fusedTelemetry = pgTable("fused_telemetry", {
+  id: serial("id").primaryKey(),
+  timestamp: timestamp("timestamp").notNull().defaultNow(),
+  x: real("x").notNull(),
+  y: real("y").notNull(),
+  theta: real("theta").notNull(),
+  velocity: real("velocity").notNull(),
+  angularVelocity: real("angular_velocity").notNull(),
+  covarianceMatrix: jsonb("covariance_matrix").notNull().$type<number[][]>(),
+  gpsLatitude: real("gps_latitude"),
+  gpsLongitude: real("gps_longitude"),
+  gpsAccuracy: real("gps_accuracy"),
+  imuHeading: real("imu_heading"),
+  imuPitch: real("imu_pitch"),
+  imuRoll: real("imu_roll"),
+  lidarDistance: integer("lidar_distance"),
+  lidarAngle: real("lidar_angle"),
+  ultrasonicDistances: jsonb("ultrasonic_distances").$type<number[]>(),
+  fusionConfidence: real("fusion_confidence").notNull(),
+});
+
+export const insertFusedTelemetrySchema = createInsertSchema(fusedTelemetry).omit({
+  id: true,
+  timestamp: true,
+});
+
+export type InsertFusedTelemetry = z.infer<typeof insertFusedTelemetrySchema>;
+export type FusedTelemetry = typeof fusedTelemetry.$inferSelect;
+
+// Occupancy Grid Maps - SLAM generated maps
+export const occupancyMaps = pgTable("occupancy_maps", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  width: integer("width").notNull(),
+  height: integer("height").notNull(),
+  resolution: real("resolution").notNull(),
+  originX: real("origin_x").notNull(),
+  originY: real("origin_y").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const insertOccupancyMapSchema = createInsertSchema(occupancyMaps).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertOccupancyMap = z.infer<typeof insertOccupancyMapSchema>;
+export type OccupancyMap = typeof occupancyMaps.$inferSelect;
+
+// Map Tiles - Compressed grid data for occupancy maps
+export const mapTiles = pgTable("map_tiles", {
+  id: serial("id").primaryKey(),
+  mapId: integer("map_id").notNull().references(() => occupancyMaps.id, { onDelete: 'cascade' }),
+  tileX: integer("tile_x").notNull(),
+  tileY: integer("tile_y").notNull(),
+  data: text("data").notNull(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const insertMapTileSchema = createInsertSchema(mapTiles).omit({
+  id: true,
+  updatedAt: true,
+});
+
+export type InsertMapTile = z.infer<typeof insertMapTileSchema>;
+export type MapTile = typeof mapTiles.$inferSelect;
+
+// Sensor Fusion Types for real-time streaming
+export interface SensorFusionState {
+  x: number;
+  y: number;
+  theta: number;
+  velocity: number;
+  angularVelocity: number;
+  covariance: number[][];
+  confidence: number;
+}
+
+export interface LidarScan {
+  angle: number;
+  distance: number;
+  timestamp: number;
+}
+
+export interface OccupancyGridCell {
+  x: number;
+  y: number;
+  probability: number;
+}
+
+export interface MapUpdate {
+  mapId: number;
+  cells: OccupancyGridCell[];
+  roverPose: { x: number; y: number; theta: number };
+  timestamp: number;
+}

@@ -11,6 +11,7 @@ import Navigation from "@/pages/Navigation";
 import GamepadControl from "@/pages/GamepadControl";
 import FlySkyControl from "@/pages/FlySkyControl";
 import SystemDiagnostics from "@/pages/SystemDiagnostics";
+import Mapping from "@/pages/Mapping";
 
 function Router() {
   return (
@@ -22,6 +23,7 @@ function Router() {
       <Route path="/gamepad" component={GamepadControl} />
       <Route path="/flysky" component={FlySkyControl} />
       <Route path="/diagnostics" component={SystemDiagnostics} />
+      <Route path="/mapping" component={Mapping} />
       <Route component={NotFound} />
     </Switch>
   );
