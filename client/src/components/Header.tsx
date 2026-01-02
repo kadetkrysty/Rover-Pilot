@@ -2,27 +2,22 @@ import { Link, useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { 
   Wifi, Settings, FileText, Power, Activity, Radio, Map, 
-  Gamepad2, Video, Cloud, Menu 
+  Gamepad2, Video, Cloud, Menu, X, ChevronDown
 } from 'lucide-react';
 import { useWebSocket } from '@/lib/useWebSocket';
-import { useState } from 'react';
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
+import { useState, useRef, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const navItems = [
+  { path: '/', label: 'DASHBOARD', icon: Activity },
   { path: '/gamepad', label: 'GAMEPAD', icon: Gamepad2 },
   { path: '/flysky', label: 'FLYSKY', icon: Radio },
   { path: '/navigation', label: 'NAVIGATION', icon: Map },
   { path: '/mapping', label: 'SLAM MAP', icon: Map },
   { path: '/diagnostics', label: 'DIAGNOSTICS', icon: Activity },
-  { path: '/docs', label: 'SYSTEM_DOCS', icon: FileText },
+  { path: '/docs', label: 'DOCS', icon: FileText },
   { path: '/recordings', label: 'RECORDINGS', icon: Video },
-  { path: '/sync', label: 'CLOUD SYNC', icon: Cloud },
+  { path: '/sync', label: 'CLOUD', icon: Cloud },
   { path: '/setup', label: 'CONFIG', icon: Settings },
 ];
 
@@ -30,7 +25,8 @@ export default function Header() {
   const [location] = useLocation();
   const { sendCommand, isConnected } = useWebSocket();
   const [eStopActive, setEStopActive] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   const handleEStop = () => {
     setEStopActive(true);
@@ -47,106 +43,105 @@ export default function Header() {
     return false;
   };
 
-  return (
-    <header 
-      className="h-14 border-b border-border bg-card/50 backdrop-blur px-4 flex items-center justify-between z-50 fixed top-0 left-0 right-0"
-      data-testid="header-main"
-    >
-      <div className="flex items-center gap-4">
-        <Link href="/">
-          <h1 
-            className="text-xl font-display font-bold tracking-widest text-primary flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
-            data-testid="link-logo"
-          >
-            <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-primary animate-pulse shadow-[0_0_10px_var(--primary)]' : 'bg-destructive'}`}></div>
-            ROVER<span className="text-foreground">OS</span> V3.0
-          </h1>
-        </Link>
-        <div className="h-6 w-[1px] bg-border mx-2 hidden md:block"></div>
-        <div className="hidden md:flex items-center gap-2 text-xs font-mono text-secondary">
-          <Wifi className="w-3 h-3" />
-          {isConnected ? 'CONNECTED: ROVER-AP-5G' : 'DISCONNECTED'}
-        </div>
-      </div>
-      
-      {/* Desktop Navigation */}
-      <nav className="hidden lg:flex items-center gap-1">
-        {navItems.map((item) => (
-          <Link key={item.path} href={item.path}>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className={`font-mono text-xs hover:text-primary hover:bg-primary/10 ${
-                isActive(item.path) ? 'text-primary bg-primary/10' : ''
-              }`}
-              data-testid={`nav-${item.path.slice(1) || 'home'}`}
-            >
-              <item.icon className="w-4 h-4 mr-1" /> {item.label}
-            </Button>
-          </Link>
-        ))}
-        <Button 
-          variant="destructive" 
-          size="sm" 
-          className={`font-mono text-xs ml-2 ${eStopActive ? 'animate-pulse' : ''}`}
-          onClick={handleEStop}
-          disabled={eStopActive}
-          data-testid="button-estop"
-        >
-          <Power className="w-4 h-4 mr-1" /> {eStopActive ? 'STOPPING...' : 'E-STOP'}
-        </Button>
-      </nav>
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
 
-      {/* Mobile Navigation */}
-      <div className="flex lg:hidden items-center gap-2">
-        <Button 
-          variant="destructive" 
-          size="sm" 
-          className={`font-mono text-xs ${eStopActive ? 'animate-pulse' : ''}`}
-          onClick={handleEStop}
-          disabled={eStopActive}
-          data-testid="button-estop-mobile"
-        >
-          <Power className="w-4 h-4" />
-        </Button>
+    if (menuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [menuOpen]);
+
+  const currentPage = navItems.find(item => isActive(item.path));
+
+  return (
+    <div ref={menuRef}>
+      <header 
+        className="h-14 border-b border-border bg-card/95 backdrop-blur px-4 flex items-center justify-between z-50 fixed top-0 left-0 right-0"
+        data-testid="header-main"
+      >
+        <div className="flex items-center gap-3">
+          <Link href="/">
+            <h1 
+              className="text-lg font-display font-bold tracking-widest text-primary flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
+              data-testid="link-logo"
+            >
+              <div className={`w-2.5 h-2.5 rounded-full ${isConnected ? 'bg-primary animate-pulse shadow-[0_0_10px_var(--primary)]' : 'bg-destructive'}`}></div>
+              ROVER<span className="text-foreground">OS</span>
+            </h1>
+          </Link>
+          
+          <div className="hidden sm:flex items-center gap-2 text-xs font-mono text-secondary">
+            <Wifi className="w-3 h-3" />
+            <span className="hidden md:inline">{isConnected ? 'CONNECTED' : 'OFFLINE'}</span>
+          </div>
+        </div>
         
-        <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-          <SheetTrigger asChild>
-            <Button variant="ghost" size="sm" data-testid="button-menu-mobile">
-              <Menu className="w-5 h-5" />
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="right" className="w-72 bg-card border-border">
-            <SheetHeader>
-              <SheetTitle className="text-primary font-display">NAVIGATION</SheetTitle>
-            </SheetHeader>
-            <nav className="flex flex-col gap-2 mt-6">
-              <Link href="/">
-                <Button 
-                  variant="ghost" 
-                  className={`w-full justify-start font-mono text-sm ${isActive('/') && location === '/' ? 'text-primary bg-primary/10' : ''}`}
-                  onClick={() => setMobileMenuOpen(false)}
-                  data-testid="nav-mobile-home"
-                >
-                  <Activity className="w-4 h-4 mr-2" /> DASHBOARD
-                </Button>
-              </Link>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="font-mono text-xs flex items-center gap-2 border border-border/50 hover:border-primary/50"
+            onClick={() => setMenuOpen(!menuOpen)}
+            data-testid="button-menu"
+          >
+            <Menu className="w-4 h-4" />
+            <span className="hidden sm:inline">{currentPage?.label || 'MENU'}</span>
+            <ChevronDown className={`w-3 h-3 transition-transform ${menuOpen ? 'rotate-180' : ''}`} />
+          </Button>
+          
+          <Button 
+            variant="destructive" 
+            size="sm" 
+            className={`font-mono text-xs ${eStopActive ? 'animate-pulse' : ''}`}
+            onClick={handleEStop}
+            disabled={eStopActive}
+            data-testid="button-estop"
+          >
+            <Power className="w-4 h-4" />
+            <span className="hidden sm:inline ml-1">{eStopActive ? 'STOP!' : 'E-STOP'}</span>
+          </Button>
+        </div>
+      </header>
+
+      <AnimatePresence>
+        {menuOpen && (
+          <motion.nav
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.15 }}
+            className="fixed top-14 left-0 right-0 z-40 bg-card/95 backdrop-blur border-b border-border shadow-lg"
+            data-testid="dropdown-menu"
+          >
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-1 p-3">
               {navItems.map((item) => (
                 <Link key={item.path} href={item.path}>
                   <Button 
                     variant="ghost" 
-                    className={`w-full justify-start font-mono text-sm ${isActive(item.path) ? 'text-primary bg-primary/10' : ''}`}
-                    onClick={() => setMobileMenuOpen(false)}
-                    data-testid={`nav-mobile-${item.path.slice(1)}`}
+                    className={`w-full justify-start font-mono text-xs h-10 ${
+                      isActive(item.path) 
+                        ? 'text-primary bg-primary/10 border border-primary/30' 
+                        : 'hover:bg-primary/5 hover:text-primary'
+                    }`}
+                    onClick={() => setMenuOpen(false)}
+                    data-testid={`nav-${item.path.slice(1) || 'home'}`}
                   >
-                    <item.icon className="w-4 h-4 mr-2" /> {item.label}
+                    <item.icon className="w-4 h-4 mr-2 shrink-0" />
+                    <span className="truncate">{item.label}</span>
                   </Button>
                 </Link>
               ))}
-            </nav>
-          </SheetContent>
-        </Sheet>
-      </div>
-    </header>
+            </div>
+          </motion.nav>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
