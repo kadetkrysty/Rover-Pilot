@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { MapPin, Trash2, Play, Pause, RotateCcw, Search, Key, Save, Download, Upload, Navigation2, Flag, LocateFixed } from 'lucide-react';
 import { useRoverData } from '@/lib/mockData';
-import { GoogleMap, LoadScript, Marker, Polyline, Autocomplete } from '@react-google-maps/api';
+import { GoogleMap, LoadScript, Marker, Polyline } from '@react-google-maps/api';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getRoutes, createRoute, createWaypoints, getWaypoints, deleteRoute, startNavigation as apiStartNavigation } from '@/lib/api';
 import {
@@ -38,11 +38,6 @@ const mapContainerStyle = {
   height: '100%'
 };
 
-const defaultCenter = {
-  lat: 34.0522,
-  lng: -118.2437
-};
-
 const libraries: ("places")[] = ["places"];
 
 export default function Navigation() {
@@ -67,7 +62,8 @@ export default function Navigation() {
   // Google Maps State
   const [tempApiKey, setTempApiKey] = useState('');
   const [map, setMap] = useState<google.maps.Map | null>(null);
-  const [autocomplete, setAutocomplete] = useState<google.maps.places.Autocomplete | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [mapInitialized, setMapInitialized] = useState(false);
   
   const data = useRoverData();
   const mapRef = useRef<HTMLDivElement>(null);
@@ -326,10 +322,22 @@ export default function Navigation() {
     return (total / 1000).toFixed(2); // Convert to km
   };
 
+  // Center map on current GPS location when it loads
+  useEffect(() => {
+    if (map && !mapInitialized && data.gps.lat && data.gps.lng) {
+      map.setCenter({ lat: data.gps.lat, lng: data.gps.lng });
+      setMapInitialized(true);
+    }
+  }, [map, data.gps, mapInitialized]);
+
   // Google Maps Handlers
   const onMapLoad = useCallback((map: google.maps.Map) => {
     setMap(map);
-  }, []);
+    // Center on GPS location immediately if available
+    if (data.gps.lat && data.gps.lng) {
+      map.setCenter({ lat: data.gps.lat, lng: data.gps.lng });
+    }
+  }, [data.gps]);
 
   const onUnmount = useCallback(() => {
     setMap(null);
@@ -344,24 +352,31 @@ export default function Navigation() {
     }
   };
 
-  const onAutocompleteLoad = (autocompleteInstance: google.maps.places.Autocomplete) => {
-    setAutocomplete(autocompleteInstance);
+  // Search using Geocoding API
+  const handleManualSearch = async () => {
+    if (!searchQuery.trim() || !map) return;
+    
+    try {
+      const geocoder = new google.maps.Geocoder();
+      geocoder.geocode({ address: searchQuery }, (results, status) => {
+        if (status === 'OK' && results && results[0]) {
+          const location = results[0].geometry.location;
+          map.panTo(location);
+          map.setZoom(16);
+          setNewWaypointName(results[0].formatted_address || searchQuery);
+          toast.success('Location found');
+        } else {
+          toast.error('Location not found');
+        }
+      });
+    } catch (error) {
+      toast.error('Search failed');
+    }
   };
 
-  const onPlaceChanged = () => {
-    if (autocomplete !== null) {
-      const place = autocomplete.getPlace();
-      if (place.geometry && place.geometry.location) {
-        const lat = place.geometry.location.lat();
-        const lng = place.geometry.location.lng();
-        
-        map?.panTo({ lat, lng });
-        map?.setZoom(16);
-        
-        setNewWaypointName(place.name || '');
-        // Don't auto-add, let user verify location or click map
-        // addWaypoint(lat, lng); 
-      }
+  const handleSearchKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleManualSearch();
     }
   };
 
@@ -474,7 +489,7 @@ export default function Navigation() {
                 <LoadScript googleMapsApiKey={mapApiKey} libraries={libraries}>
                     <GoogleMap
                         mapContainerStyle={mapContainerStyle}
-                        center={defaultCenter}
+                        center={{ lat: data.gps.lat, lng: data.gps.lng }}
                         zoom={18}
                         onLoad={onMapLoad}
                         onUnmount={onUnmount}
@@ -506,21 +521,31 @@ export default function Navigation() {
                             ]
                         }}
                     >
-                        {/* Search Box */}
+                        {/* Search Box - Using Geocoding for reliability */}
                         <div className="absolute top-2 left-2 right-14 z-10">
-                            <Autocomplete
-                                onLoad={onAutocompleteLoad}
-                                onPlaceChanged={onPlaceChanged}
-                            >
-                                <div className="relative">
+                            <div className="relative flex gap-1">
+                                <div className="relative flex-1">
                                     <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                                     <input
                                         type="text"
-                                        placeholder="Search for a location or POI..."
-                                        className="w-full h-10 pl-9 pr-4 rounded-md border border-input bg-background/90 px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 font-mono shadow-md"
+                                        placeholder="Search location (press Enter)..."
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        onKeyDown={handleSearchKeyPress}
+                                        className="w-full h-10 pl-9 pr-4 rounded-md border border-input bg-background/95 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 font-mono shadow-md"
+                                        data-testid="input-search-location"
                                     />
                                 </div>
-                            </Autocomplete>
+                                <Button 
+                                    size="sm" 
+                                    onClick={handleManualSearch}
+                                    className="h-10 px-3 shadow-md"
+                                    disabled={!searchQuery.trim()}
+                                    data-testid="button-search-location"
+                                >
+                                    <Search className="h-4 w-4" />
+                                </Button>
+                            </div>
                         </div>
 
                         {/* Rover Position Marker */}
