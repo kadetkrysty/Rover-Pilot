@@ -4,72 +4,13 @@ import TelemetryPanel from '@/components/TelemetryPanel';
 import SensorStatus from '@/components/SensorStatus';
 import Joystick from '@/components/Joystick';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Wifi, Settings, FileText, Power, Activity, Radio, Map } from 'lucide-react';
-import { Link } from 'wouter';
-import { Button } from '@/components/ui/button';
 
 export default function Dashboard() {
   const data = useRoverData();
 
   return (
-    <div className="min-h-screen bg-background text-foreground font-sans selection:bg-primary/30 overflow-hidden relative">
+    <div className="min-h-screen bg-background text-foreground font-sans selection:bg-primary/30 overflow-hidden relative" data-testid="page-dashboard">
       <div className="scanline"></div>
-      
-      {/* Header */}
-      <header className="h-14 border-b border-border bg-card/50 backdrop-blur px-4 flex items-center justify-between z-10 relative">
-        <div className="flex items-center gap-4">
-            <h1 className="text-xl font-display font-bold tracking-widest text-primary flex items-center gap-2">
-                <div className="w-3 h-3 bg-primary rounded-full animate-pulse shadow-[0_0_10px_var(--primary)]"></div>
-                ROVER<span className="text-foreground">OS</span> v2.4
-            </h1>
-            <div className="h-6 w-[1px] bg-border mx-2"></div>
-            <div className="flex items-center gap-2 text-xs font-mono text-secondary">
-                <Wifi className="w-3 h-3" />
-                CONNECTED: ROVER-AP-5G
-            </div>
-        </div>
-        
-        <nav className="flex items-center gap-2">
-            <Link href="/gamepad">
-                <Button variant="ghost" size="sm" className="font-mono text-xs hover:text-primary hover:bg-primary/10">
-                    <FileText className="w-4 h-4 mr-2" /> GAMEPAD
-                </Button>
-            </Link>
-            <Link href="/flysky">
-                <Button variant="ghost" size="sm" className="font-mono text-xs hover:text-primary hover:bg-primary/10">
-                    <Radio className="w-4 h-4 mr-2" /> FLYSKY
-                </Button>
-            </Link>
-            <Link href="/navigation">
-                <Button variant="ghost" size="sm" className="font-mono text-xs hover:text-primary hover:bg-primary/10">
-                    <FileText className="w-4 h-4 mr-2" /> NAVIGATION
-                </Button>
-            </Link>
-            <Link href="/mapping">
-                <Button variant="ghost" size="sm" className="font-mono text-xs hover:text-primary hover:bg-primary/10">
-                    <Map className="w-4 h-4 mr-2" /> SLAM MAP
-                </Button>
-            </Link>
-            <Link href="/diagnostics">
-                <Button variant="ghost" size="sm" className="font-mono text-xs hover:text-primary hover:bg-primary/10">
-                    <Activity className="w-4 h-4 mr-2" /> DIAGNOSTICS
-                </Button>
-            </Link>
-            <Link href="/docs">
-                <Button variant="ghost" size="sm" className="font-mono text-xs hover:text-primary hover:bg-primary/10">
-                    <FileText className="w-4 h-4 mr-2" /> SYSTEM_DOCS
-                </Button>
-            </Link>
-            <Link href="/setup">
-                <Button variant="ghost" size="sm" className="font-mono text-xs hover:text-primary hover:bg-primary/10">
-                    <Settings className="w-4 h-4 mr-2" /> CONFIG
-                </Button>
-            </Link>
-             <Button variant="destructive" size="sm" className="font-mono text-xs opacity-80 hover:opacity-100">
-                <Power className="w-4 h-4 mr-2" /> E-STOP
-            </Button>
-        </nav>
-      </header>
 
       {/* Main Grid */}
       <main className="grid grid-cols-12 gap-4 p-4 h-[calc(100vh-3.5rem)]">

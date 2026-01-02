@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'wouter';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Zap, AlertTriangle } from 'lucide-react';
+import { Zap, AlertTriangle } from 'lucide-react';
 import PS4Controller from '@/components/PS4Controller';
 import { useRoverData } from '@/lib/mockData';
 import { GamepadInput } from '@/hooks/useGamepad';
@@ -18,7 +17,6 @@ export default function GamepadControl() {
   const [lightsEnabled, setLightsEnabled] = useState(false);
 
   const handleGamepadInput = (input: GamepadInput) => {
-    // Emergency stop (PS button)
     if (input.psButton) {
       setEmergencyStop(true);
       setThrottle(0);
@@ -28,34 +26,25 @@ export default function GamepadControl() {
       setEmergencyStop(false);
     }
 
-    // Main controls: R2 (forward) and L2 (reverse)
     const throttleValue = (input.r2 - input.l2) * 100;
     setThrottle(throttleValue);
-
-    // Steering from left stick X axis
     setSteering(input.leftStickX * 100);
-
-    // Camera control from right stick
     setCameraX(input.rightStickX * 100);
     setCameraY(input.rightStickY * 100);
 
-    // Mode toggle with Circle button
     if (input.circle) {
       setMode(mode === 'MANUAL' ? 'AUTONOMOUS' : 'MANUAL');
     }
 
-    // Manual stop with X button
     if (input.x) {
       setThrottle(0);
       setSteering(0);
     }
 
-    // Lights toggle with Triangle button
     if (input.triangle) {
       setLightsEnabled(!lightsEnabled);
     }
 
-    // Speed multiplier with D-Pad Up/Down
     if (input.dPadUp) {
       setSpeedMultiplier(Math.min(1.5, speedMultiplier + 0.1));
     }
@@ -63,12 +52,10 @@ export default function GamepadControl() {
       setSpeedMultiplier(Math.max(0.5, speedMultiplier - 0.1));
     }
 
-    // Record with Square button
     if (input.square) {
       console.log('Recording started...');
     }
 
-    // L1/R1 for strafe (future use)
     if (input.l1) {
       console.log('Strafe left');
     }
@@ -76,7 +63,6 @@ export default function GamepadControl() {
       console.log('Strafe right');
     }
 
-    // D-Pad Left/Right for sensor toggle
     if (input.dPadLeft) {
       console.log('Sensor mode changed');
     }
@@ -86,18 +72,11 @@ export default function GamepadControl() {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground font-sans p-6">
-      <header className="mb-8 flex items-center justify-between border-b border-border pb-4">
-        <div>
-          <h1 className="text-3xl font-display font-bold text-primary">GAMEPAD CONTROL</h1>
-          <p className="text-muted-foreground font-mono mt-1">PS4 DualShock 4 Controller Integration</p>
-        </div>
-        <Link href="/">
-          <Button variant="outline" className="font-mono">
-            <ArrowLeft className="w-4 h-4 mr-2" /> RETURN TO HUD
-          </Button>
-        </Link>
-      </header>
+    <div className="min-h-screen bg-background text-foreground font-sans p-6" data-testid="page-gamepad-control">
+      <div className="mb-6">
+        <h1 className="text-3xl font-display font-bold text-primary">GAMEPAD CONTROL</h1>
+        <p className="text-muted-foreground font-mono mt-1">PS4 DualShock 4 Controller Integration</p>
+      </div>
 
       <div className="grid grid-cols-12 gap-6">
         {/* Controller Input Visualization */}

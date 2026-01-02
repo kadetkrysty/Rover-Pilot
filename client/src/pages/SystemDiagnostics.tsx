@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { ArrowLeft, CheckCircle, AlertCircle, XCircle, Activity } from 'lucide-react';
+import { CheckCircle, AlertCircle, XCircle, Activity } from 'lucide-react';
 import { useRoverData } from '@/lib/mockData';
 
 interface SystemStatus {
@@ -120,17 +119,10 @@ export default function SystemDiagnostics() {
 
   return (
     <div className="min-h-screen bg-background text-foreground font-sans p-6" data-testid="page-system-diagnostics">
-      <header className="mb-8 flex items-center justify-between border-b border-border pb-4">
-        <div>
-          <h1 className="text-3xl font-display font-bold text-primary" data-testid="text-diagnostics-title">SYSTEM DIAGNOSTICS</h1>
-          <p className="text-muted-foreground font-mono mt-1">Real-time hardware and software status monitoring</p>
-        </div>
-        <Link href="/">
-          <Button variant="outline" className="font-mono" data-testid="button-return-hud">
-            <ArrowLeft className="w-4 h-4 mr-2" /> RETURN
-          </Button>
-        </Link>
-      </header>
+      <div className="mb-6">
+        <h1 className="text-3xl font-display font-bold text-primary" data-testid="text-diagnostics-title">SYSTEM DIAGNOSTICS</h1>
+        <p className="text-muted-foreground font-mono mt-1">Real-time hardware and software status monitoring</p>
+      </div>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-4 gap-4 mb-6">

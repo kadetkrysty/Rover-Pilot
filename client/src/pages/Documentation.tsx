@@ -1,23 +1,15 @@
-import { Link } from 'wouter';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Code, FileText, Cpu, Download, Wifi, Radio, Settings, Wrench, Zap, AlertTriangle } from 'lucide-react';
+import { Code, FileText, Cpu, Download, Wifi, Radio, Settings, Wrench, Zap, AlertTriangle, Power, Video, Cloud, Shield } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default function Documentation() {
   return (
     <div className="min-h-screen bg-background text-foreground font-sans p-6" data-testid="page-documentation">
-      <header className="mb-8 flex items-center justify-between border-b border-border pb-4">
-        <div>
-            <h1 className="text-3xl font-display font-bold text-primary">SYSTEM DOCUMENTATION</h1>
-            <p className="text-muted-foreground font-mono mt-1">RoverOS v3.0 - Mini PC + Arduino + iBUS Architecture</p>
-        </div>
-        <Link href="/">
-            <Button variant="outline" className="font-mono" data-testid="button-return-hud">
-                <ArrowLeft className="w-4 h-4 mr-2" /> RETURN TO HUD
-            </Button>
-        </Link>
-      </header>
+      <div className="mb-6">
+        <h1 className="text-3xl font-display font-bold text-primary">SYSTEM DOCUMENTATION</h1>
+        <p className="text-muted-foreground font-mono mt-1">RoverOS v3.0 - Mini PC + Arduino + iBUS Architecture</p>
+      </div>
 
       <div className="grid grid-cols-12 gap-6 h-[calc(100vh-10rem)]">
         <div className="col-span-3 space-y-4">
@@ -52,12 +44,12 @@ export default function Documentation() {
                 <div className="bg-card border-b border-border p-2 overflow-x-auto">
                     <TabsList className="bg-background/50 w-max">
                         <TabsTrigger value="overview" className="font-mono text-xs" data-testid="tab-overview">OVERVIEW</TabsTrigger>
+                        <TabsTrigger value="estop" className="font-mono text-xs" data-testid="tab-estop">E-STOP</TabsTrigger>
+                        <TabsTrigger value="video" className="font-mono text-xs" data-testid="tab-video">VIDEO</TabsTrigger>
+                        <TabsTrigger value="cloudsync" className="font-mono text-xs" data-testid="tab-cloudsync">CLOUD</TabsTrigger>
+                        <TabsTrigger value="failsafe" className="font-mono text-xs" data-testid="tab-failsafe">FAILSAFE</TabsTrigger>
                         <TabsTrigger value="wiring" className="font-mono text-xs" data-testid="tab-wiring">WIRING</TabsTrigger>
-                        <TabsTrigger value="arduino" className="font-mono text-xs" data-testid="tab-arduino">ARDUINO</TabsTrigger>
-                        <TabsTrigger value="minipc" className="font-mono text-xs" data-testid="tab-minipc">MINI PC</TabsTrigger>
                         <TabsTrigger value="ibus" className="font-mono text-xs" data-testid="tab-ibus">iBUS / RC</TabsTrigger>
-                        <TabsTrigger value="sensors" className="font-mono text-xs" data-testid="tab-sensors">SENSORS</TabsTrigger>
-                        <TabsTrigger value="assembly" className="font-mono text-xs" data-testid="tab-assembly">ASSEMBLY</TabsTrigger>
                         <TabsTrigger value="troubleshoot" className="font-mono text-xs" data-testid="tab-troubleshoot">TROUBLESHOOT</TabsTrigger>
                     </TabsList>
                 </div>
@@ -159,6 +151,225 @@ export default function Documentation() {
                                         </ul>
                                     </div>
                                 </div>
+                            </div>
+                        </div>
+                    </ScrollArea>
+                </TabsContent>
+
+                <TabsContent value="estop" className="flex-1 p-0 m-0 relative overflow-hidden">
+                    <ScrollArea className="h-full w-full">
+                        <div className="p-6 space-y-6 pr-4">
+                            <div>
+                                <h3 className="text-xl text-primary font-display mb-4 flex items-center gap-2">
+                                    <Power className="w-6 h-6" /> EMERGENCY STOP (E-STOP)
+                                </h3>
+                                <div className="bg-destructive/20 border border-destructive p-4 rounded-lg mb-4">
+                                    <p className="text-sm text-destructive font-bold">CRITICAL SAFETY FEATURE</p>
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                        The E-Stop button immediately halts all rover movement. Use in emergency situations.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="space-y-4">
+                                <h4 className="font-display text-primary">HOW TO USE E-STOP</h4>
+                                
+                                <div className="bg-card border border-border p-4 rounded">
+                                    <h5 className="text-sm font-bold text-secondary mb-2">1. Web Dashboard</h5>
+                                    <ul className="text-xs font-mono text-muted-foreground space-y-1">
+                                        <li>• Click the red E-STOP button in the navigation bar</li>
+                                        <li>• Button is visible on ALL pages for quick access</li>
+                                        <li>• Command is sent via WebSocket immediately</li>
+                                        <li>• All motor commands are zeroed</li>
+                                    </ul>
+                                </div>
+
+                                <div className="bg-card border border-border p-4 rounded">
+                                    <h5 className="text-sm font-bold text-secondary mb-2">2. PS4 Controller</h5>
+                                    <ul className="text-xs font-mono text-muted-foreground space-y-1">
+                                        <li>• Press the PS button (PlayStation logo)</li>
+                                        <li>• Immediately stops all movement</li>
+                                        <li>• Throttle and steering reset to zero</li>
+                                    </ul>
+                                </div>
+
+                                <div className="bg-card border border-border p-4 rounded">
+                                    <h5 className="text-sm font-bold text-secondary mb-2">3. FlySky Transmitter</h5>
+                                    <ul className="text-xs font-mono text-muted-foreground space-y-1">
+                                        <li>• Switch SWC to position 3 (failsafe mode)</li>
+                                        <li>• Or simply turn off the transmitter</li>
+                                        <li>• iBUS failsafe triggers automatic stop</li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <div className="bg-primary/10 border border-primary/30 p-4 rounded">
+                                <h5 className="font-display text-primary mb-2">E-STOP BEHAVIOR</h5>
+                                <ul className="text-xs font-mono text-muted-foreground space-y-1">
+                                    <li>• Motors immediately set to 0 speed</li>
+                                    <li>• Autonomous navigation paused</li>
+                                    <li>• Button pulses for 3 seconds to confirm</li>
+                                    <li>• Manual control can resume after stop</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </ScrollArea>
+                </TabsContent>
+
+                <TabsContent value="video" className="flex-1 p-0 m-0 relative overflow-hidden">
+                    <ScrollArea className="h-full w-full">
+                        <div className="p-6 space-y-6 pr-4">
+                            <div>
+                                <h3 className="text-xl text-primary font-display mb-4 flex items-center gap-2">
+                                    <Video className="w-6 h-6" /> VIDEO RECORDING
+                                </h3>
+                                <p className="text-sm text-muted-foreground">
+                                    Record mission footage from the HuskyLens AI camera for review and analysis.
+                                </p>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="bg-card border border-border p-4 rounded">
+                                    <h5 className="text-sm font-bold text-secondary mb-2">STARTING A RECORDING</h5>
+                                    <ol className="text-xs font-mono text-muted-foreground space-y-1 list-decimal list-inside">
+                                        <li>Navigate to RECORDINGS page</li>
+                                        <li>Click "Start Recording" button</li>
+                                        <li>Red indicator shows recording is active</li>
+                                        <li>Recording continues until stopped</li>
+                                    </ol>
+                                </div>
+
+                                <div className="bg-card border border-border p-4 rounded">
+                                    <h5 className="text-sm font-bold text-secondary mb-2">PLAYBACK</h5>
+                                    <ol className="text-xs font-mono text-muted-foreground space-y-1 list-decimal list-inside">
+                                        <li>Select a completed recording from list</li>
+                                        <li>Click Play to view footage</li>
+                                        <li>Pause/Resume as needed</li>
+                                        <li>Download for offline viewing</li>
+                                    </ol>
+                                </div>
+                            </div>
+
+                            <div className="bg-accent/10 border border-accent/30 p-4 rounded">
+                                <h5 className="font-display text-accent mb-2">STORAGE INFO</h5>
+                                <ul className="text-xs font-mono text-muted-foreground space-y-1">
+                                    <li>• Recordings stored on Mini PC</li>
+                                    <li>• 1080p @ 60FPS default resolution</li>
+                                    <li>• ~250MB per 5 minutes of footage</li>
+                                    <li>• Auto-cleanup when storage is low</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </ScrollArea>
+                </TabsContent>
+
+                <TabsContent value="cloudsync" className="flex-1 p-0 m-0 relative overflow-hidden">
+                    <ScrollArea className="h-full w-full">
+                        <div className="p-6 space-y-6 pr-4">
+                            <div>
+                                <h3 className="text-xl text-primary font-display mb-4 flex items-center gap-2">
+                                    <Cloud className="w-6 h-6" /> CLOUD SYNC & BACKUP
+                                </h3>
+                                <p className="text-sm text-muted-foreground">
+                                    Backup and restore routes, waypoints, and settings.
+                                </p>
+                            </div>
+
+                            <div className="space-y-4">
+                                <div className="bg-card border border-border p-4 rounded">
+                                    <h5 className="text-sm font-bold text-secondary mb-2">EXPORTING DATA</h5>
+                                    <ol className="text-xs font-mono text-muted-foreground space-y-1 list-decimal list-inside">
+                                        <li>Go to CLOUD SYNC page</li>
+                                        <li>Click "Export All Data" button</li>
+                                        <li>JSON file downloads automatically</li>
+                                        <li>Store backup in safe location</li>
+                                    </ol>
+                                </div>
+
+                                <div className="bg-card border border-border p-4 rounded">
+                                    <h5 className="text-sm font-bold text-secondary mb-2">IMPORTING DATA</h5>
+                                    <ol className="text-xs font-mono text-muted-foreground space-y-1 list-decimal list-inside">
+                                        <li>Go to CLOUD SYNC page</li>
+                                        <li>Click "Import Backup" button</li>
+                                        <li>Select your backup JSON file</li>
+                                        <li>Routes and settings are restored</li>
+                                    </ol>
+                                </div>
+
+                                <div className="bg-primary/10 border border-primary/30 p-4 rounded">
+                                    <h5 className="font-display text-primary mb-2">WHAT'S INCLUDED IN BACKUP</h5>
+                                    <ul className="text-xs font-mono text-muted-foreground space-y-1">
+                                        <li>• All saved navigation routes</li>
+                                        <li>• Waypoints with coordinates</li>
+                                        <li>• System configuration settings</li>
+                                        <li>• Google Maps API key (if saved)</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </ScrollArea>
+                </TabsContent>
+
+                <TabsContent value="failsafe" className="flex-1 p-0 m-0 relative overflow-hidden">
+                    <ScrollArea className="h-full w-full">
+                        <div className="p-6 space-y-6 pr-4">
+                            <div>
+                                <h3 className="text-xl text-primary font-display mb-4 flex items-center gap-2">
+                                    <Shield className="w-6 h-6" /> FAILSAFE SYSTEM
+                                </h3>
+                                <p className="text-sm text-muted-foreground">
+                                    Automatic safety triggers that protect the rover and surroundings.
+                                </p>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="bg-destructive/10 border border-destructive/30 p-4 rounded">
+                                    <h5 className="text-sm font-bold text-destructive mb-2">LOW BATTERY</h5>
+                                    <ul className="text-xs font-mono text-muted-foreground space-y-1">
+                                        <li>• Triggers at &lt;20% battery</li>
+                                        <li>• Speed reduced to 50%</li>
+                                        <li>• Warning displayed on dashboard</li>
+                                        <li>• At &lt;10%: Full stop, return-to-home</li>
+                                    </ul>
+                                </div>
+
+                                <div className="bg-accent/10 border border-accent/30 p-4 rounded">
+                                    <h5 className="text-sm font-bold text-accent mb-2">SIGNAL LOSS</h5>
+                                    <ul className="text-xs font-mono text-muted-foreground space-y-1">
+                                        <li>• iBUS failsafe after 500ms no signal</li>
+                                        <li>• Motors stop immediately</li>
+                                        <li>• Waits for signal recovery</li>
+                                        <li>• Auto-resume when signal returns</li>
+                                    </ul>
+                                </div>
+
+                                <div className="bg-primary/10 border border-primary/30 p-4 rounded">
+                                    <h5 className="text-sm font-bold text-primary mb-2">OBSTACLE DETECTION</h5>
+                                    <ul className="text-xs font-mono text-muted-foreground space-y-1">
+                                        <li>• Emergency stop at 15cm</li>
+                                        <li>• Slow down at 30cm</li>
+                                        <li>• Caution alert at 60cm</li>
+                                        <li>• LIDAR + Ultrasonic fusion</li>
+                                    </ul>
+                                </div>
+
+                                <div className="bg-secondary/10 border border-secondary/30 p-4 rounded">
+                                    <h5 className="text-sm font-bold text-secondary mb-2">GPS/IMU DRIFT</h5>
+                                    <ul className="text-xs font-mono text-muted-foreground space-y-1">
+                                        <li>• Monitors EKF covariance</li>
+                                        <li>• Stops if localization uncertain</li>
+                                        <li>• Requires GPS fix to continue</li>
+                                        <li>• IMU recalibration if needed</li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <div className="bg-card border border-border p-4 rounded">
+                                <h5 className="font-display text-primary mb-2">FAILSAFE LOG</h5>
+                                <p className="text-xs text-muted-foreground">
+                                    All failsafe events are logged with timestamp, trigger reason, and automatic actions taken. 
+                                    View the event history in the DIAGNOSTICS page.
+                                </p>
                             </div>
                         </div>
                     </ScrollArea>

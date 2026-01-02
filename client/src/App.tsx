@@ -3,6 +3,7 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import AppLayout from "@/components/AppLayout";
 import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/Dashboard";
 import Setup from "@/pages/Setup";
@@ -17,19 +18,21 @@ import CloudSync from "@/pages/CloudSync";
 
 function Router() {
   return (
-    <Switch>
-      <Route path="/" component={Dashboard} />
-      <Route path="/setup" component={Setup} />
-      <Route path="/docs" component={Documentation} />
-      <Route path="/navigation" component={Navigation} />
-      <Route path="/gamepad" component={GamepadControl} />
-      <Route path="/flysky" component={FlySkyControl} />
-      <Route path="/diagnostics" component={SystemDiagnostics} />
-      <Route path="/mapping" component={Mapping} />
-      <Route path="/recordings" component={VideoRecordings} />
-      <Route path="/sync" component={CloudSync} />
-      <Route component={NotFound} />
-    </Switch>
+    <AppLayout>
+      <Switch>
+        <Route path="/" component={Dashboard} />
+        <Route path="/setup" component={Setup} />
+        <Route path="/docs" component={Documentation} />
+        <Route path="/navigation" component={Navigation} />
+        <Route path="/gamepad" component={GamepadControl} />
+        <Route path="/flysky" component={FlySkyControl} />
+        <Route path="/diagnostics" component={SystemDiagnostics} />
+        <Route path="/mapping" component={Mapping} />
+        <Route path="/recordings" component={VideoRecordings} />
+        <Route path="/sync" component={CloudSync} />
+        <Route component={NotFound} />
+      </Switch>
+    </AppLayout>
   );
 }
 

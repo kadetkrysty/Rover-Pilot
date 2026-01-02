@@ -1,10 +1,9 @@
 import { useState } from 'react';
-import { Link } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Map, Radar, Cpu, Activity, Wifi, Save, Download, Radio } from 'lucide-react';
+import { Map, Radar, Cpu, Activity, Wifi, Save, Download, Radio } from 'lucide-react';
 import { SlamMapViewer } from '@/components/SlamMapViewer';
 import { useRoverData } from '@/lib/mockData';
 import { useWebSocket } from '@/lib/useWebSocket';
@@ -16,18 +15,11 @@ export default function Mapping() {
   const [useRealData, setUseRealData] = useState(true);
 
   return (
-    <div className="min-h-screen bg-background text-foreground font-sans p-6">
-      <header className="mb-8 flex items-center justify-between border-b border-border pb-4">
-        <div>
-          <h1 className="text-3xl font-display font-bold text-primary">SENSOR FUSION & MAPPING</h1>
-          <p className="text-muted-foreground font-mono mt-1">LIDAR-based SLAM with Extended Kalman Filter sensor fusion</p>
-        </div>
-        <Link href="/">
-          <Button variant="outline" className="font-mono" data-testid="button-return">
-            <ArrowLeft className="w-4 h-4 mr-2" /> RETURN TO HUD
-          </Button>
-        </Link>
-      </header>
+    <div className="min-h-screen bg-background text-foreground font-sans p-6" data-testid="page-mapping">
+      <div className="mb-6">
+        <h1 className="text-3xl font-display font-bold text-primary">SENSOR FUSION & MAPPING</h1>
+        <p className="text-muted-foreground font-mono mt-1">LIDAR-based SLAM with Extended Kalman Filter sensor fusion</p>
+      </div>
 
       <div className="grid grid-cols-12 gap-6">
         <div className="col-span-8">

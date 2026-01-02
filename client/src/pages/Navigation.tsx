@@ -1,10 +1,9 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Link } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, MapPin, Trash2, Play, Pause, RotateCcw, Search, Key, Save, Download, Upload, Navigation2, Flag, LocateFixed } from 'lucide-react';
+import { MapPin, Trash2, Play, Pause, RotateCcw, Search, Key, Save, Download, Upload, Navigation2, Flag, LocateFixed } from 'lucide-react';
 import { useRoverData } from '@/lib/mockData';
 import { GoogleMap, LoadScript, Marker, Polyline, Autocomplete } from '@react-google-maps/api';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -407,18 +406,11 @@ export default function Navigation() {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground font-sans p-6">
-      <header className="mb-8 flex items-center justify-between border-b border-border pb-4">
-        <div>
-          <h1 className="text-3xl font-display font-bold text-primary">WAYPOINT NAVIGATION</h1>
-          <p className="text-muted-foreground font-mono mt-1">Route planning with GPS-based autonomous navigation</p>
-        </div>
-        <Link href="/">
-          <Button variant="outline" className="font-mono">
-            <ArrowLeft className="w-4 h-4 mr-2" /> RETURN TO HUD
-          </Button>
-        </Link>
-      </header>
+    <div className="min-h-screen bg-background text-foreground font-sans p-6" data-testid="page-navigation">
+      <div className="mb-6">
+        <h1 className="text-3xl font-display font-bold text-primary">WAYPOINT NAVIGATION</h1>
+        <p className="text-muted-foreground font-mono mt-1">Route planning with GPS-based autonomous navigation</p>
+      </div>
 
       {/* Summary Panels */}
       <div className="grid grid-cols-4 gap-3 mb-6">
