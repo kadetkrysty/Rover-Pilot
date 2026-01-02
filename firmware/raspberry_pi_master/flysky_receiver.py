@@ -1,108 +1,118 @@
 """
-FlySky FS-I6x Receiver Integration for Raspberry Pi
-Reads PWM signals from FS-IA10B receiver via GPIO (10 channels)
-Provides REST API for web dashboard
+================================================================================
+FlySky FS-IA10B iBUS Receiver Interface
+================================================================================
+NOTE: With the Mini PC migration, the FlySky receiver now connects directly
+to Arduino Mega via iBUS protocol (single-wire serial).
+
+This module provides a compatibility layer that reads iBUS data from the
+Arduino's telemetry stream rather than GPIO pins.
+
+The Arduino handles:
+- iBUS protocol decoding at 115200 baud
+- Reading all 10 channels at ~143Hz
+- Sending channel data in JSON telemetry to Mini PC
+
+This module is kept for API compatibility with existing code.
+================================================================================
 """
 
 import time
-import RPi.GPIO as GPIO
 import threading
 from collections import deque
 
+
 class FlySkyReceiver:
-    """Reads FlySky FS-I6x / FS-IA10B receiver PWM channels (10-channel)"""
+    """
+    FlySky FS-IA10B receiver interface via Arduino iBUS.
+    
+    Hardware Connection:
+    - FlySky FS-IA10B iBUS pin → Arduino Mega Pin 19 (RX1)
+    - Receiver VCC → Arduino 5V
+    - Receiver GND → Arduino GND
+    
+    The Arduino reads iBUS at 115200 baud using the IBusBM library
+    and forwards channel values in the telemetry JSON stream.
+    """
+    
+    # Channel assignments for FlySky FS-I6x transmitter
+    CHANNEL_NAMES = {
+        1: 'Roll/Aileron',      # Right stick horizontal
+        2: 'Pitch/Elevator',    # Right stick vertical
+        3: 'Throttle',          # Left stick vertical
+        4: 'Yaw/Rudder',        # Left stick horizontal
+        5: 'Switch A (SwA)',    # 2-position switch
+        6: 'Switch B (SwB)',    # 2-position switch
+        7: 'Switch C (SwC)',    # 3-position switch
+        8: 'Switch D (SwD)',    # 2-position switch
+        9: 'VrA Dial',          # Variable dial A
+        10: 'VrB Dial',         # Variable dial B
+    }
     
     def __init__(self):
-        """
-        GPIO Pin Mapping (BCM) - 10 Channels:
-        CH1 (Roll/Aileron)    → GPIO 17 (Pin 11)
-        CH2 (Pitch/Elevator)  → GPIO 27 (Pin 13)
-        CH3 (Throttle)        → GPIO 22 (Pin 15)
-        CH4 (Yaw/Rudder)      → GPIO 23 (Pin 16)
-        CH5 (Switch A)        → GPIO 24 (Pin 18)
-        CH6 (Switch B)        → GPIO 25 (Pin 22)
-        CH7 (Aux Channel 1)   → GPIO 26 (Pin 37)
-        CH8 (Aux Channel 2)   → GPIO 19 (Pin 35)
-        CH9 (Aux Channel 3)   → GPIO 20 (Pin 38)
-        CH10 (Aux Channel 4)  → GPIO 21 (Pin 40)
-        """
-        self.GPIO_PINS = {
-            1: 17,
-            2: 27,
-            3: 22,
-            4: 23,
-            5: 24,
-            6: 25,
-            7: 26,
-            8: 19,
-            9: 20,
-            10: 21,
-        }
-        
-        self.channels = {i: 0 for i in range(1, 11)}
-        self.pulse_starts = {i: 0 for i in range(1, 11)}
+        """Initialize receiver state"""
+        self.channels = {i: 1500 for i in range(1, 11)}  # 10 channels
+        self.connected = False
+        self.frame_rate = 0
+        self.last_update = 0
         self.signal_strength = 0
         self.failsafe_active = False
-        self.last_update_time = 0
-        self.frame_rate = 0
-        self.update_count = 0
-        
-        self.running = False
         self.lock = threading.Lock()
-        
-        # History for signal strength calculation
         self.update_history = deque(maxlen=50)
-        
-    def setup(self):
-        """Initialize GPIO pins for PWM reading"""
-        GPIO.setmode(GPIO.BCM)
-        
-        for ch, pin in self.GPIO_PINS.items():
-            GPIO.setup(pin, GPIO.IN)
-            # Add event detection for rising and falling edges
-            GPIO.add_event_detect(pin, GPIO.BOTH, callback=self._edge_callback)
     
-    def _edge_callback(self, channel):
-        """Callback for GPIO edge detection"""
-        # Get which channel this GPIO corresponds to
-        ch = None
-        for channel_num, pin in self.GPIO_PINS.items():
-            if pin == channel:
-                ch = channel_num
-                break
+    def update_from_arduino(self, ibus_data):
+        """
+        Update channel values from Arduino telemetry.
         
-        if ch is None:
-            return
-        
-        current_time = time.time()
-        
-        if GPIO.input(channel):  # Rising edge (pulse start)
-            self.pulse_starts[ch] = current_time
-        else:  # Falling edge (pulse end)
-            pulse_duration = (current_time - self.pulse_starts[ch]) * 1000000  # Convert to microseconds
+        Args:
+            ibus_data: dict with 'con' (connected) and 'ch' (channel array)
+        """
+        with self.lock:
+            self.connected = ibus_data.get('con', False)
+            channels = ibus_data.get('ch', [])
             
-            # Valid PWM range is 1000-2000 microseconds
-            if 900 < pulse_duration < 2100:
-                with self.lock:
-                    self.channels[ch] = pulse_duration
-                    self.last_update_time = current_time
-                    self.update_count += 1
-                    self.update_history.append(current_time)
+            for i, value in enumerate(channels):
+                if i < 10:
+                    self.channels[i + 1] = value
+            
+            self.last_update = time.time()
+            self.update_history.append(self.last_update)
+            
+            # Check for failsafe
+            if not self.connected or time.time() - self.last_update > 1.0:
+                self.failsafe_active = True
+            else:
+                self.failsafe_active = False
     
     def get_channels(self):
-        """Get current channel values (PWM in microseconds)"""
+        """Get current channel values (PWM: 1000-2000 microseconds)"""
         with self.lock:
             return self.channels.copy()
     
+    def get_channel(self, ch):
+        """Get single channel value"""
+        with self.lock:
+            return self.channels.get(ch, 1500)
+    
+    def get_normalized(self, ch):
+        """Get channel value normalized to -1.0 to 1.0"""
+        raw = self.get_channel(ch)
+        return (raw - 1500) / 500.0
+    
+    def get_percent(self, ch):
+        """Get channel value as 0-100 percentage"""
+        raw = self.get_channel(ch)
+        return (raw - 1000) / 10.0
+    
     def get_signal_strength(self):
-        """
-        Calculate signal strength based on update frequency
-        100% = perfect 50Hz signal (20ms updates)
-        """
+        """Calculate signal strength based on update frequency"""
         if len(self.update_history) < 2:
             return 0
         
-        # Calculate time between updates
+        if time.time() - self.last_update > 1.0:
+            return 0
+        
+        # Calculate from update intervals
         times = list(self.update_history)
         intervals = [times[i+1] - times[i] for i in range(len(times)-1)]
         
@@ -110,40 +120,31 @@ class FlySkyReceiver:
             return 0
         
         avg_interval = sum(intervals) / len(intervals)
-        expected_interval = 0.02  # 50Hz = 20ms
+        expected = 0.007  # iBUS runs at ~143Hz (7ms)
         
-        # If signal is lost for more than 1 second, return 0
-        if time.time() - self.last_update_time > 1.0:
-            self.failsafe_active = True
-            return 0
-        
-        self.failsafe_active = False
-        
-        # Calculate strength as percentage
-        strength = (expected_interval / avg_interval) * 100
-        return max(0, min(100, strength))  # Clamp to 0-100
+        strength = (expected / max(avg_interval, 0.001)) * 100
+        return max(0, min(100, strength))
     
     def get_frame_rate(self):
-        """Calculate current frame rate in Hz"""
+        """Calculate frame rate in Hz"""
         if len(self.update_history) < 2:
             return 0
         
         time_span = self.update_history[-1] - self.update_history[0]
-        if time_span == 0:
+        if time_span <= 0:
             return 0
         
-        frame_rate = (len(self.update_history) - 1) / time_span
-        return frame_rate
+        return (len(self.update_history) - 1) / time_span
     
     def get_status(self):
-        """Get complete receiver status"""
+        """Get complete receiver status dictionary"""
         channels = self.get_channels()
         
-        # Check if any channel has been updated recently
-        is_connected = time.time() - self.last_update_time < 1.0
-        
         return {
-            'connected': is_connected,
+            'connected': self.connected,
+            'protocol': 'iBUS',
+            'receiver': 'FS-IA10B',
+            'transmitter': 'FS-I6x',
             'channel1': channels[1],
             'channel2': channels[2],
             'channel3': channels[3],
@@ -157,64 +158,85 @@ class FlySkyReceiver:
             'signalStrength': self.get_signal_strength(),
             'failsafe': self.failsafe_active,
             'frameRate': self.get_frame_rate(),
-            'lastUpdate': time.time(),
+            'lastUpdate': self.last_update,
         }
     
-    def cleanup(self):
-        """Clean up GPIO"""
-        GPIO.cleanup()
+    def get_control_values(self):
+        """
+        Get mapped control values for rover driving.
+        
+        Returns:
+            dict with throttle, steering, and switch states
+        """
+        channels = self.get_channels()
+        
+        # Convert PWM (1000-2000) to control values (-100 to 100)
+        throttle = int((channels[3] - 1500) / 5)   # CH3
+        steering = int((channels[1] - 1500) / 5)   # CH1
+        
+        # Switches (2-position: 1000=OFF, 2000=ON)
+        switch_a = channels[5] > 1500
+        switch_b = channels[6] > 1500
+        
+        # 3-position switch C
+        if channels[7] < 1300:
+            switch_c = 0
+        elif channels[7] > 1700:
+            switch_c = 2
+        else:
+            switch_c = 1
+        
+        switch_d = channels[8] > 1500
+        
+        return {
+            'throttle': max(-100, min(100, throttle)),
+            'steering': max(-100, min(100, steering)),
+            'pitch': int((channels[2] - 1500) / 5),
+            'yaw': int((channels[4] - 1500) / 5),
+            'switchA': switch_a,
+            'switchB': switch_b,
+            'switchC': switch_c,
+            'switchD': switch_d,
+            'dialA': int((channels[9] - 1000) / 10),
+            'dialB': int((channels[10] - 1000) / 10),
+        }
 
 
 # Global receiver instance
-receiver = None
-
-def initialize_flysky():
-    """Initialize FlySky receiver"""
-    global receiver
-    try:
-        receiver = FlySkyReceiver()
-        receiver.setup()
-        print("[OK] FlySky FS-I6x receiver initialized - 10 channels")
-        return True
-    except Exception as e:
-        print(f"[ERROR] Failed to initialize FlySky receiver: {e}")
-        print("[WARN] Continuing without FlySky support")
-        receiver = None
-        return False
+receiver = FlySkyReceiver()
 
 
-# API Integration (add to rover_controller.py)
+def get_receiver():
+    """Get the global receiver instance"""
+    return receiver
+
+
+def update_from_telemetry(ibus_data):
+    """Update receiver from Arduino telemetry"""
+    receiver.update_from_arduino(ibus_data)
+
+
+# ===== WIRING DIAGRAM (iBUS) =====
 """
-To integrate with rover_controller.py, add:
+WIRING: FlySky FS-IA10B to Arduino Mega (iBUS Protocol)
+========================================================
 
-from flysky_receiver import initialize_flysky, receiver
+FS-IA10B Receiver          Arduino Mega 2560
+-----------------          ------------------
+iBUS (Servo/iBUS port) --> Pin 19 (RX1)
+VCC (5V) ----------------> 5V
+GND ---------------------> GND
 
-# In __init__:
-initialize_flysky()
+Note: Only the iBUS pin needs to be connected for all 10 channels.
+This is much simpler than PWM which would require 10 separate wires.
 
-# Add route:
-@app.route('/api/flysky/input', methods=['GET'])
-def get_flysky_input():
-    if receiver is None:
-        return jsonify({'connected': False}), 503
-    
-    return jsonify(receiver.get_status())
+Arduino Library: IBusBM (install via Arduino Library Manager)
+Baud Rate: 115200 (set by library)
+Update Rate: ~143 Hz (7ms per frame)
 
-# In main loop (optional - send control commands):
-@app.route('/api/flysky/control', methods=['POST'])
-def flysky_control():
-    if receiver is None:
-        return jsonify({'error': 'FlySky not available'}), 503
-    
-    data = request.json
-    status = receiver.get_status()
-    
-    # Convert PWM to rover control
-    throttle = (status['channel3'] - 1000) / 1000 * 100  # 0-100%
-    steering = (status['channel1'] - 1500) / 500 * 100   # -100 to 100
-    
-    # Send to rover
-    drive_rover(throttle, steering)
-    
-    return jsonify({'status': 'ok', 'throttle': throttle, 'steering': steering})
+The iBUS protocol provides:
+- Digital signal (more accurate than PWM)
+- All 10 channels on single wire
+- Built-in failsafe detection
+- Optional telemetry back to transmitter
 """

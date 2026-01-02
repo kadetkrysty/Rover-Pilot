@@ -22,13 +22,19 @@ export default function SystemDiagnostics() {
         name: 'Arduino Mega Controller',
         status: 'online',
         value: '✓ Connected',
-        details: 'Firmware v2.4.0 | 115200 baud'
+        details: 'Firmware v3.0.0 | 115200 baud | iBUS'
       },
       {
-        name: 'Raspberry Pi Master',
+        name: 'Mini PC Host',
         status: 'online',
         value: '✓ Connected',
-        details: 'WiFi 5G | Flask API Running'
+        details: 'Intel Celeron | Ubuntu | Flask API'
+      },
+      {
+        name: 'FlySky RC (iBUS)',
+        status: 'online',
+        value: '10 Channels',
+        details: 'FS-I6x + FS-IA10B | ~143Hz'
       },
       {
         name: 'Hoverboard Motors',
@@ -113,14 +119,14 @@ export default function SystemDiagnostics() {
   const offlineCount = systemStatus.filter(s => s.status === 'offline').length;
 
   return (
-    <div className="min-h-screen bg-background text-foreground font-sans p-6">
+    <div className="min-h-screen bg-background text-foreground font-sans p-6" data-testid="page-system-diagnostics">
       <header className="mb-8 flex items-center justify-between border-b border-border pb-4">
         <div>
-          <h1 className="text-3xl font-display font-bold text-primary">SYSTEM DIAGNOSTICS</h1>
+          <h1 className="text-3xl font-display font-bold text-primary" data-testid="text-diagnostics-title">SYSTEM DIAGNOSTICS</h1>
           <p className="text-muted-foreground font-mono mt-1">Real-time hardware and software status monitoring</p>
         </div>
         <Link href="/">
-          <Button variant="outline" className="font-mono">
+          <Button variant="outline" className="font-mono" data-testid="button-return-hud">
             <ArrowLeft className="w-4 h-4 mr-2" /> RETURN
           </Button>
         </Link>
@@ -128,23 +134,23 @@ export default function SystemDiagnostics() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-4 gap-4 mb-6">
-        <Card className="hud-panel p-4 text-center">
+        <Card className="hud-panel p-4 text-center" data-testid="card-online-count">
           <Activity className="w-6 h-6 mx-auto text-secondary mb-2" />
-          <div className="text-3xl font-bold text-secondary">{onlineCount}</div>
+          <div className="text-3xl font-bold text-secondary" data-testid="text-online-count">{onlineCount}</div>
           <div className="text-xs text-muted-foreground mt-1">SYSTEMS ONLINE</div>
         </Card>
-        <Card className="hud-panel p-4 text-center">
+        <Card className="hud-panel p-4 text-center" data-testid="card-warning-count">
           <AlertCircle className="w-6 h-6 mx-auto text-accent mb-2" />
-          <div className="text-3xl font-bold text-accent">{warningCount}</div>
+          <div className="text-3xl font-bold text-accent" data-testid="text-warning-count">{warningCount}</div>
           <div className="text-xs text-muted-foreground mt-1">WARNINGS</div>
         </Card>
-        <Card className="hud-panel p-4 text-center">
+        <Card className="hud-panel p-4 text-center" data-testid="card-offline-count">
           <XCircle className="w-6 h-6 mx-auto text-destructive mb-2" />
-          <div className="text-3xl font-bold text-destructive">{offlineCount}</div>
+          <div className="text-3xl font-bold text-destructive" data-testid="text-offline-count">{offlineCount}</div>
           <div className="text-xs text-muted-foreground mt-1">OFFLINE</div>
         </Card>
-        <Card className="hud-panel p-4 text-center">
-          <div className="text-3xl font-bold text-primary">{Math.round((onlineCount / systemStatus.length) * 100)}%</div>
+        <Card className="hud-panel p-4 text-center" data-testid="card-health">
+          <div className="text-3xl font-bold text-primary" data-testid="text-health-percent">{Math.round((onlineCount / systemStatus.length) * 100)}%</div>
           <div className="text-xs text-muted-foreground mt-1">HEALTH</div>
         </Card>
       </div>

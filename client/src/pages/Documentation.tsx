@@ -1,564 +1,795 @@
 import { Link } from 'wouter';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Code, FileText, Cpu, Download } from 'lucide-react';
+import { ArrowLeft, Code, FileText, Cpu, Download, Wifi, Radio, Settings, Wrench, Zap, AlertTriangle } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
-// Tutorial Images
-import rpiPinout from '@assets/generated_images/raspberry_pi_gpio_pinout_diagram.png';
-import flySkyWiring from '@assets/generated_images/flysky_receiver_wiring_to_raspberry_pi.png';
-import flySkyOperation from '@assets/generated_images/flysky_transmitter_operation_guide.png';
-import rpiHardware from '@assets/generated_images/raspberry_pi_3_b+_hardware_overview.png';
-import arduinoPins from '@assets/generated_images/arduino_mega_2560_pin_layout.png';
-import flySkyControls from '@assets/generated_images/flysky_fs-i6x_transmitter_controls.png';
-import lidarWiring from '@assets/generated_images/lidar_tf_mini_pro_to_arduino_connection.png';
-import ultrasonicWiring from '@assets/generated_images/ultrasonic_sensor_array_wiring.png';
-import imuWiring from '@assets/generated_images/imu_mpu6050_i2c_wiring.png';
-import gpsWiring from '@assets/generated_images/gps_module_serial_connection.png';
-import hoverboardWiring from '@assets/generated_images/hoverboard_motor_control_wiring.png';
-import systemAssembly from '@assets/generated_images/complete_rover_system_assembly.png';
-
 export default function Documentation() {
   return (
-    <div className="min-h-screen bg-background text-foreground font-sans p-6">
+    <div className="min-h-screen bg-background text-foreground font-sans p-6" data-testid="page-documentation">
       <header className="mb-8 flex items-center justify-between border-b border-border pb-4">
         <div>
-            <h1 className="text-3xl font-display font-bold text-primary">SYSTEM ARCHITECTURE</h1>
-            <p className="text-muted-foreground font-mono mt-1">Component Integration & Wiring Plan</p>
+            <h1 className="text-3xl font-display font-bold text-primary">SYSTEM DOCUMENTATION</h1>
+            <p className="text-muted-foreground font-mono mt-1">RoverOS v3.0 - Mini PC + Arduino + iBUS Architecture</p>
         </div>
         <Link href="/">
-            <Button variant="outline" className="font-mono">
+            <Button variant="outline" className="font-mono" data-testid="button-return-hud">
                 <ArrowLeft className="w-4 h-4 mr-2" /> RETURN TO HUD
             </Button>
         </Link>
       </header>
 
       <div className="grid grid-cols-12 gap-6 h-[calc(100vh-10rem)]">
-        {/* Sidebar */}
         <div className="col-span-3 space-y-4">
              <div className="hud-panel p-4">
                 <h3 className="font-display text-lg mb-4 text-primary">COMPONENT LIST</h3>
                 <ul className="space-y-2 text-sm font-mono text-muted-foreground">
-                    <li className="flex items-center gap-2 text-foreground"><Cpu className="w-4 h-4 text-primary" /> Raspberry Pi 3 B+ (Master)</li>
-                    <li className="flex items-center gap-2 text-foreground"><Cpu className="w-4 h-4 text-secondary" /> Arduino Mega (Sensor Slave)</li>
+                    <li className="flex items-center gap-2 text-foreground"><Cpu className="w-4 h-4 text-primary" /> Mini PC (Intel Celeron)</li>
+                    <li className="flex items-center gap-2 text-foreground"><Cpu className="w-4 h-4 text-secondary" /> Arduino Mega 2560</li>
+                    <li className="flex items-center gap-2 text-foreground"><Radio className="w-4 h-4 text-accent" /> FlySky FS-I6x + FS-IA10B</li>
                     <li className="pl-6">• Hoverboard Mainboard (UART)</li>
                     <li className="pl-6">• HuskyLens AI (I2C)</li>
-                    <li className="pl-6">• TF Mini Pro Lidar (Serial)</li>
-                    <li className="pl-6">• GPS Module (Serial)</li>
+                    <li className="pl-6">• TF Mini Pro Lidar (Serial2)</li>
+                    <li className="pl-6">• GPS Neo-6M (Serial3)</li>
                     <li className="pl-6">• IMU MPU6050 (I2C)</li>
                     <li className="pl-6">• 5x HC-SR04 Ultrasonic</li>
                 </ul>
              </div>
 
-             <Button className="w-full font-mono" variant="secondary">
-                <Download className="w-4 h-4 mr-2" /> DOWNLOAD ALL FILES
-             </Button>
+             <div className="hud-panel p-4 border-accent/50">
+                <h3 className="font-display text-lg mb-2 text-accent">v3.0 CHANGES</h3>
+                <ul className="space-y-1 text-xs font-mono text-muted-foreground">
+                    <li>✓ Raspberry Pi → Mini PC</li>
+                    <li>✓ GPIO PWM → iBUS Protocol</li>
+                    <li>✓ 10 wires → 1 wire for RC</li>
+                    <li>✓ Auto port detection</li>
+                </ul>
+             </div>
         </div>
 
-        {/* Main Content */}
         <div className="col-span-9 hud-panel p-0 overflow-hidden flex flex-col">
-            <Tabs defaultValue="wiring" className="h-full flex flex-col">
+            <Tabs defaultValue="overview" className="h-full flex flex-col">
                 <div className="bg-card border-b border-border p-2 overflow-x-auto">
                     <TabsList className="bg-background/50 w-max">
-                        <TabsTrigger value="wiring" className="font-mono text-xs">WIRING</TabsTrigger>
-                        <TabsTrigger value="arduino" className="font-mono text-xs">ARDUINO CODE</TabsTrigger>
-                        <TabsTrigger value="python" className="font-mono text-xs">PYTHON CODE</TabsTrigger>
-                        <TabsTrigger value="rpi-setup" className="font-mono text-xs">RPi SETUP</TabsTrigger>
-                        <TabsTrigger value="arduino-setup" className="font-mono text-xs">ARDUINO CONFIG</TabsTrigger>
-                        <TabsTrigger value="flysky-setup" className="font-mono text-xs">FLYSKY SETUP</TabsTrigger>
-                        <TabsTrigger value="sensors" className="font-mono text-xs">SENSORS</TabsTrigger>
-                        <TabsTrigger value="system" className="font-mono text-xs">SYSTEM ASSEMBLY</TabsTrigger>
+                        <TabsTrigger value="overview" className="font-mono text-xs" data-testid="tab-overview">OVERVIEW</TabsTrigger>
+                        <TabsTrigger value="wiring" className="font-mono text-xs" data-testid="tab-wiring">WIRING</TabsTrigger>
+                        <TabsTrigger value="arduino" className="font-mono text-xs" data-testid="tab-arduino">ARDUINO</TabsTrigger>
+                        <TabsTrigger value="minipc" className="font-mono text-xs" data-testid="tab-minipc">MINI PC</TabsTrigger>
+                        <TabsTrigger value="ibus" className="font-mono text-xs" data-testid="tab-ibus">iBUS / RC</TabsTrigger>
+                        <TabsTrigger value="sensors" className="font-mono text-xs" data-testid="tab-sensors">SENSORS</TabsTrigger>
+                        <TabsTrigger value="assembly" className="font-mono text-xs" data-testid="tab-assembly">ASSEMBLY</TabsTrigger>
+                        <TabsTrigger value="troubleshoot" className="font-mono text-xs" data-testid="tab-troubleshoot">TROUBLESHOOT</TabsTrigger>
                     </TabsList>
                 </div>
                 
-                {/* WIRING TAB */}
+                <TabsContent value="overview" className="flex-1 p-0 m-0 relative overflow-hidden">
+                    <ScrollArea className="h-full w-full">
+                        <div className="p-6 space-y-6 pr-4">
+                            <div>
+                                <h3 className="text-xl text-primary font-display mb-4">SYSTEM ARCHITECTURE v3.0</h3>
+                                <pre className="bg-black/50 p-4 border border-border rounded-lg text-xs overflow-x-auto font-mono text-green-300">
+{`┌─────────────────────────────────────────────────────────────────┐
+│                         ROVER SYSTEM v3.0                       │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  ┌─────────────────┐     USB Serial      ┌──────────────────┐  │
+│  │   MINI PC       │◄──────────────────► │  ARDUINO MEGA    │  │
+│  │  Intel Celeron  │     115200 baud     │     2560         │  │
+│  │  8GB RAM        │                     │                  │  │
+│  │  Ubuntu OS      │                     │  Sensors:        │  │
+│  │                 │                     │  - TF Mini Pro   │  │
+│  │  Runs:          │                     │  - MPU6050 IMU   │  │
+│  │  - Web Server   │                     │  - Neo-6M GPS    │  │
+│  │  - WebSocket    │                     │  - 5x Ultrasonic │  │
+│  │  - SLAM/EKF     │                     │  - HuskyLens     │  │
+│  │                 │                     │                  │  │
+│  └────────┬────────┘                     │  RC Control:     │  │
+│           │                              │  - iBUS (Serial1)│  │
+│           │ WiFi                         └────────┬─────────┘  │
+│           ▼                                       │            │
+│  ┌─────────────────┐                     ┌────────▼─────────┐  │
+│  │  WEB DASHBOARD  │                     │ FLYSKY FS-IA10B  │  │
+│  │  React + Vite   │                     │  (iBUS Protocol) │  │
+│  │  Mobile/Desktop │                     └──────────────────┘  │
+│  └─────────────────┘                              ▲            │
+│                                                   │ 2.4GHz     │
+│  ┌─────────────────┐                     ┌────────┴─────────┐  │
+│  │  HOVERBOARD     │◄── UART ── Arduino  │ FLYSKY FS-I6x    │  │
+│  │  FOC Controller │                     │  Transmitter     │  │
+│  └─────────────────┘                     └──────────────────┘  │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘`}
+                                </pre>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="bg-primary/10 border border-primary/30 p-4 rounded">
+                                    <h4 className="font-display text-primary mb-2 flex items-center gap-2">
+                                        <Cpu className="w-4 h-4" /> MINI PC
+                                    </h4>
+                                    <ul className="text-xs font-mono space-y-1 text-muted-foreground">
+                                        <li>• Intel Celeron J3455 / N5105</li>
+                                        <li>• 8GB RAM minimum</li>
+                                        <li>• Ubuntu 22.04 LTS</li>
+                                        <li>• Runs Python Flask server</li>
+                                        <li>• Handles SLAM/EKF processing</li>
+                                        <li>• Serves web dashboard</li>
+                                    </ul>
+                                </div>
+
+                                <div className="bg-secondary/10 border border-secondary/30 p-4 rounded">
+                                    <h4 className="font-display text-secondary mb-2 flex items-center gap-2">
+                                        <Cpu className="w-4 h-4" /> ARDUINO MEGA
+                                    </h4>
+                                    <ul className="text-xs font-mono space-y-1 text-muted-foreground">
+                                        <li>• ATmega2560 processor</li>
+                                        <li>• 4 hardware serial ports</li>
+                                        <li>• All sensors connected here</li>
+                                        <li>• iBUS RC receiver decoding</li>
+                                        <li>• Motor control via UART</li>
+                                        <li>• 20Hz telemetry to Mini PC</li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <div className="bg-accent/10 border border-accent/30 p-4 rounded">
+                                <h4 className="font-display text-accent mb-2 flex items-center gap-2">
+                                    <Radio className="w-4 h-4" /> iBUS PROTOCOL (NEW IN v3.0)
+                                </h4>
+                                <p className="text-xs text-muted-foreground mb-2">
+                                    The FlySky FS-IA10B receiver now connects directly to Arduino via iBUS protocol instead of GPIO PWM on the Raspberry Pi.
+                                </p>
+                                <div className="grid grid-cols-2 gap-4 mt-3">
+                                    <div>
+                                        <h5 className="text-xs font-bold text-red-400 mb-1">OLD: GPIO PWM (v2.x)</h5>
+                                        <ul className="text-xs font-mono text-muted-foreground">
+                                            <li>• 10 separate wires</li>
+                                            <li>• Raspberry Pi GPIO pins</li>
+                                            <li>• Analog PWM timing</li>
+                                            <li>• Complex wiring</li>
+                                        </ul>
+                                    </div>
+                                    <div>
+                                        <h5 className="text-xs font-bold text-green-400 mb-1">NEW: iBUS (v3.0)</h5>
+                                        <ul className="text-xs font-mono text-muted-foreground">
+                                            <li>• Single wire connection</li>
+                                            <li>• Arduino Serial1 (Pin 19)</li>
+                                            <li>• Digital protocol ~143Hz</li>
+                                            <li>• Simple and reliable</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </ScrollArea>
+                </TabsContent>
+
                 <TabsContent value="wiring" className="flex-1 p-0 m-0 relative overflow-hidden">
                     <ScrollArea className="h-full w-full">
                         <div className="p-6 space-y-6 pr-4">
-                            <h3 className="text-xl text-primary font-display">POWER DISTRIBUTION</h3>
-                            <pre className="bg-black/50 p-4 border border-border rounded-lg text-xs overflow-x-auto">
-{`[BATTERY 36V]
-  │
-  ├──> [HOVERBOARD MAINBOARD]
-  │       │
-  │       └──> [MOTORS L/R]
-  │
-  ├──> [DC-DC CONVERTER 36V->5V 5A]
-          │
-          ├──> [RASPBERRY PI 3 B+] (USB Power)
-          │       │
-          │       └──> [USB CAMERA]
-          │
-          └──> [ARDUINO MEGA] (VIN Pin)
-                  │
-                  ├──> [SENSORS 5V VCC]
-                  └──> [HUSKY LENS]`}
+                            <h3 className="text-xl text-primary font-display">ARDUINO MEGA PIN ASSIGNMENT</h3>
+                            <pre className="bg-black/50 p-4 border border-border rounded-lg text-xs overflow-x-auto font-mono text-cyan-300">
+{`Arduino Mega 2560 Pin Assignment v3.0
+=====================================
+
+USB ─────────────────────── Mini PC (Serial 115200)
+
+Serial1 (iBUS - FlySky Receiver):
+  Pin 19 (RX1) ─────────── FS-IA10B iBUS Signal
+  
+Serial2 (LIDAR):
+  Pin 16 (TX2) ─────────── TF Mini Pro RX
+  Pin 17 (RX2) ─────────── TF Mini Pro TX
+
+Serial3 (GPS):
+  Pin 14 (TX3) ─────────── Neo-6M RX
+  Pin 15 (RX3) ─────────── Neo-6M TX
+
+I2C:
+  Pin 20 (SDA) ─────────── MPU6050 SDA, HuskyLens SDA
+  Pin 21 (SCL) ─────────── MPU6050 SCL, HuskyLens SCL
+
+Hoverboard (SoftwareSerial):
+  Pin 10 (RX) ──────────── Hoverboard TX (via level shifter!)
+  Pin 11 (TX) ──────────── Hoverboard RX (via level shifter!)
+
+Ultrasonic Sensors:
+  Pin 22/23 ────────────── HC-SR04 #1 (Front Center)
+  Pin 24/25 ────────────── HC-SR04 #2 (Front Left)
+  Pin 26/27 ────────────── HC-SR04 #3 (Front Right)
+  Pin 28/29 ────────────── HC-SR04 #4 (Rear Left)
+  Pin 30/31 ────────────── HC-SR04 #5 (Rear Right)
+
+Status LED:
+  Pin 13 ───────────────── Built-in LED (heartbeat)
+
+Power:
+  5V ───────────────────── All sensors, FS-IA10B receiver
+  GND ──────────────────── Common ground`}
                             </pre>
 
-                            <h3 className="text-xl text-primary font-display mt-8">SERIAL DATA CONNECTIONS</h3>
-                            <pre className="bg-black/50 p-4 border border-border rounded-lg text-xs overflow-x-auto">
-{`RASPBERRY PI <==USB SERIAL==> ARDUINO MEGA
+                            <h3 className="text-xl text-primary font-display mt-8">POWER DISTRIBUTION</h3>
+                            <pre className="bg-black/50 p-4 border border-border rounded-lg text-xs overflow-x-auto font-mono text-yellow-300">
+{`Power Wiring Diagram
+====================
 
-ARDUINO MEGA SERIAL PORTS:
-  Serial0 (0/1)     ← USB to Raspberry Pi (115200 baud)
-  Serial1 (19/18)   ← Hoverboard UART (115200 baud, 3.3V with level shifter)
-  Serial2 (17/16)   ← GPS Module (9600 baud)
-  Serial3 (15/14)   ← LIDAR TF Mini Pro (115200 baud)
+[36V LiPo Battery]
+       │
+       ├──────────────────────► Hoverboard Mainboard
+       │                              │
+       │                              ├──► Left Motor
+       │                              └──► Right Motor
+       │
+       └──► [DC-DC Buck Converter 36V → 5V/5A]
+                     │
+                     ├──► Mini PC (USB-C PD or barrel jack)
+                     │
+                     └──► Arduino Mega (VIN or USB)
+                               │
+                               ├──► TF Mini Pro (5V)
+                               ├──► MPU6050 (3.3V from Arduino)
+                               ├──► Neo-6M GPS (3.3V-5V)
+                               ├──► HuskyLens (5V)
+                               ├──► HC-SR04 x5 (5V)
+                               └──► FS-IA10B Receiver (5V)`}
+                            </pre>
 
-ARDUINO MEGA I2C:
-  SDA/SCL (20/21)   ← HuskyLens AI Camera (100kHz)
-  SDA/SCL (20/21)   ← IMU MPU6050 (400kHz)
+                            <div className="bg-red-500/10 border border-red-500/30 p-4 rounded mt-4">
+                                <h4 className="font-display text-red-400 mb-2 flex items-center gap-2">
+                                    <AlertTriangle className="w-4 h-4" /> CRITICAL: LEVEL SHIFTING
+                                </h4>
+                                <p className="text-xs text-muted-foreground">
+                                    The Hoverboard mainboard operates at 3.3V logic while Arduino uses 5V.
+                                    You MUST use a bidirectional logic level shifter between them!
+                                </p>
+                                <pre className="bg-black/50 p-2 rounded mt-2 text-xs font-mono">
+{`Arduino Pin 10 (RX) ← Level Shifter ← Hoverboard TX (3.3V)
+Arduino Pin 11 (TX) → Level Shifter → Hoverboard RX (3.3V)`}
+                                </pre>
+                            </div>
+                        </div>
+                    </ScrollArea>
+                </TabsContent>
 
-RASPBERRY PI GPIO (for FlySky Receiver):
-  GPIO 17-21, 26    ← 10 PWM Channels from FS-IA10B
+                <TabsContent value="arduino" className="flex-1 p-0 m-0 relative overflow-hidden">
+                    <ScrollArea className="h-full w-full">
+                        <div className="p-6 space-y-6 pr-4">
+                            <h3 className="text-xl text-primary font-display">ARDUINO FIRMWARE SETUP</h3>
+                            
+                            <div className="bg-primary/10 border border-primary/30 p-4 rounded">
+                                <h4 className="font-display text-primary mb-2">1. INSTALL ARDUINO IDE</h4>
+                                <p className="text-xs text-muted-foreground mb-2">Download from arduino.cc/en/software</p>
+                            </div>
 
-DIGITAL PINS (Ultrasonic Sensors - 5 units):
-  Sensor 1: Trig=22, Echo=23 (Front)
-  Sensor 2: Trig=24, Echo=25 (Left)
-  Sensor 3: Trig=26, Echo=27 (Right)
-  Sensor 4: Trig=28, Echo=29 (Back Left)
-  Sensor 5: Trig=30, Echo=31 (Back Right)`}
+                            <div className="bg-secondary/10 border border-secondary/30 p-4 rounded">
+                                <h4 className="font-display text-secondary mb-2">2. INSTALL LIBRARIES</h4>
+                                <p className="text-xs text-muted-foreground mb-2">Open Library Manager (Tools → Manage Libraries)</p>
+                                <ul className="text-xs font-mono space-y-1 text-muted-foreground">
+                                    <li>• <span className="text-green-400">IBusBM</span> by bmellink - For FlySky iBUS</li>
+                                    <li>• Wire (built-in) - I2C communication</li>
+                                    <li>• SoftwareSerial (built-in) - Extra serial ports</li>
+                                </ul>
+                            </div>
+
+                            <div className="bg-accent/10 border border-accent/30 p-4 rounded">
+                                <h4 className="font-display text-accent mb-2">3. UPLOAD FIRMWARE</h4>
+                                <ol className="text-xs font-mono space-y-1 text-muted-foreground list-decimal list-inside">
+                                    <li>Open arduino_mega_sensor_controller.ino</li>
+                                    <li>Select Board: Arduino Mega 2560</li>
+                                    <li>Select Port: Your Arduino's COM port</li>
+                                    <li>Click Upload</li>
+                                </ol>
+                            </div>
+
+                            <div className="bg-green-500/10 border border-green-500/30 p-4 rounded">
+                                <h4 className="font-display text-green-400 mb-2">4. VERIFY INSTALLATION</h4>
+                                <p className="text-xs text-muted-foreground mb-2">Open Serial Monitor at 115200 baud:</p>
+                                <pre className="bg-black/50 p-2 rounded text-xs font-mono text-green-300">
+{`{"event":"boot","version":"3.0.0","controller":"Arduino Mega 2560"}
+{"event":"ready","ibus":true,"channels":10}`}
+                                </pre>
+                            </div>
+
+                            <h4 className="text-lg text-primary font-display mt-6">TELEMETRY FORMAT</h4>
+                            <p className="text-xs text-muted-foreground mb-2">Arduino sends JSON at 20Hz:</p>
+                            <pre className="bg-black/50 p-4 border border-border rounded-lg text-xs overflow-x-auto font-mono text-blue-300">
+{`{
+  "t": 123456,                                    // Timestamp (ms)
+  "gps": {"lat": 34.0522, "lng": -118.2437, "spd": 0, "acc": 5},
+  "imu": {"hdg": 45.0, "pitch": 1.2, "roll": -0.5, "ax": 0, "ay": 0, "az": 1},
+  "lidar": 150,                                   // Distance in cm
+  "ultra": [50, 45, 60, 55, 48],                 // 5 sensors in cm
+  "ibus": {
+    "con": true,                                  // Receiver connected
+    "ch": [1500,1500,1000,1500,1000,1000,1500,1000,1500,1500]
+  },
+  "bat": 85.0                                     // Battery percentage
+}`}
                             </pre>
                         </div>
                     </ScrollArea>
                 </TabsContent>
 
-                {/* ARDUINO CODE TAB */}
-                <TabsContent value="arduino" className="flex-1 p-0 m-0 relative overflow-hidden">
-                     <ScrollArea className="h-full w-full">
-                        <pre className="p-4 text-xs font-mono text-blue-300 leading-relaxed whitespace-pre-wrap break-words">
-{`#include <SoftwareSerial.h>
-#include "HuskyLens.h"
-#include <Wire.h>
-#include <MPU6050.h>
-
-// --- PIN DEFINITIONS ---
-#define HOVER_SERIAL Serial1
-#define LIDAR_SERIAL Serial3
-#define GPS_SERIAL   Serial2
-
-// Ultrasonic Sensors
-const int US_TRIG[] = {22, 24, 26, 28, 30};
-const int US_ECHO[] = {23, 25, 27, 29, 31};
-const int NUM_SENSORS = 5;
-
-HuskyLens huskyLens;
-MPU6050 mpu;
-
-struct TelemetryPacket {
-  float speed;
-  float battery;
-  float heading;
-  int lidarDist;
-  int ultrasonicDist[5];
-  float accelX, accelY, accelZ;
-  float gyroX, gyroY, gyroZ;
-};
-
-void setup() {
-  Serial.begin(115200);  // USB to Pi
-  HOVER_SERIAL.begin(115200);
-  LIDAR_SERIAL.begin(115200);
-  GPS_SERIAL.begin(9600);
-
-  Wire.begin();
-  huskyLens.begin(Wire);
-  mpu.initialize();
-  
-  // Setup ultrasonic pins
-  for (int i = 0; i < NUM_SENSORS; i++) {
-    pinMode(US_TRIG[i], OUTPUT);
-    pinMode(US_ECHO[i], INPUT);
-  }
-  
-  Serial.println("SYSTEM_READY");
-}
-
-void loop() {
-  // 1. Read all sensors
-  TelemetryPacket telemetry;
-  
-  // Ultrasonic
-  for (int i = 0; i < NUM_SENSORS; i++) {
-    telemetry.ultrasonicDist[i] = readUltrasonic(i);
-  }
-  
-  // IMU
-  mpu.getAcceleration(&telemetry.accelX, &telemetry.accelY, &telemetry.accelZ);
-  mpu.getRotation(&telemetry.gyroX, &telemetry.gyroY, &telemetry.gyroZ);
-  
-  // LiDAR
-  telemetry.lidarDist = readLidar();
-  
-  // HuskyLens
-  if (huskyLens.request()) {
-    if (huskyLens.available()) {
-      // Object detection logic
-    }
-  }
-
-  // 2. Send telemetry to Pi
-  sendTelemetry(telemetry);
-  delay(50);
-}
-
-int readUltrasonic(int sensor) {
-  digitalWrite(US_TRIG[sensor], LOW);
-  delayMicroseconds(2);
-  digitalWrite(US_TRIG[sensor], HIGH);
-  delayMicroseconds(10);
-  digitalWrite(US_TRIG[sensor], LOW);
-  
-  long duration = pulseIn(US_ECHO[sensor], HIGH, 30000);
-  return duration * 0.034 / 2;  // Convert to cm
-}
-
-int readLidar() {
-  int dist = 0;
-  if (LIDAR_SERIAL.available() >= 5) {
-    if (LIDAR_SERIAL.read() == 0x59) {
-      if (LIDAR_SERIAL.read() == 0x59) {
-        byte low = LIDAR_SERIAL.read();
-        byte high = LIDAR_SERIAL.read();
-        LIDAR_SERIAL.read();  // checksum
-        dist = (high << 8) | low;
-      }
-    }
-  }
-  return dist;
-}
-
-void sendTelemetry(TelemetryPacket &pkt) {
-  Serial.write((byte*)&pkt, sizeof(pkt));
-}`}
-                        </pre>
-                     </ScrollArea>
-                </TabsContent>
-
-                {/* PYTHON CODE TAB */}
-                <TabsContent value="python" className="flex-1 p-0 m-0 relative overflow-hidden">
-                     <ScrollArea className="h-full w-full">
-                        <pre className="p-4 text-xs font-mono text-green-300 leading-relaxed whitespace-pre-wrap break-words">
-{`import serial
-import time
-import json
-import threading
-from flask import Flask, jsonify, request
-
-app = Flask(__name__)
-arduino = serial.Serial('/dev/ttyACM0', 115200, timeout=1)
-
-current_state = {
-    "speed": 0,
-    "battery": 100,
-    "mode": "MANUAL",
-    "lidar": 0,
-    "ultrasonic": [0, 0, 0, 0, 0],
-    "heading": 0.0,
-    "position": {"lat": 0.0, "lon": 0.0}
-}
-
-def read_telemetry():
-    """Read sensor data from Arduino"""
-    global current_state
-    while True:
-        try:
-            if arduino.in_waiting > 0:
-                # Parse incoming telemetry
-                data = arduino.read(32)  # TelemetryPacket size
-                current_state["lidar"] = int.from_bytes(
-                    data[8:10], 'little'
-                )
-                current_state["battery"] = 85
-        except Exception as e:
-            print(f"Telemetry error: {e}")
-        time.sleep(0.05)
-
-@app.route('/api/telemetry')
-def get_telemetry():
-    return jsonify(current_state)
-
-@app.route('/api/control', methods=['POST'])
-def control_rover():
-    data = request.json
-    x = data.get('x', 0)  # steering -100 to 100
-    y = data.get('y', 0)  # throttle -100 to 100
-    
-    command = f"MOVE:{x},{y}\\n"
-    arduino.write(command.encode('utf-8'))
-    
-    return jsonify({"status": "ok"})
-
-@app.route('/api/command', methods=['POST'])
-def send_command():
-    data = request.json
-    cmd = data.get('command', '')
-    
-    arduino.write(f"{cmd}\\n".encode('utf-8'))
-    
-    return jsonify({"status": "ok"})
-
-if __name__ == '__main__':
-    # Start telemetry thread
-    telem_thread = threading.Thread(target=read_telemetry, daemon=True)
-    telem_thread.start()
-    
-    app.run(host='0.0.0.0', port=8080, debug=False)`}
-                        </pre>
-                     </ScrollArea>
-                </TabsContent>
-
-                {/* RASPBERRY PI SETUP TAB */}
-                <TabsContent value="rpi-setup" className="flex-1 p-0 m-0 relative overflow-hidden">
-                     <ScrollArea className="h-full w-full">
+                <TabsContent value="minipc" className="flex-1 p-0 m-0 relative overflow-hidden">
+                    <ScrollArea className="h-full w-full">
                         <div className="p-6 space-y-6 pr-4">
-                            <div>
-                                <h4 className="font-display text-primary mb-2">RASPBERRY PI 3 B+ HARDWARE</h4>
-                                <p className="text-xs text-muted-foreground mb-3">Physical board layout and connectivity</p>
-                                <div className="bg-black/50 p-3 rounded border border-border">
-                                    <img src={rpiHardware} alt="Raspberry Pi 3 B+ Hardware" className="w-full rounded" />
-                                </div>
+                            <h3 className="text-xl text-primary font-display">MINI PC HOST SETUP</h3>
+                            
+                            <div className="bg-primary/10 border border-primary/30 p-4 rounded">
+                                <h4 className="font-display text-primary mb-2">RECOMMENDED HARDWARE</h4>
+                                <ul className="text-xs font-mono space-y-1 text-muted-foreground">
+                                    <li>• Intel Celeron J3455 / N5095 / N5105</li>
+                                    <li>• 8GB RAM (minimum 4GB)</li>
+                                    <li>• 64GB SSD / eMMC</li>
+                                    <li>• USB ports for Arduino</li>
+                                    <li>• WiFi for dashboard access</li>
+                                </ul>
                             </div>
 
                             <div className="bg-secondary/10 border border-secondary/30 p-4 rounded">
-                                <h4 className="font-display text-secondary mb-2">SETUP COMMANDS</h4>
+                                <h4 className="font-display text-secondary mb-2">UBUNTU INSTALLATION</h4>
                                 <pre className="bg-black/50 p-3 rounded text-xs font-mono text-green-300 overflow-x-auto">
 {`# 1. Update system
 sudo apt update && sudo apt upgrade -y
 
-# 2. Install Python and dependencies
+# 2. Install Python dependencies
 sudo apt install python3-pip python3-dev
-sudo apt install python3-rpi.gpio  # For FlySky receiver
-pip3 install flask flask-cors pyserial
 
-# 3. Set up GPIO permissions
-sudo usermod -a -G gpio pi
+# 3. Install required packages
+pip3 install flask flask-cors flask-socketio pyserial
 
-# 4. Clone rover code
-git clone https://github.com/yourusername/Rover-Pilot.git
-cd Rover-Pilot/firmware/raspberry_pi_master
+# 4. Add user to dialout group (for serial access)
+sudo usermod -aG dialout $USER
 
-# 5. Run rover controller
-python3 rover_controller.py
-
-# Access dashboard at: http://raspberrypi.local:8080`}
+# 5. Reboot for group changes
+sudo reboot`}
                                 </pre>
                             </div>
 
                             <div className="bg-accent/10 border border-accent/30 p-4 rounded">
-                                <h4 className="font-display text-accent mb-2">RASPBERRY PI GPIO FOR FLYSKY RECEIVER</h4>
-                                <div className="text-xs font-mono space-y-1 text-muted-foreground">
-                                    <div>GPIO 17 (Pin 11) ← Channel 1 (Roll/Steering)</div>
-                                    <div>GPIO 27 (Pin 13) ← Channel 2 (Pitch)</div>
-                                    <div>GPIO 22 (Pin 15) ← Channel 3 (Throttle)</div>
-                                    <div>GPIO 23 (Pin 16) ← Channel 4 (Yaw)</div>
-                                    <div>GPIO 24 (Pin 18) ← Channel 5 (Switch A)</div>
-                                    <div>GPIO 25 (Pin 22) ← Channel 6 (Switch B)</div>
-                                    <div>GPIO 26 (Pin 37) ← Channel 7 (Aux 1)</div>
-                                    <div>GPIO 19 (Pin 35) ← Channel 8 (Aux 2)</div>
-                                    <div>GPIO 20 (Pin 38) ← Channel 9 (Aux 3)</div>
-                                    <div>GPIO 21 (Pin 40) ← Channel 10 (Aux 4)</div>
-                                    <div className="mt-2">GND (Multiple pins) ← Black wire</div>
-                                    <div>5V (Pin 2 or 4) ← Red wire</div>
-                                </div>
+                                <h4 className="font-display text-accent mb-2">RUNNING THE CONTROLLER</h4>
+                                <pre className="bg-black/50 p-3 rounded text-xs font-mono text-green-300 overflow-x-auto">
+{`cd firmware/raspberry_pi_master
+python3 rover_controller.py
+
+# Expected output:
+# ============================================================
+#   ROVER MASTER CONTROLLER v3.0.0
+#   Mini PC Host - Ubuntu / Intel Celeron
+#   RC: FlySky FS-I6x + FS-IA10B (iBUS Protocol)
+# ============================================================
+# 
+# [OK] Connected to Arduino on /dev/ttyACM0
+# [INIT] Starting server on 0.0.0.0:5000`}
+                                </pre>
+                            </div>
+
+                            <div className="bg-yellow-500/10 border border-yellow-500/30 p-4 rounded">
+                                <h4 className="font-display text-yellow-400 mb-2">AUTO-START ON BOOT</h4>
+                                <pre className="bg-black/50 p-3 rounded text-xs font-mono text-green-300 overflow-x-auto">
+{`# Create systemd service
+sudo nano /etc/systemd/system/rover.service
+
+# Add this content:
+[Unit]
+Description=RoverOS Controller
+After=network.target
+
+[Service]
+Type=simple
+User=your_username
+WorkingDirectory=/home/your_username/firmware/raspberry_pi_master
+ExecStart=/usr/bin/python3 rover_controller.py
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+
+# Enable and start:
+sudo systemctl enable rover
+sudo systemctl start rover`}
+                                </pre>
+                            </div>
+
+                            <h4 className="text-lg text-primary font-display mt-6">API ENDPOINTS</h4>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-xs font-mono">
+                                    <thead>
+                                        <tr className="border-b border-border">
+                                            <th className="text-left p-2 text-primary">Endpoint</th>
+                                            <th className="text-left p-2 text-primary">Method</th>
+                                            <th className="text-left p-2 text-primary">Description</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="text-muted-foreground">
+                                        <tr className="border-b border-border/50"><td className="p-2">/api/telemetry</td><td className="p-2">GET</td><td className="p-2">Current sensor data</td></tr>
+                                        <tr className="border-b border-border/50"><td className="p-2">/api/control</td><td className="p-2">POST</td><td className="p-2">throttle, steering</td></tr>
+                                        <tr className="border-b border-border/50"><td className="p-2">/api/stop</td><td className="p-2">POST</td><td className="p-2">Emergency stop</td></tr>
+                                        <tr className="border-b border-border/50"><td className="p-2">/api/mode</td><td className="p-2">POST</td><td className="p-2">MANUAL/RC/AUTONOMOUS</td></tr>
+                                        <tr className="border-b border-border/50"><td className="p-2">/api/ibus</td><td className="p-2">GET</td><td className="p-2">RC channel values</td></tr>
+                                        <tr><td className="p-2">/api/status</td><td className="p-2">GET</td><td className="p-2">Connection status</td></tr>
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
-                     </ScrollArea>
+                    </ScrollArea>
                 </TabsContent>
 
-                {/* ARDUINO SETUP TAB */}
-                <TabsContent value="arduino-setup" className="flex-1 p-0 m-0 relative overflow-hidden">
-                     <ScrollArea className="h-full w-full">
+                <TabsContent value="ibus" className="flex-1 p-0 m-0 relative overflow-hidden">
+                    <ScrollArea className="h-full w-full">
                         <div className="p-6 space-y-6 pr-4">
-                            <div>
-                                <h4 className="font-display text-primary mb-2">ARDUINO MEGA 2560 PIN LAYOUT</h4>
-                                <p className="text-xs text-muted-foreground mb-3">All pins and their functions</p>
-                                <div className="bg-black/50 p-3 rounded border border-border">
-                                    <img src={arduinoPins} alt="Arduino Mega Pin Layout" className="w-full rounded" />
-                                </div>
+                            <h3 className="text-xl text-primary font-display">FlySky iBUS SETUP</h3>
+                            
+                            <div className="bg-green-500/10 border border-green-500/30 p-4 rounded">
+                                <h4 className="font-display text-green-400 mb-2 flex items-center gap-2">
+                                    <Zap className="w-4 h-4" /> iBUS ADVANTAGES
+                                </h4>
+                                <ul className="text-xs font-mono space-y-1 text-muted-foreground">
+                                    <li>✓ Single wire for all 10 channels (vs 10 wires for PWM)</li>
+                                    <li>✓ Digital signal - more accurate than analog PWM</li>
+                                    <li>✓ ~143 Hz update rate</li>
+                                    <li>✓ Built-in failsafe detection</li>
+                                    <li>✓ Simple wiring - just 3 connections</li>
+                                </ul>
                             </div>
 
-                            <div className="bg-secondary/10 border border-secondary/30 p-4 rounded">
-                                <h4 className="font-display text-secondary mb-2">SERIAL CONFIGURATION</h4>
-                                <div className="text-xs font-mono space-y-1 text-muted-foreground">
-                                    <div className="font-bold text-secondary">Serial0 (Pins 0/1) - USB Communication</div>
-                                    <div className="pl-4">→ Connected to Raspberry Pi via USB</div>
-                                    <div className="pl-4">→ Baud Rate: 115200</div>
-                                    
-                                    <div className="font-bold text-secondary mt-3">Serial1 (Pins 19/18) - Hoverboard</div>
-                                    <div className="pl-4">→ RX: Pin 19, TX: Pin 18</div>
-                                    <div className="pl-4">→ Baud Rate: 115200</div>
-                                    <div className="pl-4">→ ⚠️ Use 3.3V-5V level shifter!</div>
-                                    
-                                    <div className="font-bold text-secondary mt-3">Serial2 (Pins 17/16) - GPS Module</div>
-                                    <div className="pl-4">→ RX: Pin 17, TX: Pin 16</div>
-                                    <div className="pl-4">→ Baud Rate: 9600</div>
-                                    
-                                    <div className="font-bold text-secondary mt-3">Serial3 (Pins 15/14) - LiDAR</div>
-                                    <div className="pl-4">→ RX: Pin 15, TX: Pin 14</div>
-                                    <div className="pl-4">→ Baud Rate: 115200</div>
-                                </div>
-                            </div>
+                            <h4 className="text-lg text-primary font-display mt-4">WIRING DIAGRAM</h4>
+                            <pre className="bg-black/50 p-4 border border-border rounded-lg text-xs overflow-x-auto font-mono text-cyan-300">
+{`FlySky FS-IA10B to Arduino Mega (iBUS Protocol)
+================================================
 
-                            <div className="bg-accent/10 border border-accent/30 p-4 rounded">
-                                <h4 className="font-display text-accent mb-2">I2C CONFIGURATION (Pins 20/21)</h4>
-                                <div className="text-xs font-mono space-y-1 text-muted-foreground">
-                                    <div>SDA: Pin 20, SCL: Pin 21</div>
-                                    <div>I2C Speed: 400kHz (standard)</div>
-                                    <div className="mt-2 font-bold">Devices on I2C Bus:</div>
-                                    <div className="pl-4">• HuskyLens AI Camera (I2C address: 0x32)</div>
-                                    <div className="pl-4">• IMU MPU6050 (I2C address: 0x68)</div>
-                                </div>
-                            </div>
-                        </div>
-                     </ScrollArea>
-                </TabsContent>
+    FS-IA10B Receiver              Arduino Mega
+    -----------------              ------------
+    iBUS Pin ───────────────────► Pin 19 (RX1)
+    VCC (5V) ───────────────────► 5V
+    GND ────────────────────────► GND
 
-                {/* FLYSKY SETUP TAB */}
-                <TabsContent value="flysky-setup" className="flex-1 p-0 m-0 relative overflow-hidden">
-                     <ScrollArea className="h-full w-full">
-                        <div className="p-6 space-y-6 pr-4">
-                            <div>
-                                <h4 className="font-display text-primary mb-2">FLYSKY FS-I6X TRANSMITTER CONTROLS</h4>
-                                <p className="text-xs text-muted-foreground mb-3">Physical controller layout and operation</p>
-                                <div className="bg-black/50 p-3 rounded border border-border">
-                                    <img src={flySkyControls} alt="FlySky FS-I6x Controls" className="w-full rounded" />
-                                </div>
-                            </div>
+That's it! Just 3 wires for all 10 channels.`}
+                            </pre>
 
-                            <div>
-                                <h4 className="font-display text-primary mb-2">RECEIVER WIRING TO RASPBERRY PI</h4>
-                                <p className="text-xs text-muted-foreground mb-3">FlySky FS-IA10B 10-channel connections</p>
-                                <div className="bg-black/50 p-3 rounded border border-border">
-                                    <img src={flySkyWiring} alt="FlySky Wiring" className="w-full rounded" />
-                                </div>
-                            </div>
-
-                            <div>
-                                <h4 className="font-display text-primary mb-2">TRANSMITTER OPERATION</h4>
-                                <p className="text-xs text-muted-foreground mb-3">How to use transmitter for control</p>
-                                <div className="bg-black/50 p-3 rounded border border-border">
-                                    <img src={flySkyOperation} alt="FlySky Operation" className="w-full rounded" />
-                                </div>
-                            </div>
-
-                            <div className="bg-secondary/10 border border-secondary/30 p-4 rounded">
-                                <h4 className="font-display text-secondary mb-2">BINDING RECEIVER STEPS</h4>
-                                <ol className="text-xs font-mono space-y-1 text-muted-foreground list-decimal list-inside">
-                                    <li>Hold receiver bind button, power on receiver</li>
-                                    <li>LED will blink rapidly (binding mode)</li>
-                                    <li>Press bind button on transmitter</li>
-                                    <li>Wait 2-3 seconds for binding to complete</li>
-                                    <li>Receiver LED becomes solid green (success)</li>
-                                    <li>Test: Move transmitter sticks, verify receiver responds</li>
+                            <div className="bg-secondary/10 border border-secondary/30 p-4 rounded mt-4">
+                                <h4 className="font-display text-secondary mb-2">TRANSMITTER SETUP</h4>
+                                <ol className="text-xs font-mono space-y-2 text-muted-foreground list-decimal list-inside">
+                                    <li>Power on FS-I6x transmitter</li>
+                                    <li>Long press "OK" to enter menu</li>
+                                    <li>Go to System → Output Mode</li>
+                                    <li>Change from "PWM" to "iBUS"</li>
+                                    <li>Save and power cycle transmitter</li>
                                 </ol>
                             </div>
+
+                            <div className="bg-accent/10 border border-accent/30 p-4 rounded mt-4">
+                                <h4 className="font-display text-accent mb-2">BINDING RECEIVER</h4>
+                                <ol className="text-xs font-mono space-y-2 text-muted-foreground list-decimal list-inside">
+                                    <li>Hold receiver BIND button while powering on</li>
+                                    <li>LED blinks rapidly (binding mode)</li>
+                                    <li>On transmitter: Menu → System → RX Bind</li>
+                                    <li>Press OK to start binding</li>
+                                    <li>Wait for receiver LED to go solid (success)</li>
+                                    <li>Power cycle both devices to test</li>
+                                </ol>
+                            </div>
+
+                            <h4 className="text-lg text-primary font-display mt-6">CHANNEL MAPPING</h4>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-xs font-mono">
+                                    <thead>
+                                        <tr className="border-b border-border">
+                                            <th className="text-left p-2 text-primary">Channel</th>
+                                            <th className="text-left p-2 text-primary">Control</th>
+                                            <th className="text-left p-2 text-primary">Range</th>
+                                            <th className="text-left p-2 text-primary">Use</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="text-muted-foreground">
+                                        <tr className="border-b border-border/50"><td className="p-2">CH1</td><td className="p-2">Right Stick H</td><td className="p-2">1000-2000</td><td className="p-2 text-green-400">Steering</td></tr>
+                                        <tr className="border-b border-border/50"><td className="p-2">CH2</td><td className="p-2">Right Stick V</td><td className="p-2">1000-2000</td><td className="p-2">Unused</td></tr>
+                                        <tr className="border-b border-border/50"><td className="p-2">CH3</td><td className="p-2">Left Stick V</td><td className="p-2">1000-2000</td><td className="p-2 text-green-400">Throttle</td></tr>
+                                        <tr className="border-b border-border/50"><td className="p-2">CH4</td><td className="p-2">Left Stick H</td><td className="p-2">1000-2000</td><td className="p-2">Unused</td></tr>
+                                        <tr className="border-b border-border/50"><td className="p-2">CH5</td><td className="p-2">Switch A</td><td className="p-2">1000/2000</td><td className="p-2">Mode Select</td></tr>
+                                        <tr className="border-b border-border/50"><td className="p-2">CH6</td><td className="p-2">Switch B</td><td className="p-2">1000/2000</td><td className="p-2">Lights/Horn</td></tr>
+                                        <tr className="border-b border-border/50"><td className="p-2">CH7</td><td className="p-2">Switch C</td><td className="p-2">1000/1500/2000</td><td className="p-2">Speed Limit</td></tr>
+                                        <tr className="border-b border-border/50"><td className="p-2">CH8</td><td className="p-2">Switch D</td><td className="p-2">1000/2000</td><td className="p-2 text-red-400">E-Stop</td></tr>
+                                        <tr className="border-b border-border/50"><td className="p-2">CH9</td><td className="p-2">VrA Dial</td><td className="p-2">1000-2000</td><td className="p-2">Fine Adjust</td></tr>
+                                        <tr><td className="p-2">CH10</td><td className="p-2">VrB Dial</td><td className="p-2">1000-2000</td><td className="p-2">Fine Adjust</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
-                     </ScrollArea>
+                    </ScrollArea>
                 </TabsContent>
 
-                {/* SENSORS TAB */}
                 <TabsContent value="sensors" className="flex-1 p-0 m-0 relative overflow-hidden">
-                     <ScrollArea className="h-full w-full">
+                    <ScrollArea className="h-full w-full">
                         <div className="p-6 space-y-6 pr-4">
-                            <div>
-                                <h4 className="font-display text-primary mb-2">LIDAR TF MINI PRO WIRING</h4>
-                                <p className="text-xs text-muted-foreground mb-3">Serial connection to Arduino Serial3</p>
-                                <div className="bg-black/50 p-3 rounded border border-border">
-                                    <img src={lidarWiring} alt="LiDAR Wiring" className="w-full rounded" />
-                                </div>
-                            </div>
+                            <h3 className="text-xl text-primary font-display">SENSOR SETUP</h3>
 
-                            <div>
-                                <h4 className="font-display text-primary mb-2">ULTRASONIC SENSOR ARRAY (5x HC-SR04)</h4>
-                                <p className="text-xs text-muted-foreground mb-3">Front, left, right, back-left, back-right configuration</p>
-                                <div className="bg-black/50 p-3 rounded border border-border">
-                                    <img src={ultrasonicWiring} alt="Ultrasonic Sensors" className="w-full rounded" />
+                            <div className="space-y-4">
+                                <div className="bg-primary/10 border border-primary/30 p-4 rounded">
+                                    <h4 className="font-display text-primary mb-2">TF MINI PRO LIDAR</h4>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="text-xs font-mono text-muted-foreground">
+                                            <p className="font-bold mb-1">Specifications:</p>
+                                            <ul className="space-y-1">
+                                                <li>• Range: 0.1m - 12m</li>
+                                                <li>• Accuracy: ±1cm (0.1-6m)</li>
+                                                <li>• Update Rate: 100Hz</li>
+                                                <li>• Interface: UART 115200</li>
+                                            </ul>
+                                        </div>
+                                        <div className="text-xs font-mono text-muted-foreground">
+                                            <p className="font-bold mb-1">Wiring:</p>
+                                            <ul className="space-y-1">
+                                                <li>• VCC → Arduino 5V</li>
+                                                <li>• GND → Arduino GND</li>
+                                                <li>• TX → Arduino Pin 17 (RX2)</li>
+                                                <li>• RX → Arduino Pin 16 (TX2)</li>
+                                            </ul>
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
 
-                            <div>
-                                <h4 className="font-display text-primary mb-2">IMU MPU6050 I2C WIRING</h4>
-                                <p className="text-xs text-muted-foreground mb-3">Accelerometer & Gyroscope sensor connection</p>
-                                <div className="bg-black/50 p-3 rounded border border-border">
-                                    <img src={imuWiring} alt="IMU Wiring" className="w-full rounded" />
+                                <div className="bg-secondary/10 border border-secondary/30 p-4 rounded">
+                                    <h4 className="font-display text-secondary mb-2">MPU6050 IMU</h4>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="text-xs font-mono text-muted-foreground">
+                                            <p className="font-bold mb-1">Specifications:</p>
+                                            <ul className="space-y-1">
+                                                <li>• 3-axis accelerometer</li>
+                                                <li>• 3-axis gyroscope</li>
+                                                <li>• I2C Address: 0x68</li>
+                                                <li>• Supply: 3.3V (has regulator)</li>
+                                            </ul>
+                                        </div>
+                                        <div className="text-xs font-mono text-muted-foreground">
+                                            <p className="font-bold mb-1">Wiring:</p>
+                                            <ul className="space-y-1">
+                                                <li>• VCC → Arduino 5V</li>
+                                                <li>• GND → Arduino GND</li>
+                                                <li>• SDA → Arduino Pin 20</li>
+                                                <li>• SCL → Arduino Pin 21</li>
+                                            </ul>
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
 
-                            <div>
-                                <h4 className="font-display text-primary mb-2">GPS MODULE SERIAL WIRING</h4>
-                                <p className="text-xs text-muted-foreground mb-3">Connected to Arduino Serial2</p>
-                                <div className="bg-black/50 p-3 rounded border border-border">
-                                    <img src={gpsWiring} alt="GPS Wiring" className="w-full rounded" />
+                                <div className="bg-accent/10 border border-accent/30 p-4 rounded">
+                                    <h4 className="font-display text-accent mb-2">NEO-6M GPS</h4>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="text-xs font-mono text-muted-foreground">
+                                            <p className="font-bold mb-1">Specifications:</p>
+                                            <ul className="space-y-1">
+                                                <li>• 50 channels</li>
+                                                <li>• Position accuracy: 2.5m</li>
+                                                <li>• Update Rate: 1-5Hz</li>
+                                                <li>• Interface: UART 9600</li>
+                                            </ul>
+                                        </div>
+                                        <div className="text-xs font-mono text-muted-foreground">
+                                            <p className="font-bold mb-1">Wiring:</p>
+                                            <ul className="space-y-1">
+                                                <li>• VCC → Arduino 5V</li>
+                                                <li>• GND → Arduino GND</li>
+                                                <li>• TX → Arduino Pin 15 (RX3)</li>
+                                                <li>• RX → Arduino Pin 14 (TX3)</li>
+                                            </ul>
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
 
-                            <div className="bg-card/50 border border-border p-4 rounded">
-                                <h4 className="font-display text-primary mb-2">SENSOR CALIBRATION</h4>
-                                <div className="text-xs font-mono space-y-2 text-muted-foreground">
-                                    <div><span className="font-bold text-secondary">LiDAR:</span> No calibration needed, warm-up 5 seconds before use</div>
-                                    <div><span className="font-bold text-secondary">Ultrasonic:</span> Mount perpendicular to ground, test range 2-400cm</div>
-                                    <div><span className="font-bold text-secondary">IMU:</span> Place on level surface, run calibration routine on startup</div>
-                                    <div><span className="font-bold text-secondary">GPS:</span> Wait 30-60 seconds for first lock, works best outdoors</div>
+                                <div className="bg-purple-500/10 border border-purple-500/30 p-4 rounded">
+                                    <h4 className="font-display text-purple-400 mb-2">HC-SR04 ULTRASONIC (x5)</h4>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="text-xs font-mono text-muted-foreground">
+                                            <p className="font-bold mb-1">Specifications:</p>
+                                            <ul className="space-y-1">
+                                                <li>• Range: 2cm - 400cm</li>
+                                                <li>• Accuracy: 3mm</li>
+                                                <li>• Angle: 15°</li>
+                                                <li>• Supply: 5V</li>
+                                            </ul>
+                                        </div>
+                                        <div className="text-xs font-mono text-muted-foreground">
+                                            <p className="font-bold mb-1">Pin Assignments:</p>
+                                            <ul className="space-y-1">
+                                                <li>• #1 Front: Trig=22, Echo=23</li>
+                                                <li>• #2 Left: Trig=24, Echo=25</li>
+                                                <li>• #3 Right: Trig=26, Echo=27</li>
+                                                <li>• #4 Rear-L: Trig=28, Echo=29</li>
+                                                <li>• #5 Rear-R: Trig=30, Echo=31</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="bg-blue-500/10 border border-blue-500/30 p-4 rounded">
+                                    <h4 className="font-display text-blue-400 mb-2">HUSKYLENS AI CAMERA</h4>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="text-xs font-mono text-muted-foreground">
+                                            <p className="font-bold mb-1">Specifications:</p>
+                                            <ul className="space-y-1">
+                                                <li>• Built-in AI processor</li>
+                                                <li>• Object detection</li>
+                                                <li>• Face recognition</li>
+                                                <li>• I2C Address: 0x32</li>
+                                            </ul>
+                                        </div>
+                                        <div className="text-xs font-mono text-muted-foreground">
+                                            <p className="font-bold mb-1">Wiring:</p>
+                                            <ul className="space-y-1">
+                                                <li>• VCC → Arduino 5V</li>
+                                                <li>• GND → Arduino GND</li>
+                                                <li>• SDA → Arduino Pin 20</li>
+                                                <li>• SCL → Arduino Pin 21</li>
+                                            </ul>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                     </ScrollArea>
+                    </ScrollArea>
                 </TabsContent>
 
-                {/* SYSTEM ASSEMBLY TAB */}
-                <TabsContent value="system" className="flex-1 p-0 m-0 relative overflow-hidden">
-                     <ScrollArea className="h-full w-full">
+                <TabsContent value="assembly" className="flex-1 p-0 m-0 relative overflow-hidden">
+                    <ScrollArea className="h-full w-full">
                         <div className="p-6 space-y-6 pr-4">
-                            <div>
-                                <h4 className="font-display text-primary mb-2">COMPLETE ROVER SYSTEM ASSEMBLY</h4>
-                                <p className="text-xs text-muted-foreground mb-3">All components and their placement on rover chassis</p>
-                                <div className="bg-black/50 p-3 rounded border border-border">
-                                    <img src={systemAssembly} alt="System Assembly" className="w-full rounded" />
+                            <h3 className="text-xl text-primary font-display">ROVER ASSEMBLY GUIDE</h3>
+
+                            <div className="space-y-4">
+                                <div className="bg-primary/10 border border-primary/30 p-4 rounded">
+                                    <h4 className="font-display text-primary mb-2">STEP 1: CHASSIS & MOTORS</h4>
+                                    <ol className="text-xs font-mono space-y-1 text-muted-foreground list-decimal list-inside">
+                                        <li>Mount hoverboard motors to chassis frame</li>
+                                        <li>Connect motor wires to hoverboard mainboard</li>
+                                        <li>Secure mainboard with vibration dampening</li>
+                                        <li>Route power cables to battery compartment</li>
+                                    </ol>
                                 </div>
-                            </div>
 
-                            <div>
-                                <h4 className="font-display text-primary mb-2">HOVERBOARD MOTOR CONTROL</h4>
-                                <p className="text-xs text-muted-foreground mb-3">UART communication to hoverboard mainboard</p>
-                                <div className="bg-black/50 p-3 rounded border border-border">
-                                    <img src={hoverboardWiring} alt="Hoverboard Wiring" className="w-full rounded" />
+                                <div className="bg-secondary/10 border border-secondary/30 p-4 rounded">
+                                    <h4 className="font-display text-secondary mb-2">STEP 2: POWER SYSTEM</h4>
+                                    <ol className="text-xs font-mono space-y-1 text-muted-foreground list-decimal list-inside">
+                                        <li>Install 36V LiPo battery in protected compartment</li>
+                                        <li>Connect battery to hoverboard mainboard</li>
+                                        <li>Install DC-DC converter (36V → 5V)</li>
+                                        <li>Wire Mini PC and Arduino power from converter</li>
+                                        <li>Add main power switch and fuse</li>
+                                    </ol>
                                 </div>
-                            </div>
 
-                            <div className="bg-secondary/10 border border-secondary/30 p-4 rounded">
-                                <h4 className="font-display text-secondary mb-2">ASSEMBLY CHECKLIST</h4>
-                                <ol className="text-xs font-mono space-y-1 text-muted-foreground list-decimal list-inside">
-                                    <li>Mount Raspberry Pi on top (master controller)</li>
-                                    <li>Mount Arduino Mega with proper spacing for cooling</li>
-                                    <li>Connect USB between Pi and Arduino</li>
-                                    <li>Mount hoverboard base with motors intact</li>
-                                    <li>Connect hoverboard UART to Arduino Serial1 (with level shifter)</li>
-                                    <li>Mount 5 ultrasonic sensors on all sides</li>
-                                    <li>Mount LiDAR on front center (highest point)</li>
-                                    <li>Mount GPS antenna on top (clear view of sky)</li>
-                                    <li>Mount IMU sensor on Arduino board</li>
-                                    <li>Connect all power (36V battery to hoverboard, DC-DC to Pi/Arduino)</li>
-                                    <li>Verify all serial communications</li>
-                                    <li>Test each sensor individually</li>
-                                    <li>Bind FlySky receiver to transmitter</li>
-                                    <li>Calibrate all sensors and transmitter</li>
-                                </ol>
-                            </div>
+                                <div className="bg-accent/10 border border-accent/30 p-4 rounded">
+                                    <h4 className="font-display text-accent mb-2">STEP 3: ELECTRONICS</h4>
+                                    <ol className="text-xs font-mono space-y-1 text-muted-foreground list-decimal list-inside">
+                                        <li>Mount Mini PC in ventilated enclosure</li>
+                                        <li>Mount Arduino Mega near sensors</li>
+                                        <li>Connect USB cable between Mini PC and Arduino</li>
+                                        <li>Install level shifter for hoverboard UART</li>
+                                        <li>Wire hoverboard to Arduino pins 10/11</li>
+                                    </ol>
+                                </div>
 
-                            <div className="bg-accent/10 border border-accent/30 p-4 rounded">
-                                <h4 className="font-display text-accent mb-2">POWER BUDGET</h4>
-                                <div className="text-xs font-mono space-y-1 text-muted-foreground">
-                                    <div>Hoverboard Motors: ~30-40A at full speed</div>
-                                    <div>Raspberry Pi 3 B+: ~500-900mA @ 5V</div>
-                                    <div>Arduino Mega: ~200mA @ 5V</div>
-                                    <div>All Sensors: ~300-500mA @ 5V</div>
-                                    <div className="mt-2 font-bold">Total: 36V @ 30-40A peak, 5V @ 2A required</div>
-                                    <div>Recommended: 36V 50A battery pack, 5A DC-DC converter</div>
+                                <div className="bg-green-500/10 border border-green-500/30 p-4 rounded">
+                                    <h4 className="font-display text-green-400 mb-2">STEP 4: SENSORS</h4>
+                                    <ol className="text-xs font-mono space-y-1 text-muted-foreground list-decimal list-inside">
+                                        <li>Mount LIDAR at front, facing forward</li>
+                                        <li>Mount 5 ultrasonic sensors around chassis</li>
+                                        <li>Install MPU6050 on flat surface, level</li>
+                                        <li>Mount GPS with antenna facing sky</li>
+                                        <li>Position HuskyLens for forward vision</li>
+                                        <li>Connect all sensor wires to Arduino</li>
+                                    </ol>
+                                </div>
+
+                                <div className="bg-yellow-500/10 border border-yellow-500/30 p-4 rounded">
+                                    <h4 className="font-display text-yellow-400 mb-2">STEP 5: RC SYSTEM</h4>
+                                    <ol className="text-xs font-mono space-y-1 text-muted-foreground list-decimal list-inside">
+                                        <li>Mount FlySky FS-IA10B receiver</li>
+                                        <li>Connect iBUS wire to Arduino Pin 19</li>
+                                        <li>Connect receiver power (5V, GND)</li>
+                                        <li>Bind receiver to transmitter</li>
+                                        <li>Configure transmitter for iBUS output</li>
+                                    </ol>
+                                </div>
+
+                                <div className="bg-blue-500/10 border border-blue-500/30 p-4 rounded">
+                                    <h4 className="font-display text-blue-400 mb-2">STEP 6: SOFTWARE</h4>
+                                    <ol className="text-xs font-mono space-y-1 text-muted-foreground list-decimal list-inside">
+                                        <li>Flash Arduino with sensor controller firmware</li>
+                                        <li>Install Ubuntu on Mini PC</li>
+                                        <li>Install Python dependencies</li>
+                                        <li>Copy rover_controller.py to Mini PC</li>
+                                        <li>Configure auto-start service</li>
+                                        <li>Test all systems</li>
+                                    </ol>
                                 </div>
                             </div>
                         </div>
-                     </ScrollArea>
+                    </ScrollArea>
+                </TabsContent>
+
+                <TabsContent value="troubleshoot" className="flex-1 p-0 m-0 relative overflow-hidden">
+                    <ScrollArea className="h-full w-full">
+                        <div className="p-6 space-y-6 pr-4">
+                            <h3 className="text-xl text-primary font-display">TROUBLESHOOTING</h3>
+
+                            <div className="space-y-4">
+                                <div className="bg-red-500/10 border border-red-500/30 p-4 rounded">
+                                    <h4 className="font-display text-red-400 mb-2">ARDUINO NOT DETECTED</h4>
+                                    <pre className="bg-black/50 p-3 rounded text-xs font-mono text-green-300 overflow-x-auto">
+{`# Check if Arduino is connected
+ls /dev/ttyACM* /dev/ttyUSB*
+
+# Add user to dialout group
+sudo usermod -aG dialout $USER
+
+# Logout and login again, then verify
+groups
+
+# Check USB cable is data-capable (not charge-only)`}
+                                    </pre>
+                                </div>
+
+                                <div className="bg-yellow-500/10 border border-yellow-500/30 p-4 rounded">
+                                    <h4 className="font-display text-yellow-400 mb-2">iBUS NOT WORKING</h4>
+                                    <ul className="text-xs font-mono space-y-1 text-muted-foreground">
+                                        <li>• Verify receiver is bound (solid LED, not blinking)</li>
+                                        <li>• Check iBUS wire is connected to Pin 19 (RX1)</li>
+                                        <li>• Verify transmitter is set to iBUS output mode</li>
+                                        <li>• Power cycle the receiver</li>
+                                        <li>• Check 5V power to receiver</li>
+                                    </ul>
+                                </div>
+
+                                <div className="bg-blue-500/10 border border-blue-500/30 p-4 rounded">
+                                    <h4 className="font-display text-blue-400 mb-2">NO GPS LOCK</h4>
+                                    <ul className="text-xs font-mono space-y-1 text-muted-foreground">
+                                        <li>• GPS needs clear sky view</li>
+                                        <li>• First fix takes 5-10 minutes</li>
+                                        <li>• Check antenna connection</li>
+                                        <li>• Verify Serial3 wiring (pins 14/15)</li>
+                                        <li>• Try outdoors with antenna facing up</li>
+                                    </ul>
+                                </div>
+
+                                <div className="bg-purple-500/10 border border-purple-500/30 p-4 rounded">
+                                    <h4 className="font-display text-purple-400 mb-2">I2C SENSORS NOT RESPONDING</h4>
+                                    <pre className="bg-black/50 p-3 rounded text-xs font-mono text-green-300 overflow-x-auto">
+{`// Run I2C scanner sketch on Arduino
+// Expected addresses:
+// - MPU6050: 0x68 or 0x69
+// - HuskyLens: 0x32
+
+// Check wiring:
+// - SDA → Pin 20
+// - SCL → Pin 21
+// - Verify 4.7kΩ pull-up resistors if needed`}
+                                    </pre>
+                                </div>
+
+                                <div className="bg-orange-500/10 border border-orange-500/30 p-4 rounded">
+                                    <h4 className="font-display text-orange-400 mb-2">HOVERBOARD NOT RESPONDING</h4>
+                                    <ul className="text-xs font-mono space-y-1 text-muted-foreground">
+                                        <li>• Use logic level shifter (Arduino 5V ↔ Hoverboard 3.3V)</li>
+                                        <li>• Verify SoftwareSerial pins (10/11)</li>
+                                        <li>• Check baud rate is 115200</li>
+                                        <li>• Test with hoverboard's native Bluetooth app first</li>
+                                        <li>• Verify FOC firmware is installed on mainboard</li>
+                                    </ul>
+                                </div>
+
+                                <div className="bg-green-500/10 border border-green-500/30 p-4 rounded">
+                                    <h4 className="font-display text-green-400 mb-2">WEB DASHBOARD NOT LOADING</h4>
+                                    <ul className="text-xs font-mono space-y-1 text-muted-foreground">
+                                        <li>• Check Mini PC is connected to WiFi</li>
+                                        <li>• Verify rover_controller.py is running</li>
+                                        <li>• Check firewall allows port 5000</li>
+                                        <li>• Try: http://[mini-pc-ip]:5000</li>
+                                        <li>• Check console for Python errors</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </ScrollArea>
                 </TabsContent>
             </Tabs>
         </div>

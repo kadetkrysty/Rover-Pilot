@@ -1,94 +1,233 @@
 #!/usr/bin/env python3
 """
-Rover Master Controller for Raspberry Pi 3 B+
+================================================================================
+ROVER MASTER CONTROLLER v3.0.0
+================================================================================
+Mini PC Host Controller (Intel Celeron / Ubuntu)
 Communicates with Arduino Mega sensor controller via USB Serial
-Serves telemetry API to web dashboard
+Receives iBUS RC data from Arduino (FlySky FS-IA10B via iBUS protocol)
+Serves telemetry API and WebSocket to web dashboard
+================================================================================
 """
 
 import serial
+import serial.tools.list_ports
 import json
 import time
 import threading
+import os
+import socket
 from flask import Flask, jsonify, request
 from flask_cors import CORS
+from flask_socketio import SocketIO, emit
 from datetime import datetime
 import math
 from pathfinding import GPSPoint, WaypointRouter, ObstacleAvoidance
 
 # ===== CONFIGURATION =====
-ARDUINO_PORT = '/dev/ttyACM0'  # USB serial port (may be ttyACM1, etc.)
 ARDUINO_BAUD = 115200
 WEB_HOST = '0.0.0.0'
-WEB_PORT = 8080
+WEB_PORT = 5000  # Match main web server port
+
+# ===== AUTO-DETECT ARDUINO PORT =====
+def find_arduino_port():
+    """Auto-detect Arduino Mega port on Linux/Windows"""
+    ports = list(serial.tools.list_ports.comports())
+    
+    # Priority order for detection
+    arduino_identifiers = [
+        'Arduino Mega',
+        'Arduino',
+        'ttyACM',
+        'ttyUSB',
+        'CH340',
+        'CP210',
+    ]
+    
+    for port in ports:
+        port_info = f"{port.device} {port.description} {port.manufacturer or ''}"
+        for identifier in arduino_identifiers:
+            if identifier.lower() in port_info.lower():
+                return port.device
+    
+    # Fallback to common paths
+    fallback_paths = [
+        '/dev/ttyACM0',
+        '/dev/ttyACM1',
+        '/dev/ttyUSB0',
+        '/dev/ttyUSB1',
+        'COM3',
+        'COM4',
+    ]
+    
+    for path in fallback_paths:
+        try:
+            test = serial.Serial(path, ARDUINO_BAUD, timeout=0.1)
+            test.close()
+            return path
+        except:
+            continue
+    
+    return None
 
 # ===== GLOBAL STATE =====
 class RoverState:
     def __init__(self):
+        # Telemetry
         self.speed = 0.0
         self.battery = 85.0
         self.heading = 0.0
         self.pitch = 0.0
         self.roll = 0.0
+        self.accel = {'x': 0, 'y': 0, 'z': 0}
         self.lidar_distance = 0
         self.ultrasonic = [0, 0, 0, 0, 0]
+        
+        # GPS
         self.gps_lat = 0.0
-        self.gps_lon = 0.0
+        self.gps_lng = 0.0
+        self.gps_speed = 0.0
+        self.gps_accuracy = 0
+        
+        # iBUS RC Control (10 channels from FlySky FS-IA10B)
+        self.ibus_connected = False
+        self.ibus_channels = [1500] * 10  # Default center position
+        self.ibus_frame_rate = 0
+        
+        # System
         self.mode = "MANUAL"
         self.connected = False
         self.last_update = None
         self.telemetry_log = []
         self.max_log_entries = 100
         
-    def update(self, data_dict):
-        """Update state from Arduino telemetry"""
-        self.speed = data_dict.get('spd', 0)
-        self.battery = data_dict.get('bat', 85)
-        self.heading = data_dict.get('hdg', 0)
-        self.pitch = data_dict.get('pitch', 0)
-        self.roll = data_dict.get('roll', 0)
-        self.lidar_distance = data_dict.get('lidar', 0)
-        self.ultrasonic = data_dict.get('ultra', [0]*5)
-        self.last_update = datetime.now().isoformat()
+        # Host info
+        self.host_type = "Mini PC"
+        self.host_os = "Ubuntu"
         
-        # Add to log
-        log_entry = f"[{self.last_update}] SPD:{self.speed:.1f} BAT:{self.battery:.0f}% HDG:{self.heading:.0f}°"
-        self.telemetry_log.append(log_entry)
-        if len(self.telemetry_log) > self.max_log_entries:
-            self.telemetry_log.pop(0)
+    def update_from_arduino(self, data):
+        """Update state from Arduino JSON telemetry"""
+        try:
+            # GPS
+            if 'gps' in data:
+                self.gps_lat = data['gps'].get('lat', 0)
+                self.gps_lng = data['gps'].get('lng', 0)
+                self.gps_speed = data['gps'].get('spd', 0)
+                self.gps_accuracy = data['gps'].get('acc', 0)
+            
+            # IMU
+            if 'imu' in data:
+                self.heading = data['imu'].get('hdg', 0)
+                self.pitch = data['imu'].get('pitch', 0)
+                self.roll = data['imu'].get('roll', 0)
+                self.accel = {
+                    'x': data['imu'].get('ax', 0),
+                    'y': data['imu'].get('ay', 0),
+                    'z': data['imu'].get('az', 0)
+                }
+            
+            # Sensors
+            self.lidar_distance = data.get('lidar', 0)
+            self.ultrasonic = data.get('ultra', [0]*5)
+            self.battery = data.get('bat', 85)
+            
+            # iBUS RC
+            if 'ibus' in data:
+                self.ibus_connected = data['ibus'].get('con', False)
+                self.ibus_channels = data['ibus'].get('ch', [1500]*10)
+            
+            self.last_update = datetime.now().isoformat()
+            
+            # Log entry
+            log_entry = f"[{self.last_update[:19]}] HDG:{self.heading:.0f}° BAT:{self.battery:.0f}%"
+            self.telemetry_log.append(log_entry)
+            if len(self.telemetry_log) > self.max_log_entries:
+                self.telemetry_log.pop(0)
+                
+        except Exception as e:
+            print(f"[ERROR] Failed to parse telemetry: {e}")
     
     def to_dict(self):
-        """Convert state to dictionary for JSON"""
+        """Convert state to dictionary for JSON/WebSocket"""
         return {
-            'speed': round(self.speed, 1),
-            'battery': round(self.battery, 1),
-            'heading': round(self.heading, 1),
-            'pitch': round(self.pitch, 1),
-            'roll': round(self.roll, 1),
-            'lidarDistance': self.lidar_distance,
+            'timestamp': int(time.time() * 1000),
+            'gps': {
+                'lat': round(self.gps_lat, 6),
+                'lng': round(self.gps_lng, 6),
+                'speed': round(self.gps_speed, 1),
+                'accuracy': self.gps_accuracy
+            },
+            'imu': {
+                'heading': round(self.heading, 1),
+                'pitch': round(self.pitch, 1),
+                'roll': round(self.roll, 1),
+                'accelX': round(self.accel['x'], 2),
+                'accelY': round(self.accel['y'], 2),
+                'accelZ': round(self.accel['z'], 2)
+            },
+            'lidar': [
+                {'angle': 0, 'distance': self.lidar_distance}
+            ],
             'ultrasonic': self.ultrasonic,
-            'gps': {'lat': self.gps_lat, 'lng': self.gps_lon},
+            'battery': round(self.battery, 1),
+            'motorLeft': 0,
+            'motorRight': 0,
             'mode': self.mode,
             'connected': self.connected,
-            'lastUpdate': self.last_update,
-            'log': self.telemetry_log
+            'ibus': {
+                'connected': self.ibus_connected,
+                'channels': self.ibus_channels,
+                'frameRate': self.ibus_frame_rate
+            }
         }
+    
+    def get_rc_control(self):
+        """Convert iBUS channels to throttle/steering"""
+        if not self.ibus_connected:
+            return 0, 0
+        
+        # Channel mapping (FlySky FS-I6x default):
+        # CH1 = Roll/Aileron (steering)
+        # CH2 = Pitch/Elevator
+        # CH3 = Throttle
+        # CH4 = Yaw/Rudder
+        # CH5-10 = Aux switches
+        
+        throttle_raw = self.ibus_channels[2]  # CH3
+        steering_raw = self.ibus_channels[0]  # CH1
+        
+        # Convert 1000-2000 to -100..100
+        throttle = int((throttle_raw - 1500) / 5)  # ±100
+        steering = int((steering_raw - 1500) / 5)  # ±100
+        
+        return throttle, steering
+
 
 rover = RoverState()
 router = WaypointRouter()
 arduino = None
+arduino_port = None
 
 # ===== ARDUINO COMMUNICATION =====
 def connect_arduino():
     """Establish connection to Arduino"""
-    global arduino
+    global arduino, arduino_port
+    
+    arduino_port = find_arduino_port()
+    
+    if arduino_port is None:
+        print("[ERROR] No Arduino found!")
+        rover.connected = False
+        return False
+    
     try:
-        arduino = serial.Serial(ARDUINO_PORT, ARDUINO_BAUD, timeout=1)
-        time.sleep(2)  # Wait for Arduino to reset
+        arduino = serial.Serial(arduino_port, ARDUINO_BAUD, timeout=1)
+        time.sleep(2)  # Wait for Arduino reset
         rover.connected = True
-        print(f"[OK] Connected to Arduino on {ARDUINO_PORT}")
+        print(f"[OK] Connected to Arduino on {arduino_port}")
         return True
     except Exception as e:
-        print(f"[ERROR] Failed to connect Arduino: {e}")
+        print(f"[ERROR] Failed to connect: {e}")
         rover.connected = False
         return False
 
@@ -97,65 +236,82 @@ def read_telemetry_thread():
     while True:
         try:
             if arduino and arduino.in_waiting > 0:
-                line = arduino.readline().decode('utf-8').strip()
+                line = arduino.readline().decode('utf-8', errors='ignore').strip()
                 
                 if line.startswith('{'):
-                    # Parse JSON telemetry
-                    data = json.loads(line)
-                    rover.update(data)
-                else:
-                    # Parse text logs
+                    try:
+                        data = json.loads(line)
+                        rover.update_from_arduino(data)
+                        
+                        # Broadcast via WebSocket if available
+                        if socketio:
+                            socketio.emit('telemetry', rover.to_dict())
+                            
+                    except json.JSONDecodeError:
+                        pass
+                elif line:
                     print(f"[ARDUINO] {line}")
-        except json.JSONDecodeError:
-            pass
+                    
         except Exception as e:
-            print(f"[ERROR] Telemetry read error: {e}")
+            print(f"[ERROR] Telemetry read: {e}")
+            time.sleep(1)
         
-        time.sleep(0.01)  # 10ms polling
+        time.sleep(0.01)
 
 def send_command(cmd):
     """Send command to Arduino"""
     try:
-        if arduino:
+        if arduino and arduino.is_open:
             arduino.write((cmd + '\n').encode('utf-8'))
             return True
     except Exception as e:
-        print(f"[ERROR] Failed to send command: {e}")
+        print(f"[ERROR] Send command: {e}")
     return False
+
+# ===== RC CONTROL THREAD =====
+def rc_control_thread():
+    """Background thread for RC control via iBUS"""
+    while True:
+        try:
+            if rover.mode == "RC" and rover.ibus_connected:
+                throttle, steering = rover.get_rc_control()
+                
+                # Dead zone
+                if abs(throttle) < 5:
+                    throttle = 0
+                if abs(steering) < 5:
+                    steering = 0
+                
+                # Send to motors
+                drive_rover(throttle, steering)
+                
+        except Exception as e:
+            print(f"[ERROR] RC control: {e}")
+        
+        time.sleep(0.05)  # 20Hz control loop
 
 # ===== CONTROL LOGIC =====
 def drive_rover(throttle, steering):
-    """
-    Drive rover with throttle and steering
-    throttle: -100 to 100 (backward to forward)
-    steering: -100 to 100 (left to right)
-    """
-    # Clamp values
+    """Drive rover with throttle and steering"""
     throttle = max(-100, min(100, throttle))
     steering = max(-100, min(100, steering))
     
-    # Scale to Arduino range (-200 to 200)
-    throttle = int(throttle * 2)
-    steering = int(steering * 2)
+    # Scale to Arduino range (-1000 to 1000)
+    throttle = int(throttle * 10)
+    steering = int(steering * 10)
     
-    cmd = f"MOVE:{throttle},{steering}"
-    send_command(cmd)
-    rover.mode = "MANUAL"
+    send_command(f"MOVE:{throttle},{steering}")
 
 def stop_rover():
     """Emergency stop"""
     send_command("STOP")
-    print("[COMMAND] Emergency stop engaged")
-
-def autonomous_mode():
-    """Example autonomous logic using SLAM/SLAM"""
-    rover.mode = "AUTONOMOUS"
-    print("[MODE] Switching to autonomous navigation")
-    # TODO: Implement SLAM-based navigation
+    rover.mode = "MANUAL"
+    print("[COMMAND] Emergency stop")
 
 # ===== FLASK WEB SERVER =====
 app = Flask(__name__)
 CORS(app)
+socketio = SocketIO(app, cors_allowed_origins="*")
 
 @app.route('/api/telemetry', methods=['GET'])
 def get_telemetry():
@@ -164,11 +320,12 @@ def get_telemetry():
 
 @app.route('/api/control', methods=['POST'])
 def control():
-    """Control rover: POST {throttle: -100..100, steering: -100..100}"""
+    """Manual control: POST {throttle, steering}"""
     data = request.json
     throttle = data.get('throttle', 0)
     steering = data.get('steering', 0)
     
+    rover.mode = "MANUAL"
     drive_rover(throttle, steering)
     
     return jsonify({'status': 'ok', 'throttle': throttle, 'steering': steering})
@@ -179,28 +336,57 @@ def stop():
     stop_rover()
     return jsonify({'status': 'stopped'})
 
+@app.route('/api/mode', methods=['POST'])
+def set_mode():
+    """Set control mode: MANUAL, RC, AUTONOMOUS"""
+    data = request.json
+    mode = data.get('mode', 'MANUAL').upper()
+    
+    if mode in ['MANUAL', 'RC', 'AUTONOMOUS']:
+        rover.mode = mode
+        return jsonify({'status': 'ok', 'mode': mode})
+    
+    return jsonify({'error': 'Invalid mode'}), 400
+
+@app.route('/api/ibus', methods=['GET'])
+def get_ibus():
+    """Get iBUS RC channel data"""
+    return jsonify({
+        'connected': rover.ibus_connected,
+        'channels': rover.ibus_channels,
+        'frameRate': rover.ibus_frame_rate,
+        'control': {
+            'throttle': rover.get_rc_control()[0],
+            'steering': rover.get_rc_control()[1]
+        }
+    })
+
 @app.route('/api/status', methods=['GET'])
 def status():
     """Get connection status"""
     return jsonify({
         'arduino_connected': rover.connected,
+        'arduino_port': arduino_port,
+        'ibus_connected': rover.ibus_connected,
         'mode': rover.mode,
+        'host': rover.host_type,
         'timestamp': datetime.now().isoformat()
     })
-
-@app.route('/api/logs', methods=['GET'])
-def logs():
-    """Get telemetry logs"""
-    return jsonify({'logs': rover.telemetry_log})
 
 @app.route('/api/system/info', methods=['GET'])
 def system_info():
     """Get system information"""
+    hostname = socket.gethostname()
+    
     return jsonify({
-        'rover_name': 'SLAM-Rover-v2.4',
-        'firmware_version': '2.4.0',
+        'rover_name': 'RoverOS v3.0',
+        'firmware_version': '3.0.0',
         'controller': 'Arduino Mega 2560',
-        'host': 'Raspberry Pi 3 B+',
+        'host': 'Mini PC (Intel Celeron)',
+        'host_os': 'Ubuntu',
+        'hostname': hostname,
+        'rc_receiver': 'FlySky FS-IA10B (iBUS)',
+        'rc_transmitter': 'FlySky FS-I6x',
         'sensors': {
             'lidar': 'TF Mini Pro',
             'camera': 'HuskyLens AI',
@@ -210,150 +396,86 @@ def system_info():
         }
     })
 
+@app.route('/api/logs', methods=['GET'])
+def logs():
+    """Get telemetry logs"""
+    return jsonify({'logs': rover.telemetry_log})
+
 # ===== WAYPOINT NAVIGATION API =====
 @app.route('/api/navigation/waypoints', methods=['GET'])
 def get_waypoints():
     """Get all waypoints"""
-    waypoints = []
-    for wp in router.waypoints:
-        waypoints.append({
-            'lat': wp.lat,
-            'lng': wp.lng,
-            'name': wp.name
-        })
+    waypoints = [{'lat': wp.lat, 'lng': wp.lng, 'name': wp.name} for wp in router.waypoints]
     return jsonify({'waypoints': waypoints})
 
 @app.route('/api/navigation/waypoints', methods=['POST'])
 def add_waypoint():
     """Add a waypoint"""
     data = request.json
-    lat = data.get('lat')
-    lng = data.get('lng')
-    name = data.get('name', f'Waypoint {len(router.waypoints) + 1}')
-    
-    router.add_waypoint(lat, lng, name)
-    return jsonify({'status': 'added', 'total_waypoints': len(router.waypoints)})
-
-@app.route('/api/navigation/waypoints/<int:idx>', methods=['DELETE'])
-def delete_waypoint(idx):
-    """Delete a waypoint by index"""
-    if 0 <= idx < len(router.waypoints):
-        router.waypoints.pop(idx)
-        return jsonify({'status': 'deleted'})
-    return jsonify({'error': 'Invalid waypoint index'}), 400
-
-@app.route('/api/navigation/route', methods=['POST'])
-def plan_route():
-    """Plan optimal route through waypoints"""
-    route = router.plan_route()
-    route_data = []
-    for wp in route:
-        route_data.append({
-            'lat': wp.lat,
-            'lng': wp.lng,
-            'name': wp.name
-        })
-    
-    total_distance = router.get_total_distance()
-    
-    return jsonify({
-        'route': route_data,
-        'total_distance': total_distance,
-        'waypoints_count': len(route)
-    })
-
-@app.route('/api/navigation/progress', methods=['GET'])
-def get_progress():
-    """Get current mission progress"""
-    progress = router.get_mission_progress()
-    next_target = router.get_next_target(GPSPoint(rover.gps_lat, rover.gps_lon))
-    
-    return jsonify({
-        'progress': progress,
-        'next_target': {
-            'name': next_target.name,
-            'lat': next_target.lat,
-            'lng': next_target.lng
-        } if next_target else None
-    })
+    router.add_waypoint(data.get('lat'), data.get('lng'), data.get('name', f'WP{len(router.waypoints)+1}'))
+    return jsonify({'status': 'added', 'total': len(router.waypoints)})
 
 @app.route('/api/navigation/start', methods=['POST'])
 def start_navigation():
-    """Start autonomous waypoint navigation"""
+    """Start autonomous navigation"""
     if len(router.waypoints) == 0:
-        return jsonify({'error': 'No waypoints planned'}), 400
+        return jsonify({'error': 'No waypoints'}), 400
     
     router.plan_route()
     rover.mode = "AUTONOMOUS"
-    return jsonify({'status': 'navigation_started', 'waypoints': len(router.route)})
-
-@app.route('/api/navigation/command', methods=['GET'])
-def get_nav_command():
-    """Get next navigation command based on current position"""
-    if rover.mode != "AUTONOMOUS":
-        return jsonify({'throttle': 0, 'steering': 0})
-    
-    current_pos = GPSPoint(rover.gps_lat, rover.gps_lon)
-    
-    # Check for obstacles
-    obstacle_detected, description = ObstacleAvoidance.check_obstacles(rover.ultrasonic)
-    
-    if obstacle_detected:
-        # Avoid obstacle
-        steering_delta = ObstacleAvoidance.get_avoidance_steering(rover.ultrasonic)
-        return jsonify({
-            'throttle': 30,
-            'steering': steering_delta,
-            'obstacle': description
-        })
-    
-    # Get waypoint navigation command
-    throttle, steering = router.get_navigation_command(current_pos, rover.heading)
-    
-    # Check if waypoint reached
-    waypoint_reached = router.update_current_position(current_pos)
-    
-    return jsonify({
-        'throttle': throttle,
-        'steering': steering,
-        'waypoint_reached': waypoint_reached,
-        'current_waypoint': router.current_waypoint_idx,
-        'total_waypoints': len(router.route)
-    })
+    return jsonify({'status': 'started', 'waypoints': len(router.route)})
 
 @app.route('/api/navigation/abort', methods=['POST'])
 def abort_navigation():
-    """Abort autonomous navigation"""
+    """Abort navigation"""
     rover.mode = "MANUAL"
     stop_rover()
-    router.clear_waypoints()
-    return jsonify({'status': 'navigation_aborted'})
+    return jsonify({'status': 'aborted'})
+
+# ===== WEBSOCKET EVENTS =====
+@socketio.on('connect')
+def handle_connect():
+    print("[WS] Client connected")
+    emit('status', {'connected': rover.connected, 'mode': rover.mode})
+
+@socketio.on('command')
+def handle_command(data):
+    """Handle WebSocket commands"""
+    cmd_type = data.get('type')
+    
+    if cmd_type == 'move':
+        throttle = data.get('throttle', 0)
+        steering = data.get('steering', 0)
+        drive_rover(throttle, steering)
+    elif cmd_type == 'stop':
+        stop_rover()
+    elif cmd_type == 'mode':
+        rover.mode = data.get('mode', 'MANUAL')
 
 # ===== MAIN =====
 if __name__ == '__main__':
     print("\n" + "="*60)
-    print("  ROVER MASTER CONTROLLER v2.4")
-    print("  Raspberry Pi 3 B+ - Autonomous System")
+    print("  ROVER MASTER CONTROLLER v3.0.0")
+    print("  Mini PC Host - Ubuntu / Intel Celeron")
+    print("  RC: FlySky FS-I6x + FS-IA10B (iBUS Protocol)")
     print("="*60 + "\n")
     
     # Connect to Arduino
     if not connect_arduino():
-        print("[WARN] Continuing in demo mode without Arduino...")
-        rover.connected = False
+        print("[WARN] Running in demo mode...")
     
-    # Start telemetry reader thread
-    telemetry_thread = threading.Thread(target=read_telemetry_thread, daemon=True)
-    telemetry_thread.start()
+    # Start background threads
+    threading.Thread(target=read_telemetry_thread, daemon=True).start()
+    threading.Thread(target=rc_control_thread, daemon=True).start()
     
-    # Start Flask server
-    print(f"[INIT] Starting web server on {WEB_HOST}:{WEB_PORT}")
-    print(f"[INIT] Open http://<rpi_ip>:{WEB_PORT} in your browser")
+    # Start server
+    print(f"[INIT] Starting server on {WEB_HOST}:{WEB_PORT}")
     print("[INIT] Press Ctrl+C to stop\n")
     
     try:
-        app.run(host=WEB_HOST, port=WEB_PORT, debug=False)
+        socketio.run(app, host=WEB_HOST, port=WEB_PORT, debug=False)
     except KeyboardInterrupt:
-        print("\n[SHUTDOWN] Rover Master shutting down...")
+        print("\n[SHUTDOWN] Shutting down...")
         if arduino:
             stop_rover()
             arduino.close()

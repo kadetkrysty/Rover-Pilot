@@ -54,14 +54,14 @@ export default function FlySkyControl() {
   );
 
   return (
-    <div className="min-h-screen bg-background text-foreground font-sans p-6">
+    <div className="min-h-screen bg-background text-foreground font-sans p-6" data-testid="page-flysky-control">
       <header className="mb-8 flex items-center justify-between border-b border-border pb-4">
         <div>
-          <h1 className="text-3xl font-display font-bold text-primary">FLYSKY RECEIVER CONTROL</h1>
-          <p className="text-muted-foreground font-mono mt-1">FS-I6x / FS-IA10B 10-Channel Remote Control</p>
+          <h1 className="text-3xl font-display font-bold text-primary" data-testid="text-flysky-title">FLYSKY RECEIVER CONTROL</h1>
+          <p className="text-muted-foreground font-mono mt-1">FS-I6x / FS-IA10B 10-Channel Remote Control (iBUS)</p>
         </div>
         <Link href="/">
-          <Button variant="outline" className="font-mono">
+          <Button variant="outline" className="font-mono" data-testid="button-return-hud">
             <ArrowLeft className="w-4 h-4 mr-2" /> RETURN
           </Button>
         </Link>
@@ -180,7 +180,7 @@ export default function FlySkyControl() {
               <div className="text-muted-foreground/70">
                 <div className="text-lg font-display mb-2">FlySky Receiver Not Detected</div>
                 <div className="text-sm font-mono">
-                  Check wiring and ensure Raspberry Pi is running the FlySky service
+                  Check iBUS wiring to Arduino Pin 19 and ensure rover controller is running
                 </div>
               </div>
             </div>
@@ -238,16 +238,20 @@ export default function FlySkyControl() {
                 <span className="text-foreground font-bold">FS-IA10B</span>
               </div>
               <div className="flex justify-between">
+                <span className="text-muted-foreground">Protocol</span>
+                <span className="text-foreground font-bold text-green-400">iBUS</span>
+              </div>
+              <div className="flex justify-between">
                 <span className="text-muted-foreground">Channels</span>
-                <span className="text-foreground font-bold">10CH PWM</span>
+                <span className="text-foreground font-bold">10 CH</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Update Rate</span>
-                <span className="text-foreground font-bold">50Hz</span>
+                <span className="text-foreground font-bold">~143Hz</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Signal Range</span>
-                <span className="text-foreground font-bold">1000-2000µs</span>
+                <span className="text-muted-foreground">Connection</span>
+                <span className="text-foreground font-bold">Arduino Pin 19</span>
               </div>
             </div>
           </div>

@@ -307,7 +307,58 @@ export async function registerRoutes(
     }
   });
 
-  // Rover Control API - These will proxy to Raspberry Pi eventually
+  // iBUS RC Data API - Returns FlySky FS-IA10B channel data from Arduino via Mini PC
+  // In production, this data comes from the Python rover_controller.py via Arduino
+  // Here we provide mock data for the web dashboard development
+  app.get("/api/ibus", async (req, res) => {
+    try {
+      // Mock iBUS data - in production this would come from rover_controller.py
+      // which reads iBUS data from Arduino Serial1 at ~143Hz
+      const mockIbusData = {
+        connected: true,
+        channels: [1500, 1500, 1000, 1500, 1000, 1000, 1500, 1000, 1500, 1500], // 10 channels
+        frameRate: 143,
+        signalStrength: 100,  // 0-100 based on iBUS frame rate
+        failsafe: false,      // True if transmitter signal lost
+        control: {
+          throttle: 0,
+          steering: 0
+        }
+      };
+      
+      res.json(mockIbusData);
+    } catch (error) {
+      console.error("Error fetching iBUS data:", error);
+      res.status(500).json({ error: "Failed to fetch iBUS data" });
+    }
+  });
+
+  // System Info API
+  app.get("/api/system/info", async (req, res) => {
+    try {
+      res.json({
+        rover_name: 'RoverOS v3.0',
+        firmware_version: '3.0.0',
+        controller: 'Arduino Mega 2560',
+        host: 'Mini PC (Intel Celeron)',
+        host_os: 'Ubuntu',
+        rc_receiver: 'FlySky FS-IA10B (iBUS)',
+        rc_transmitter: 'FlySky FS-I6x',
+        sensors: {
+          lidar: 'TF Mini Pro',
+          camera: 'HuskyLens AI',
+          imu: 'MPU6050',
+          gps: 'Neo-6M',
+          ultrasonic: 5
+        }
+      });
+    } catch (error) {
+      console.error("Error fetching system info:", error);
+      res.status(500).json({ error: "Failed to fetch system info" });
+    }
+  });
+
+  // Rover Control API - These will proxy to Mini PC rover_controller.py
   app.post("/api/rover/mode", async (req, res) => {
     try {
       const { mode } = req.body;

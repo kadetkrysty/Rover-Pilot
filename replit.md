@@ -2,13 +2,49 @@
 
 ## Overview
 
-RoverOS is a full-stack web application for controlling and monitoring an autonomous rover. The system provides a telemetry dashboard with live camera feed visualization, manual driving controls (gamepad and RC transmitter support), GPS waypoint navigation, and system diagnostics. The application is designed to run on a Raspberry Pi as the master controller, communicating with an Arduino Mega for sensor fusion, while serving a React-based control interface.
+RoverOS is a full-stack web application for controlling and monitoring an autonomous rover. The system provides a telemetry dashboard with live camera feed visualization, manual driving controls (gamepad and RC transmitter support), GPS waypoint navigation, and system diagnostics. The application runs on a Mini PC (Intel Celeron) as the master controller, communicating with an Arduino Mega for sensor fusion, while serving a React-based control interface.
 
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
 
 ## System Architecture
+
+### Hardware Overview
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         ROVER SYSTEM v3.0                       │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  ┌─────────────────┐     USB Serial      ┌──────────────────┐  │
+│  │   MINI PC       │◄──────────────────► │  ARDUINO MEGA    │  │
+│  │  Intel Celeron  │     115200 baud     │     2560         │  │
+│  │  8GB RAM        │                     │                  │  │
+│  │  Ubuntu OS      │                     │  Sensors:        │  │
+│  │                 │                     │  - TF Mini Pro   │  │
+│  │  Runs:          │                     │  - MPU6050 IMU   │  │
+│  │  - Web Server   │                     │  - Neo-6M GPS    │  │
+│  │  - WebSocket    │                     │  - 5x Ultrasonic │  │
+│  │  - SLAM/EKF     │                     │  - HuskyLens     │  │
+│  │                 │                     │                  │  │
+│  └────────┬────────┘                     │  RC Control:     │  │
+│           │                              │  - iBUS (Serial1)│  │
+│           │ WiFi                         └────────┬─────────┘  │
+│           ▼                                       │            │
+│  ┌─────────────────┐                     ┌────────▼─────────┐  │
+│  │  WEB DASHBOARD  │                     │ FLYSKY FS-IA10B  │  │
+│  │  React + Vite   │                     │  (iBUS Protocol) │  │
+│  │  Mobile/Desktop │                     └──────────────────┘  │
+│  └─────────────────┘                              ▲            │
+│                                                   │ 2.4GHz     │
+│  ┌─────────────────┐                     ┌────────┴─────────┐  │
+│  │  HOVERBOARD     │◄── UART ── Arduino  │ FLYSKY FS-I6x    │  │
+│  │  FOC Controller │                     │  Transmitter     │  │
+│  └─────────────────┘                     └──────────────────┘  │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
 
 ### Frontend Architecture
 - **Framework**: React 18 with TypeScript
@@ -31,9 +67,9 @@ The frontend presents a heads-up display (HUD) style interface with telemetry pa
 The Express server handles API routes for routes/waypoints management, telemetry logging, and rover configuration. In development, Vite middleware serves the frontend with hot module replacement.
 
 ### Hardware Integration Layer
-Python modules in `firmware/raspberry_pi_master/` handle:
-- **rover_controller.py**: Flask-based REST API running on the Raspberry Pi, communicating with Arduino via USB serial (115200 baud)
-- **flysky_receiver.py** / **flybaby_receiver.py**: GPIO-based PWM reading for RC transmitter receivers (10-channel support)
+Python modules in `firmware/raspberry_pi_master/` (runs on Mini PC):
+- **rover_controller.py**: Flask-based REST API with WebSocket support, auto-detects Arduino via USB serial (115200 baud)
+- **flysky_receiver.py**: iBUS protocol interface (Arduino handles decoding, module provides API compatibility)
 - **pathfinding.py**: Waypoint navigation with Haversine distance calculations and bearing computation
 - **google_maps_integration.py**: Route optimization via Google Maps Directions API
 
@@ -52,14 +88,102 @@ Python modules in `firmware/raspberry_pi_master/` handle:
 - **Frontend Component**: `SlamMapViewer.tsx` with Canvas rendering, rover position, uncertainty ellipse
 
 ### Data Flow
-1. Sensors → Arduino Mega (I2C/Serial/Digital) → USB Serial → Raspberry Pi
-2. Raspberry Pi Python controller → WebSocket/REST API (port 5000)
+1. Sensors → Arduino Mega (I2C/Serial/Digital) → USB Serial → Mini PC
+2. Mini PC Python controller → WebSocket/REST API (port 5000)
 3. Web dashboard receives real-time telemetry via WebSocket
 4. User commands flow back through WebSocket to authenticated rover clients
 
 ### Mobile/Native Support
 - **Capacitor**: Configured for Android APK builds
 - **PWA**: Service worker for offline support, manifest for installable web app
+
+## Hardware Components
+
+### Controller Boards
+| Component | Description | Connection |
+|-----------|-------------|------------|
+| Mini PC (Intel Celeron) | Main controller, 8GB RAM, Ubuntu | USB to Arduino |
+| Arduino Mega 2560 | Sensor hub, iBUS receiver | USB Serial 115200 |
+
+### Sensors
+| Component | Interface | Arduino Pins |
+|-----------|-----------|--------------|
+| TF Mini Pro LIDAR | Serial | Serial2 (16/17) |
+| MPU6050 IMU | I2C | SDA/SCL (20/21) |
+| Neo-6M GPS | Serial | Serial3 (14/15) |
+| HuskyLens AI Camera | I2C | SDA/SCL (20/21) |
+| HC-SR04 Ultrasonic (×5) | Digital | 22-31 |
+
+### RC Control
+| Component | Protocol | Connection |
+|-----------|----------|------------|
+| FlySky FS-I6x Transmitter | 2.4GHz | Wireless to receiver |
+| FlySky FS-IA10B Receiver | iBUS | Arduino Pin 19 (RX1) |
+
+### Motors
+| Component | Interface | Connection |
+|-----------|-----------|------------|
+| Hoverboard Mainboard | UART | Arduino SoftwareSerial (10/11) |
+
+## Wiring Diagrams
+
+### Arduino Mega Pin Mapping
+```
+Arduino Mega 2560 Pin Assignment
+================================
+
+USB ─────────────────────── Mini PC (Serial 115200)
+
+Serial1 (iBUS):
+  Pin 19 (RX1) ─────────── FS-IA10B iBUS Signal
+  
+Serial2 (LIDAR):
+  Pin 16 (TX2) ─────────── TF Mini Pro RX
+  Pin 17 (RX2) ─────────── TF Mini Pro TX
+
+Serial3 (GPS):
+  Pin 14 (TX3) ─────────── Neo-6M RX
+  Pin 15 (RX3) ─────────── Neo-6M TX
+
+I2C:
+  Pin 20 (SDA) ─────────── MPU6050 SDA, HuskyLens SDA
+  Pin 21 (SCL) ─────────── MPU6050 SCL, HuskyLens SCL
+
+Hoverboard (SoftwareSerial):
+  Pin 10 (RX) ──────────── Hoverboard TX
+  Pin 11 (TX) ──────────── Hoverboard RX
+
+Ultrasonic Sensors:
+  Pin 22 (TRIG1) ───────── HC-SR04 #1 Trigger
+  Pin 23 (ECHO1) ───────── HC-SR04 #1 Echo
+  Pin 24 (TRIG2) ───────── HC-SR04 #2 Trigger
+  Pin 25 (ECHO2) ───────── HC-SR04 #2 Echo
+  Pin 26 (TRIG3) ───────── HC-SR04 #3 Trigger
+  Pin 27 (ECHO3) ───────── HC-SR04 #3 Echo
+  Pin 28 (TRIG4) ───────── HC-SR04 #4 Trigger
+  Pin 29 (ECHO4) ───────── HC-SR04 #4 Echo
+  Pin 30 (TRIG5) ───────── HC-SR04 #5 Trigger
+  Pin 31 (ECHO5) ───────── HC-SR04 #5 Echo
+
+Power:
+  5V ───────────────────── Sensors, FS-IA10B
+  GND ──────────────────── All grounds
+```
+
+### FlySky iBUS Wiring
+```
+FlySky FS-IA10B (iBUS Mode)
+===========================
+
+FS-IA10B Receiver          Arduino Mega
+-----------------          ------------
+iBUS Pin ─────────────────► Pin 19 (RX1)
+VCC (5V) ─────────────────► 5V
+GND ──────────────────────► GND
+
+Note: Set transmitter output mode to "iBUS" in settings.
+Only 1 signal wire needed for all 10 channels!
+```
 
 ## External Dependencies
 
@@ -72,18 +196,6 @@ Python modules in `firmware/raspberry_pi_master/` handle:
 - **Google Maps API**: Used for waypoint navigation, route visualization, and place search (Autocomplete)
   - Requires `GOOGLE_MAPS_API_KEY` environment variable (optional - graceful fallback if not configured)
 
-### Hardware Sensors (Arduino Mega)
-- HuskyLens AI Camera (I2C) - Object detection
-- TF Mini Pro Lidar (Serial3) - Distance measurement
-- MPU6050 IMU (I2C) - Orientation sensing
-- Neo-6M GPS (Serial2) - Geolocation
-- HC-SR04 Ultrasonic Array (5 sensors) - Obstacle detection
-- Hoverboard Mainboard (UART) - Motor control via Emmanuel Feru FOC firmware
-
-### RC Controller Support
-- FlySky FS-I6x with FS-IA10B receiver (10 PWM channels via GPIO)
-- Standard gamepad support via Web Gamepad API (PS4/Xbox controllers)
-
 ### Key NPM Dependencies
 - `@tanstack/react-query`: Server state management
 - `@react-google-maps/api`: Google Maps React components
@@ -91,3 +203,44 @@ Python modules in `firmware/raspberry_pi_master/` handle:
 - `framer-motion`: Animation library
 - `@radix-ui/*`: Accessible UI primitives
 - `@capacitor/*`: Native mobile builds
+- `ws`: WebSocket server
+
+### Arduino Libraries
+- `IBusBM`: FlySky iBUS protocol decoder
+- `Wire`: I2C communication
+- `SoftwareSerial`: Additional serial ports
+
+## Recent Changes
+
+### v3.0.0 (2025-01-02)
+- Migrated from Raspberry Pi 3B+ to Mini PC (Intel Celeron)
+- Changed FlySky receiver from GPIO PWM to Arduino iBUS protocol
+- Single-wire connection for all 10 RC channels
+- Auto-detection of Arduino USB port
+- Improved sensor fusion with proper EKF covariance updates
+- Added WebSocket authentication for secure telemetry
+
+## Project Structure
+
+```
+├── client/                 # React frontend
+│   ├── src/
+│   │   ├── components/    # UI components
+│   │   ├── pages/         # Route pages
+│   │   ├── hooks/         # Custom hooks
+│   │   └── lib/           # Utilities, API, sensor fusion
+├── server/                # Express backend
+│   ├── routes.ts          # API endpoints + WebSocket
+│   ├── storage.ts         # Database operations
+│   └── index.ts           # Server entry
+├── shared/                # Shared types
+│   └── schema.ts          # Drizzle ORM schema
+├── firmware/              # Hardware code
+│   ├── arduino_mega_sensor_controller/
+│   │   └── *.ino          # Arduino firmware
+│   └── raspberry_pi_master/  # Runs on Mini PC
+│       ├── rover_controller.py
+│       ├── flysky_receiver.py
+│       └── pathfinding.py
+└── docs/                  # Documentation
+```

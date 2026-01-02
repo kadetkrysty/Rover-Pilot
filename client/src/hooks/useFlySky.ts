@@ -82,8 +82,9 @@ export const useFlySky = () => {
 
   const pollFlySky = async () => {
     try {
-      // Fetch FlySky data from Raspberry Pi API
-      const response = await fetch('http://localhost:8080/api/flysky/input', {
+      // Fetch iBUS data from Mini PC controller API
+      // iBUS data is now received via Arduino Serial1 and forwarded to API
+      const response = await fetch('/api/ibus', {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
       });
@@ -97,33 +98,57 @@ export const useFlySky = () => {
       }
 
       const data = await response.json();
+      
+      // Handle new iBUS format from Arduino via Mini PC
+      // API returns: { connected, channels: [10], frameRate, control: {throttle, steering} }
+      const channels = data.channels || [];
+      
+      // Map channel array to individual values (iBUS channels are 0-indexed in array)
+      const ch1 = channels[0] || PWM_CENTER;
+      const ch2 = channels[1] || PWM_CENTER;
+      const ch3 = channels[2] || PWM_MIN;
+      const ch4 = channels[3] || PWM_CENTER;
+      const ch5 = channels[4] || PWM_MIN;
+      const ch6 = channels[5] || PWM_MIN;
+      const ch7 = channels[6] || PWM_CENTER;
+      const ch8 = channels[7] || PWM_CENTER;
+      const ch9 = channels[8] || PWM_CENTER;
+      const ch10 = channels[9] || PWM_CENTER;
 
       // Calculate normalized values
-      const throttle = normalizePWM(data.channel3);
-      const steering = normalizePWM(data.channel1);
-      const pitch = normalizePWM(data.channel2);
-      const roll = normalizePWM(data.channel4);
-      const aux1 = normalizePWM(data.channel7);
-      const aux2 = normalizePWM(data.channel8);
-      const aux3 = normalizePWM(data.channel9);
-      const aux4 = normalizePWM(data.channel10);
+      const throttle = normalizePWM(ch3);
+      const steering = normalizePWM(ch1);
+      const pitch = normalizePWM(ch2);
+      const roll = normalizePWM(ch4);
+      const aux1 = normalizePWM(ch7);
+      const aux2 = normalizePWM(ch8);
+      const aux3 = normalizePWM(ch9);
+      const aux4 = normalizePWM(ch10);
 
-      // Determine switch states (threshold at 1200us)
-      const switchThreshold = 1200;
-      const switchA = data.channel5 > switchThreshold;
-      const switchB = data.channel6 > switchThreshold;
+      // Determine switch states (threshold at 1500us for 2-position switches)
+      const switchThreshold = 1500;
+      const switchA = ch5 > switchThreshold;
+      const switchB = ch6 > switchThreshold;
+
+      // Use backend-provided signalStrength if available, otherwise calculate from frame rate
+      const signalStrength = data.signalStrength !== undefined 
+        ? data.signalStrength 
+        : (data.connected ? Math.min(100, (data.frameRate / 143) * 100) : 0);
+
+      // Use backend-provided failsafe flag (true if transmitter signal lost)
+      const failsafeActive = data.failsafe !== undefined ? data.failsafe : !data.connected;
 
       setFlySkyInput({
-        channel1: data.channel1 || PWM_CENTER,
-        channel2: data.channel2 || PWM_CENTER,
-        channel3: data.channel3 || PWM_MIN,
-        channel4: data.channel4 || PWM_CENTER,
-        channel5: data.channel5 || PWM_MIN,
-        channel6: data.channel6 || PWM_MIN,
-        channel7: data.channel7 || PWM_CENTER,
-        channel8: data.channel8 || PWM_CENTER,
-        channel9: data.channel9 || PWM_CENTER,
-        channel10: data.channel10 || PWM_CENTER,
+        channel1: ch1,
+        channel2: ch2,
+        channel3: ch3,
+        channel4: ch4,
+        channel5: ch5,
+        channel6: ch6,
+        channel7: ch7,
+        channel8: ch8,
+        channel9: ch9,
+        channel10: ch10,
         throttle,
         steering,
         pitch,
@@ -135,8 +160,8 @@ export const useFlySky = () => {
         aux3,
         aux4,
         isConnected: data.connected || false,
-        signalStrength: data.signalStrength || 0,
-        failsafeActive: data.failsafe || false,
+        signalStrength: signalStrength,
+        failsafeActive: failsafeActive,
         frameRate: data.frameRate || 0,
       });
 

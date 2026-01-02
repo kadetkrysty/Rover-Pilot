@@ -17,12 +17,12 @@ export default function Setup() {
     };
 
     return (
-        <div className="min-h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden">
+        <div className="min-h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden" data-testid="page-setup">
             <div className="scanline"></div>
             
             <div className="absolute inset-0 bg-grid-pattern opacity-20 pointer-events-none"></div>
 
-            <Card className="w-full max-w-md border-primary/50 bg-black/80 backdrop-blur-xl shadow-[0_0_50px_rgba(var(--primary),0.2)]">
+            <Card className="w-full max-w-md border-primary/50 bg-black/80 backdrop-blur-xl shadow-[0_0_50px_rgba(var(--primary),0.2)]" data-testid="card-setup">
                 <CardHeader>
                     <div className="flex justify-center mb-6">
                         <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center border border-primary animate-pulse">
@@ -39,11 +39,11 @@ export default function Setup() {
                 <CardContent className="space-y-4">
                     <div className="space-y-2">
                         <Label className="text-xs font-mono uppercase text-primary/70">Rover IP Address</Label>
-                        <Input defaultValue="192.168.1.100" className="font-mono bg-background/50 border-primary/30 focus:border-primary text-lg" />
+                        <Input defaultValue="192.168.1.100" className="font-mono bg-background/50 border-primary/30 focus:border-primary text-lg" data-testid="input-rover-ip" />
                     </div>
                     <div className="space-y-2">
                          <Label className="text-xs font-mono uppercase text-primary/70">Port</Label>
-                        <Input defaultValue="8080" className="font-mono bg-background/50 border-primary/30 focus:border-primary text-lg" />
+                        <Input defaultValue="5000" className="font-mono bg-background/50 border-primary/30 focus:border-primary text-lg" data-testid="input-rover-port" />
                     </div>
                     
                     <div className="p-4 rounded bg-primary/5 border border-primary/20 mt-6">
@@ -51,10 +51,11 @@ export default function Setup() {
                             <Cpu className="w-4 h-4" /> AUTO-DETECTED HARDWARE
                         </div>
                         <ul className="text-xs font-mono text-muted-foreground space-y-1">
-                            <li>• Raspberry Pi 3 B+ (ARMv8)</li>
-                            <li>• Arduino Mega 2560 (Serial USB0)</li>
+                            <li>• Mini PC (Intel Celeron) - Ubuntu</li>
+                            <li>• Arduino Mega 2560 (USB Serial)</li>
+                            <li>• FlySky FS-IA10B (iBUS Protocol)</li>
                             <li>• Hoverboard Controller (FOC Firmware)</li>
-                            <li>• HuskyLens AI Camera (I2C)</li>
+                            <li>• Sensors: LIDAR, IMU, GPS, Ultrasonic, HuskyLens</li>
                         </ul>
                     </div>
                 </CardContent>
@@ -63,11 +64,12 @@ export default function Setup() {
                         className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-display tracking-widest h-12"
                         onClick={handleConnect}
                         disabled={connecting}
+                        data-testid="button-connect"
                     >
                         {connecting ? "ESTABLISHING UPLINK..." : "CONNECT TO SYSTEM"}
                     </Button>
                     <Link href="/">
-                        <Button variant="ghost" className="w-full font-mono text-xs">
+                        <Button variant="ghost" className="w-full font-mono text-xs" data-testid="button-skip-setup">
                             <ArrowLeft className="w-3 h-3 mr-2" /> SKIP SETUP (DEMO MODE)
                         </Button>
                     </Link>

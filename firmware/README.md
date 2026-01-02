@@ -1,228 +1,412 @@
-# Autonomous Rover Firmware & Control System
+# RoverOS Firmware v3.0.0
 
-This directory contains the firmware and control software for the SLAM-enabled autonomous rover.
+This directory contains the firmware for the RoverOS autonomous rover system.
+
+## System Architecture
+
+```
+┌──────────────────┐      USB Serial      ┌──────────────────┐
+│    MINI PC       │◄────────────────────►│  ARDUINO MEGA    │
+│  Intel Celeron   │    115200 baud       │     2560         │
+│  Ubuntu          │                      │                  │
+│                  │                      │  Sensors:        │
+│  rover_controller│                      │  - TF Mini Pro   │
+│  WebSocket API   │                      │  - MPU6050       │
+│  SLAM/EKF        │                      │  - GPS Neo-6M    │
+│                  │                      │  - Ultrasonic x5 │
+│                  │                      │  - HuskyLens     │
+│                  │                      │                  │
+│                  │                      │  RC Control:     │
+│                  │                      │  - iBUS Protocol │
+└──────────────────┘                      └────────┬─────────┘
+                                                   │
+                                          ┌────────▼─────────┐
+                                          │ FlySky FS-IA10B  │
+                                          │   10-Channel     │
+                                          │   iBUS Receiver  │
+                                          └──────────────────┘
+```
 
 ## Directory Structure
 
 ```
 firmware/
 ├── arduino_mega_sensor_controller/
-│   └── arduino_mega_sensor_controller.ino    # Arduino Mega controller sketch
-├── raspberry_pi_master/
-│   └── rover_controller.py                   # Raspberry Pi master controller
-└── README.md                                 # This file
+│   └── arduino_mega_sensor_controller.ino  # Arduino firmware v3.0
+├── raspberry_pi_master/                    # Runs on Mini PC
+│   ├── rover_controller.py                 # Main controller
+│   ├── flysky_receiver.py                  # iBUS interface
+│   ├── pathfinding.py                      # Navigation
+│   └── google_maps_integration.py          # Route planning
+└── README.md                               # This file
 ```
 
-## Hardware Stack
+## Hardware Components
 
-### Master Controller
-- **Raspberry Pi 3 B+** - Main computer running Python web server
-- Communicates with Arduino via USB serial (115200 baud)
-- Serves REST API to web dashboard on port 8080
-
-### Sensor Controller
-- **Arduino Mega 2560** - Sensor fusion and hoverboard control
-- Reads all sensors and sends telemetry to Pi
-- Receives movement commands from Pi
-
-### Actuators
-- **Hoverboard Mainboard (Emmanuel Feru FOC firmware)** - Drive motors
-- **UART connection** to Arduino (pins 18/19)
+### Controller Boards
+| Component | Description | Connection |
+|-----------|-------------|------------|
+| Mini PC (Intel Celeron) | Main controller, 8GB RAM, Ubuntu | USB to Arduino |
+| Arduino Mega 2560 | Sensor hub, iBUS receiver | USB Serial 115200 |
 
 ### Sensors
+| Sensor | Protocol | Arduino Pins | Purpose |
+|--------|----------|--------------|---------|
+| TF Mini Pro | Serial2 | 16/17 | LIDAR distance |
+| MPU6050 | I2C | 20/21 | IMU (pitch/roll/heading) |
+| Neo-6M | Serial3 | 14/15 | GPS location |
+| HuskyLens | I2C | 20/21 | AI camera |
+| HC-SR04 x5 | Digital | 22-31 | Ultrasonic array |
 
-| Sensor | Protocol | Arduino Pin | Purpose |
-|--------|----------|-------------|---------|
-| HuskyLens AI Camera | I2C | 20/21 | Object detection, obstacle avoidance |
-| TF Mini Pro Lidar | Serial3 | 16/17 | Distance measurement for navigation |
-| MPU6050 IMU | I2C | 20/21 | Pitch, roll, heading (6-axis) |
-| Neo-6M GPS | Serial2 | 14/15 | Geolocation tracking |
-| HC-SR04 x5 | Digital I/O | 22-31 | Ultrasonic array for obstacle detection |
+### RC Control
+| Component | Protocol | Connection |
+|-----------|----------|------------|
+| FlySky FS-I6x | 2.4GHz | Transmitter |
+| FlySky FS-IA10B | iBUS | Arduino Pin 19 |
 
-## Installation & Setup
-
-### Arduino Setup (Windows/Mac/Linux)
-
-1. **Download Arduino IDE**: https://www.arduino.cc/en/software
-2. **Install Board Support**:
-   - Board: Arduino Mega or Mega 2560
-   - Processor: ATmega2560
-3. **Install Libraries**:
-   ```
-   - HuskyLens (from Library Manager)
-   - MPU6050 (by I2C DevicesElectronics)
-   - SoftwareSerial (built-in)
-   ```
-4. **Upload**:
-   - Open `arduino_mega_sensor_controller.ino`
-   - Select Board: Arduino Mega 2560
-   - Select Port: COM port where Mega is connected
-   - Click Upload
-
-5. **Serial Monitor**:
-   - Set baud to 115200
-   - You should see: `[SYSTEM] Arduino Mega Sensor Controller READY`
-
-### Raspberry Pi Setup
-
-1. **SSH into Pi**:
-   ```bash
-   ssh pi@raspberrypi.local
-   ```
-
-2. **Update system**:
-   ```bash
-   sudo apt update && sudo apt upgrade
-   ```
-
-3. **Install Python dependencies**:
-   ```bash
-   sudo apt install python3-pip
-   pip3 install flask flask-cors pyserial
-   ```
-
-4. **Upload Python script**:
-   ```bash
-   # Copy rover_controller.py to Pi
-   scp rover_controller.py pi@raspberrypi.local:/home/pi/
-   ```
-
-5. **Run the controller**:
-   ```bash
-   python3 /home/pi/rover_controller.py
-   ```
-
-6. **Verify connection**:
-   - You should see: `[OK] Connected to Arduino on /dev/ttyACM0`
-   - The Pi web server starts on port 8080
-
-## Wiring Diagram
-
-### Power Distribution
-```
-[36V Battery]
-   ├──> Hoverboard Mainboard (36V direct)
-   │    └──> Motors (left/right)
-   │
-   └──> DC-DC Converter 36V → 5V/5A
-        ├──> Raspberry Pi (USB power)
-        │    └──> USB Camera
-        │
-        └──> Arduino Mega (VIN pin)
-             ├──> Sensors (5V rail)
-             └──> HuskyLens (5V)
-```
-
-### Communication Lines
-```
-Raspberry Pi (USB) ←→ Arduino Mega (UART)
-                           ├─ Serial1 (pins 18/19) ←→ Hoverboard (TX/RX with level shifter!)
-                           ├─ Serial2 (pins 14/15) ←→ GPS Module
-                           ├─ Serial3 (pins 16/17) ←→ Lidar TF Mini
-                           ├─ I2C (pins 20/21)     ←→ HuskyLens
-                           ├─ I2C (pins 20/21)     ←→ MPU6050
-                           └─ Digital I/O          ←→ Ultrasonic Array (5x)
-```
-
-### Level Shifting (Critical!)
-The Hoverboard TX/RX operates at **3.3V**, but Arduino pins are **5V**. Use a level shifter:
-- TXO (Hoverboard 3.3V) → Level Shifter → RX1 (Arduino 5V)
-- TX1 (Arduino 5V) → Level Shifter → RXI (Hoverboard 3.3V)
-
-Recommended: **TC4427** or **74LVC245** level shifter IC
-
-## API Endpoints
-
-### Telemetry
-```
-GET /api/telemetry
-Returns: {speed, battery, heading, pitch, roll, lidar, ultrasonic[], gps, mode, log}
-```
-
-### Control
-```
-POST /api/control
-Body: {"throttle": -100..100, "steering": -100..100}
-Example: {"throttle": 50, "steering": -20}  # Forward-left
-```
-
-### Stop
-```
-POST /api/stop
-Emergency stop (sets throttle/steering to 0)
-```
-
-### Status
-```
-GET /api/status
-Returns: {arduino_connected, mode, timestamp}
-```
-
-## Command Protocol (Arduino ↔ Pi)
-
-### Telemetry (Pi ← Arduino) - JSON per line
-```json
-{"spd":5.2,"bat":82.0,"hdg":45.0,"pitch":2.1,"roll":-1.5,"lidar":120,"ultra":[150,200,45,180,190]}
-```
-
-### Commands (Pi → Arduino) - Text per line
-```
-MOVE:100,50      # throttle=100, steering=50
-STOP             # Emergency stop
-PING             # Test connection
-```
-
-## Autonomous SLAM Integration
-
-The rover is ready for SLAM (Simultaneous Localization and Mapping):
-- **Lidar**: TF Mini Pro provides range data
-- **IMU**: MPU6050 tracks heading changes
-- **GPS**: Neo-6M provides coarse positioning
-- **Camera**: HuskyLens detects obstacles
-
-To implement:
-1. Use `robot_localization` package (ROS) or `g2o` (C++)
-2. Feed lidar + IMU data into EKF
-3. Output navigation commands to `/api/control`
-
-## Troubleshooting
-
-### Arduino not detected on Pi
-```bash
-ls /dev/ttyACM*
-# Should show /dev/ttyACM0 or similar
-```
-
-### Hoverboard not responding
-- Check level shifter connections (very common issue!)
-- Verify baud rate is 115200
-- Test with hoverboard's native app first
-
-### GPS not acquiring fix
-- Needs clear sky view (requires ~5-10 minutes first fix)
-- Check antenna connection
-- Verify Serial2 (pins 14/15) connections
-
-### Sensor readings wrong
-- Verify I2C pull-up resistors (4.7kΩ typical)
-- Check Wire.begin() is called
-- Try different I2C address (default 0x68 for MPU6050, 0x32 for HuskyLens)
-
-## Next Steps
-
-1. ✅ Sensor reading & telemetry
-2. ✅ Manual joystick control
-3. 🔄 Implement SLAM navigation
-4. 🔄 Add waypoint following
-5. 🔄 Integrate with dashboard for autonomous mission planning
-
-## References
-
-- Emmanuel Feru Hoverboard: https://github.com/EmanuelFeru/hoverboard-firmware-hack-FOC
-- TF Mini Pro: https://www.sparkfun.com/products/14588
-- HuskyLens: https://www.dfrobot.com/product-1922.html
-- MPU6050: https://invensense.tdk.com/products/motion-tracking/6-axis/mpu-6050/
+### Motors
+| Component | Interface | Connection |
+|-----------|-----------|------------|
+| Hoverboard Mainboard | UART | Arduino SoftwareSerial 10/11 |
 
 ---
 
-Last Updated: December 29, 2025
+## Arduino Firmware Setup
+
+### Prerequisites
+
+1. **Arduino IDE 2.x** - [Download](https://www.arduino.cc/en/software)
+2. **Required Libraries** (install via Library Manager):
+   - `IBusBM` by bmellink - FlySky iBUS decoder
+   - Wire (built-in)
+   - SoftwareSerial (built-in)
+
+### Installation
+
+1. Open `arduino_mega_sensor_controller.ino`
+2. Select **Board**: Arduino Mega 2560
+3. Select **Processor**: ATmega2560
+4. Select **Port**: Your Arduino's COM port
+5. Click **Upload**
+
+### Verify Installation
+
+Open Serial Monitor at 115200 baud:
+```
+{"event":"boot","version":"3.0.0","controller":"Arduino Mega 2560"}
+{"event":"ready","ibus":true,"channels":10}
+```
+
+---
+
+## Mini PC Host Setup
+
+### Prerequisites
+
+- Ubuntu 20.04+ or any Linux
+- Python 3.8+
+
+### Installation
+
+```bash
+cd firmware/raspberry_pi_master
+
+# Install dependencies
+pip install flask flask-cors flask-socketio pyserial
+
+# Add user to dialout group (for serial access)
+sudo usermod -aG dialout $USER
+
+# Reboot or logout/login for group to take effect
+```
+
+### Running the Controller
+
+```bash
+python3 rover_controller.py
+```
+
+Expected output:
+```
+============================================================
+  ROVER MASTER CONTROLLER v3.0.0
+  Mini PC Host - Ubuntu / Intel Celeron
+  RC: FlySky FS-I6x + FS-IA10B (iBUS Protocol)
+============================================================
+
+[OK] Connected to Arduino on /dev/ttyACM0
+[INIT] Starting server on 0.0.0.0:5000
+[INIT] Press Ctrl+C to stop
+```
+
+### Auto-Start on Boot
+
+Create a systemd service:
+
+```bash
+sudo nano /etc/systemd/system/rover.service
+```
+
+```ini
+[Unit]
+Description=RoverOS Controller
+After=network.target
+
+[Service]
+Type=simple
+User=your_username
+WorkingDirectory=/home/your_username/firmware/raspberry_pi_master
+ExecStart=/usr/bin/python3 rover_controller.py
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+sudo systemctl enable rover
+sudo systemctl start rover
+```
+
+---
+
+## Wiring Diagrams
+
+### Arduino Mega Pin Assignment
+
+```
+Arduino Mega 2560 Pin Assignment v3.0
+=====================================
+
+USB ─────────────────────── Mini PC (Serial 115200)
+
+Serial1 (iBUS - FlySky Receiver):
+  Pin 19 (RX1) ─────────── FS-IA10B iBUS Signal
+  
+Serial2 (LIDAR):
+  Pin 16 (TX2) ─────────── TF Mini Pro RX
+  Pin 17 (RX2) ─────────── TF Mini Pro TX
+
+Serial3 (GPS):
+  Pin 14 (TX3) ─────────── Neo-6M RX
+  Pin 15 (RX3) ─────────── Neo-6M TX
+
+I2C:
+  Pin 20 (SDA) ─────────── MPU6050 SDA, HuskyLens SDA
+  Pin 21 (SCL) ─────────── MPU6050 SCL, HuskyLens SCL
+
+Hoverboard (SoftwareSerial):
+  Pin 10 (RX) ──────────── Hoverboard TX (via level shifter!)
+  Pin 11 (TX) ──────────── Hoverboard RX (via level shifter!)
+
+Ultrasonic Sensors:
+  Pin 22/23 ────────────── HC-SR04 #1 (Front Center)
+  Pin 24/25 ────────────── HC-SR04 #2 (Front Left)
+  Pin 26/27 ────────────── HC-SR04 #3 (Front Right)
+  Pin 28/29 ────────────── HC-SR04 #4 (Rear Left)
+  Pin 30/31 ────────────── HC-SR04 #5 (Rear Right)
+
+Status LED:
+  Pin 13 ───────────────── Built-in LED (heartbeat)
+
+Power:
+  5V ───────────────────── All sensors, FS-IA10B receiver
+  GND ──────────────────── Common ground
+```
+
+### FlySky iBUS Wiring
+
+```
+FlySky FS-IA10B to Arduino Mega (iBUS Protocol)
+================================================
+
+    FS-IA10B Receiver              Arduino Mega
+    -----------------              ------------
+    iBUS Pin ───────────────────► Pin 19 (RX1)
+    VCC (5V) ───────────────────► 5V
+    GND ────────────────────────► GND
+
+Benefits of iBUS vs PWM:
+✓ Single wire for all 10 channels (vs 10 wires for PWM)
+✓ Digital signal - more accurate than PWM
+✓ ~143 Hz update rate
+✓ Built-in failsafe detection
+
+Transmitter Setup:
+1. Power on FS-I6x while holding "BIND KEY"
+2. Go to System → Output Mode → Set to "iBUS"
+3. Save and power cycle
+```
+
+### Power Distribution
+
+```
+Power Wiring Diagram
+====================
+
+[36V LiPo Battery]
+       │
+       ├──────────────────────► Hoverboard Mainboard
+       │                              │
+       │                              ├──► Left Motor
+       │                              └──► Right Motor
+       │
+       └──► [DC-DC Buck Converter 36V → 5V/5A]
+                     │
+                     ├──► Mini PC (USB-C PD or barrel jack)
+                     │
+                     └──► Arduino Mega (VIN or USB)
+                               │
+                               ├──► TF Mini Pro (5V)
+                               ├──► MPU6050 (3.3V from Arduino)
+                               ├──► Neo-6M GPS (3.3V-5V)
+                               ├──► HuskyLens (5V)
+                               ├──► HC-SR04 x5 (5V)
+                               └──► FS-IA10B Receiver (5V)
+```
+
+---
+
+## iBUS Protocol Details
+
+### What is iBUS?
+
+iBUS (Intelligent Bus) is FlySky's digital serial protocol that sends all RC channels on a single wire at 115200 baud. The Arduino IBusBM library decodes this into individual channel values.
+
+### Channel Mapping
+
+| Channel | FlySky FS-I6x Control | PWM Range | Use Case |
+|---------|----------------------|-----------|----------|
+| CH1 | Right Stick Horizontal | 1000-2000 | Steering |
+| CH2 | Right Stick Vertical | 1000-2000 | (Unused) |
+| CH3 | Left Stick Vertical | 1000-2000 | Throttle |
+| CH4 | Left Stick Horizontal | 1000-2000 | (Unused) |
+| CH5 | Switch A (SwA) | 1000/2000 | Mode select |
+| CH6 | Switch B (SwB) | 1000/2000 | Lights/Horn |
+| CH7 | Switch C (SwC) | 1000/1500/2000 | Speed limit |
+| CH8 | Switch D (SwD) | 1000/2000 | E-Stop |
+| CH9 | Variable Dial A | 1000-2000 | Fine adjust |
+| CH10 | Variable Dial B | 1000-2000 | Fine adjust |
+
+### Telemetry Format
+
+Arduino sends JSON at 20Hz:
+
+```json
+{
+  "t": 123456,
+  "gps": {"lat": 34.0522, "lng": -118.2437, "spd": 0, "acc": 5},
+  "imu": {"hdg": 45.0, "pitch": 1.2, "roll": -0.5, "ax": 0, "ay": 0, "az": 1},
+  "lidar": 150,
+  "ultra": [50, 45, 60, 55, 48],
+  "ibus": {"con": true, "ch": [1500,1500,1000,1500,1000,1000,1500,1000,1500,1500]},
+  "bat": 85.0
+}
+```
+
+---
+
+## API Reference
+
+### REST Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/telemetry` | GET | Current sensor data |
+| `/api/control` | POST | `{throttle, steering}` |
+| `/api/stop` | POST | Emergency stop |
+| `/api/mode` | POST | `{mode: "MANUAL"/"RC"/"AUTONOMOUS"}` |
+| `/api/ibus` | GET | RC channel values |
+| `/api/status` | GET | Connection status |
+| `/api/system/info` | GET | System information |
+
+### WebSocket Events
+
+| Event | Direction | Payload |
+|-------|-----------|---------|
+| `telemetry` | Server→Client | Full sensor data |
+| `command` | Client→Server | `{type, throttle, steering}` |
+| `status` | Server→Client | Connection updates |
+
+---
+
+## Troubleshooting
+
+### Arduino Not Detected
+
+```bash
+# Check if Arduino is connected
+ls /dev/ttyACM* /dev/ttyUSB*
+
+# Add user to dialout group
+sudo usermod -aG dialout $USER
+# Then logout and login again
+
+# Check USB cable is data-capable (not charge-only)
+```
+
+### iBUS Not Working
+
+1. Verify receiver is bound (solid LED, not blinking)
+2. Check iBUS wire is connected to Pin 19 (RX1)
+3. Verify transmitter is set to iBUS output mode
+4. Power cycle the receiver
+
+### No GPS Lock
+
+- GPS needs clear sky view
+- First fix takes 5-10 minutes
+- Check antenna connection
+- Verify Serial3 wiring (pins 14/15)
+
+### I2C Sensors Not Responding
+
+```bash
+# On Arduino, run I2C scanner sketch
+# Expected addresses:
+# - MPU6050: 0x68 or 0x69
+# - HuskyLens: 0x32
+```
+
+### Hoverboard Not Responding
+
+- Use logic level shifter (Arduino 5V ↔ Hoverboard 3.3V)
+- Verify SoftwareSerial pins (10/11)
+- Check baud rate is 115200
+- Test with hoverboard's native Bluetooth app first
+
+---
+
+## Version History
+
+### v3.0.0 (2025-01-02)
+- **Major**: Migrated from Raspberry Pi 3B+ to Mini PC (Intel Celeron)
+- **Major**: Added iBUS protocol support (replaces 10-wire GPIO PWM)
+- Single-wire RC connection for all 10 channels
+- Auto-detection of Arduino USB port
+- Improved GPS NMEA parsing with decimal degree output
+- Enhanced JSON telemetry format
+- WebSocket support with Flask-SocketIO
+
+### v2.4.0 (2024-12-29)
+- Added HuskyLens AI camera support
+- Improved ultrasonic sensor timing
+- Added waypoint navigation API
+
+### v2.0.0 (2024-12-01)
+- Initial sensor fusion implementation
+- Added EKF for position estimation
+
+---
+
+## References
+
+- [IBusBM Library](https://github.com/bmellink/IBusBM)
+- [Emmanuel Feru FOC Firmware](https://github.com/EmanuelFeru/hoverboard-firmware-hack-FOC)
+- [TF Mini Pro Datasheet](https://www.sparkfun.com/products/14588)
+- [HuskyLens Wiki](https://wiki.dfrobot.com/HUSKYLENS_V1.0_SKU_SEN0305_SEN0336)
+- [MPU6050 Register Map](https://invensense.tdk.com/wp-content/uploads/2015/02/MPU-6000-Register-Map1.pdf)
+
+---
+
+Last Updated: January 2, 2025
