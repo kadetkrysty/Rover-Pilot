@@ -12,6 +12,8 @@ import GamepadControl from "@/pages/GamepadControl";
 import FlySkyControl from "@/pages/FlySkyControl";
 import SystemDiagnostics from "@/pages/SystemDiagnostics";
 import Mapping from "@/pages/Mapping";
+import VideoRecordings from "@/pages/VideoRecordings";
+import CloudSync from "@/pages/CloudSync";
 
 function Router() {
   return (
@@ -24,6 +26,8 @@ function Router() {
       <Route path="/flysky" component={FlySkyControl} />
       <Route path="/diagnostics" component={SystemDiagnostics} />
       <Route path="/mapping" component={Mapping} />
+      <Route path="/recordings" component={VideoRecordings} />
+      <Route path="/sync" component={CloudSync} />
       <Route component={NotFound} />
     </Switch>
   );

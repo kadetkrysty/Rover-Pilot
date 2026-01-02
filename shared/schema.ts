@@ -196,3 +196,90 @@ export interface MapUpdate {
   roverPose: { x: number; y: number; theta: number };
   timestamp: number;
 }
+
+// Video Recordings - Captured mission footage
+export const videoRecordings = pgTable("video_recordings", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  routeId: integer("route_id").references(() => routes.id, { onDelete: 'set null' }),
+  duration: integer("duration").notNull().default(0),
+  fileSize: integer("file_size").notNull().default(0),
+  filePath: text("file_path"),
+  thumbnailPath: text("thumbnail_path"),
+  status: text("status").notNull().default('recording'),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  endedAt: timestamp("ended_at"),
+});
+
+export const insertVideoRecordingSchema = createInsertSchema(videoRecordings).omit({
+  id: true,
+  createdAt: true,
+  endedAt: true,
+});
+
+export type InsertVideoRecording = z.infer<typeof insertVideoRecordingSchema>;
+export type VideoRecording = typeof videoRecordings.$inferSelect;
+
+// Failsafe Events - Log safety-critical events
+export const failsafeEvents = pgTable("failsafe_events", {
+  id: serial("id").primaryKey(),
+  eventType: text("event_type").notNull(),
+  severity: text("severity").notNull().default('warning'),
+  message: text("message").notNull(),
+  sensorData: jsonb("sensor_data").$type<Record<string, unknown>>(),
+  resolved: integer("resolved").notNull().default(0),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  resolvedAt: timestamp("resolved_at"),
+});
+
+export const insertFailsafeEventSchema = createInsertSchema(failsafeEvents).omit({
+  id: true,
+  createdAt: true,
+  resolvedAt: true,
+});
+
+export type InsertFailsafeEvent = z.infer<typeof insertFailsafeEventSchema>;
+export type FailsafeEvent = typeof failsafeEvents.$inferSelect;
+
+// Sync Records - Track cloud synchronization
+export const syncRecords = pgTable("sync_records", {
+  id: serial("id").primaryKey(),
+  entityType: text("entity_type").notNull(),
+  entityId: integer("entity_id").notNull(),
+  syncDirection: text("sync_direction").notNull(),
+  syncStatus: text("sync_status").notNull().default('pending'),
+  cloudId: text("cloud_id"),
+  lastSyncedAt: timestamp("last_synced_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertSyncRecordSchema = createInsertSchema(syncRecords).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertSyncRecord = z.infer<typeof insertSyncRecordSchema>;
+export type SyncRecord = typeof syncRecords.$inferSelect;
+
+// Failsafe configuration types
+export interface FailsafeConfig {
+  signalLossThreshold: number;
+  batteryLowThreshold: number;
+  batteryCriticalThreshold: number;
+  obstacleFrontThreshold: number;
+  obstacleSideThreshold: number;
+  gpsLossTimeout: number;
+  imuDriftThreshold: number;
+  motorOverheatThreshold: number;
+  emergencyStopEnabled: boolean;
+  returnToHomeEnabled: boolean;
+}
+
+export interface FailsafeTrigger {
+  type: 'signal_loss' | 'battery_low' | 'battery_critical' | 'obstacle_detected' | 
+        'gps_loss' | 'imu_drift' | 'motor_overheat' | 'manual_estop' | 'geofence_breach';
+  severity: 'info' | 'warning' | 'critical' | 'emergency';
+  action: 'alert' | 'reduce_speed' | 'stop' | 'return_home' | 'emergency_stop';
+  message: string;
+}

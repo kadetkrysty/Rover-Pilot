@@ -25,6 +25,14 @@ export interface WebSocketMessage {
 
 export type ClientRole = 'viewer' | 'operator' | 'rover';
 
+export interface ConnectionStatus {
+  state: 'connecting' | 'connected' | 'disconnected' | 'reconnecting' | 'error';
+  lastConnectedAt: number | null;
+  lastError: string | null;
+  reconnectAttempts: number;
+  latency: number;
+}
+
 export interface UseWebSocketResult {
   isConnected: boolean;
   isAuthenticated: boolean;
@@ -32,6 +40,7 @@ export interface UseWebSocketResult {
   sessionId: string | null;
   telemetry: TelemetryData | null;
   lidarScans: LidarScan[];
+  connectionStatus: ConnectionStatus;
   sendCommand: (command: object) => void;
   authenticate: (role: ClientRole, token: string) => void;
   reconnect: () => void;
@@ -44,9 +53,18 @@ export function useWebSocket(): UseWebSocketResult {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [telemetry, setTelemetry] = useState<TelemetryData | null>(null);
   const [lidarScans, setLidarScans] = useState<LidarScan[]>([]);
+  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>({
+    state: 'connecting',
+    lastConnectedAt: null,
+    lastError: null,
+    reconnectAttempts: 0,
+    latency: 0
+  });
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<number | null>(null);
   const reconnectAttemptsRef = useRef(0);
+  const pingIntervalRef = useRef<number | null>(null);
+  const lastPingRef = useRef<number>(0);
 
   const connect = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
@@ -64,6 +82,24 @@ export function useWebSocket(): UseWebSocketResult {
         console.log('WebSocket connected');
         setIsConnected(true);
         reconnectAttemptsRef.current = 0;
+        setConnectionStatus(prev => ({
+          ...prev,
+          state: 'connected',
+          lastConnectedAt: Date.now(),
+          lastError: null,
+          reconnectAttempts: 0
+        }));
+        
+        // Start ping interval for latency measurement
+        if (pingIntervalRef.current) {
+          clearInterval(pingIntervalRef.current);
+        }
+        pingIntervalRef.current = window.setInterval(() => {
+          if (ws.readyState === WebSocket.OPEN) {
+            lastPingRef.current = Date.now();
+            ws.send(JSON.stringify({ type: 'ping' }));
+          }
+        }, 5000);
       };
 
       ws.onmessage = (event) => {
@@ -82,21 +118,44 @@ export function useWebSocket(): UseWebSocketResult {
             setTelemetry(message.data as TelemetryData);
           } else if (message.type === 'lidar_scan' && message.data) {
             setLidarScans(message.data as LidarScan[]);
+          } else if (message.type === 'pong') {
+            const latency = Date.now() - lastPingRef.current;
+            setConnectionStatus(prev => ({ ...prev, latency }));
           } else if (message.type === 'error') {
             console.error('WebSocket error:', message.message);
+            setConnectionStatus(prev => ({
+              ...prev,
+              lastError: message.message || 'Unknown error'
+            }));
           }
         } catch (error) {
           console.error('Error parsing WebSocket message:', error);
+          setConnectionStatus(prev => ({
+            ...prev,
+            lastError: 'Failed to parse message'
+          }));
         }
       };
 
-      ws.onclose = () => {
-        console.log('WebSocket disconnected');
+      ws.onclose = (event) => {
+        console.log('WebSocket disconnected', event.code, event.reason);
         setIsConnected(false);
         wsRef.current = null;
+        
+        if (pingIntervalRef.current) {
+          clearInterval(pingIntervalRef.current);
+          pingIntervalRef.current = null;
+        }
 
         const delay = Math.min(1000 * Math.pow(2, reconnectAttemptsRef.current), 30000);
         reconnectAttemptsRef.current++;
+        
+        setConnectionStatus(prev => ({
+          ...prev,
+          state: 'reconnecting',
+          reconnectAttempts: reconnectAttemptsRef.current,
+          lastError: event.reason || `Connection closed (code: ${event.code})`
+        }));
         
         reconnectTimeoutRef.current = window.setTimeout(() => {
           connect();
@@ -105,9 +164,19 @@ export function useWebSocket(): UseWebSocketResult {
 
       ws.onerror = (error) => {
         console.error('WebSocket error:', error);
+        setConnectionStatus(prev => ({
+          ...prev,
+          state: 'error',
+          lastError: 'Connection error'
+        }));
       };
     } catch (error) {
       console.error('Failed to create WebSocket:', error);
+      setConnectionStatus(prev => ({
+        ...prev,
+        state: 'error',
+        lastError: 'Failed to create connection'
+      }));
     }
   }, []);
 
@@ -152,6 +221,14 @@ export function useWebSocket(): UseWebSocketResult {
     };
   }, [connect]);
 
+  useEffect(() => {
+    return () => {
+      if (pingIntervalRef.current) {
+        clearInterval(pingIntervalRef.current);
+      }
+    };
+  }, []);
+
   return {
     isConnected,
     isAuthenticated,
@@ -159,6 +236,7 @@ export function useWebSocket(): UseWebSocketResult {
     sessionId,
     telemetry,
     lidarScans,
+    connectionStatus,
     sendCommand,
     authenticate,
     reconnect,

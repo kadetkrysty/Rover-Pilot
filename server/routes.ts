@@ -521,6 +521,9 @@ export async function registerRoutes(
               c.ws.send(JSON.stringify({ type: "command", command: parsed.command }));
             }
           });
+        } else if (parsed.type === "ping") {
+          // Respond to ping with pong for latency measurement
+          ws.send(JSON.stringify({ type: "pong", timestamp: Date.now() }));
         } else if (parsed.type === "lidar_scan") {
           if (clientInfo.role !== 'rover' || !clientInfo.authenticated) return;
           broadcastToAuthenticatedClients({ type: "lidar_scan", data: parsed.data });
@@ -583,6 +586,93 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error receiving telemetry:", error);
       res.status(500).json({ error: "Failed to process telemetry" });
+    }
+  });
+
+  // Export API - Backup all data to JSON
+  app.get("/api/export/all", async (_req, res) => {
+    try {
+      const routes = await storage.getRoutes();
+      const configs = await storage.getAllConfig();
+      
+      // Get waypoints for each route
+      const routesWithWaypoints = await Promise.all(
+        routes.map(async (route) => ({
+          ...route,
+          waypoints: await storage.getWaypoints(route.id)
+        }))
+      );
+
+      const exportData = {
+        version: '3.0.0',
+        exportDate: new Date().toISOString(),
+        data: {
+          routes: routesWithWaypoints,
+          config: configs
+        }
+      };
+
+      res.json(exportData);
+    } catch (error) {
+      console.error("Error exporting data:", error);
+      res.status(500).json({ error: "Failed to export data" });
+    }
+  });
+
+  // Import API - Restore data from JSON backup
+  app.post("/api/import", async (req, res) => {
+    try {
+      const { data } = req.body;
+      
+      if (!data) {
+        return res.status(400).json({ error: "No data provided" });
+      }
+
+      let importedRoutes = 0;
+      let importedWaypoints = 0;
+      let importedConfigs = 0;
+
+      // Import routes and waypoints
+      if (data.routes && Array.isArray(data.routes)) {
+        for (const routeData of data.routes) {
+          const { waypoints, id, createdAt, updatedAt, ...routeFields } = routeData;
+          const newRoute = await storage.createRoute(routeFields);
+          importedRoutes++;
+          
+          if (waypoints && Array.isArray(waypoints)) {
+            const waypointsToCreate = waypoints.map((wp: any) => ({
+              routeId: newRoute.id,
+              name: wp.name,
+              description: wp.description,
+              latitude: wp.latitude,
+              longitude: wp.longitude,
+              order: wp.order
+            }));
+            await storage.createWaypoints(waypointsToCreate);
+            importedWaypoints += waypoints.length;
+          }
+        }
+      }
+
+      // Import config
+      if (data.config && Array.isArray(data.config)) {
+        for (const configItem of data.config) {
+          await storage.setConfig({ key: configItem.key, value: configItem.value });
+          importedConfigs++;
+        }
+      }
+
+      res.json({ 
+        status: "success",
+        imported: {
+          routes: importedRoutes,
+          waypoints: importedWaypoints,
+          config: importedConfigs
+        }
+      });
+    } catch (error) {
+      console.error("Error importing data:", error);
+      res.status(500).json({ error: "Failed to import data" });
     }
   });
 

@@ -63,15 +63,87 @@ class WaypointRouter:
         self.route = []
         self.current_waypoint_idx = 0
     
-    def plan_route(self) -> List[GPSPoint]:
+    def plan_route(self, optimize: bool = True) -> List[GPSPoint]:
         """
-        Plan optimal route through waypoints using simplified algorithm
-        For now, uses waypoint order as-is (can be enhanced with TSP solver)
+        Plan optimal route through waypoints using TSP solver (Nearest Neighbor heuristic)
+        
+        Args:
+            optimize: If True, use TSP solver. If False, keep original order.
         """
         if not self.waypoints:
             return []
         
-        self.route = self.waypoints.copy()
+        if not optimize or len(self.waypoints) <= 2:
+            self.route = self.waypoints.copy()
+            return self.route
+        
+        # TSP Solver using Nearest Neighbor heuristic
+        self.route = self._solve_tsp_nearest_neighbor(self.waypoints)
+        return self.route
+    
+    def _solve_tsp_nearest_neighbor(self, waypoints: List[GPSPoint]) -> List[GPSPoint]:
+        """
+        Solve TSP using Nearest Neighbor heuristic
+        Finds a reasonably short path by always visiting the nearest unvisited waypoint
+        """
+        if len(waypoints) <= 1:
+            return waypoints.copy()
+        
+        # Start with first waypoint (usually origin/start point)
+        unvisited = waypoints[1:].copy()
+        route = [waypoints[0]]
+        current = waypoints[0]
+        
+        while unvisited:
+            # Find nearest unvisited waypoint
+            nearest = min(unvisited, key=lambda wp: current.distance_to(wp))
+            route.append(nearest)
+            unvisited.remove(nearest)
+            current = nearest
+        
+        return route
+    
+    def _solve_tsp_2opt(self, route: List[GPSPoint], max_iterations: int = 100) -> List[GPSPoint]:
+        """
+        Improve TSP solution using 2-opt optimization
+        Repeatedly removes crossing edges to shorten the route
+        """
+        if len(route) <= 3:
+            return route
+        
+        improved = True
+        iterations = 0
+        best_route = route.copy()
+        
+        while improved and iterations < max_iterations:
+            improved = False
+            iterations += 1
+            
+            for i in range(1, len(best_route) - 2):
+                for j in range(i + 1, len(best_route)):
+                    if j - i == 1:
+                        continue
+                    
+                    # Calculate improvement from 2-opt swap
+                    d1 = best_route[i-1].distance_to(best_route[i]) + \
+                         best_route[j-1].distance_to(best_route[j] if j < len(best_route) else best_route[0])
+                    d2 = best_route[i-1].distance_to(best_route[j-1]) + \
+                         best_route[i].distance_to(best_route[j] if j < len(best_route) else best_route[0])
+                    
+                    if d2 < d1:
+                        # Reverse the segment between i and j-1
+                        best_route[i:j] = reversed(best_route[i:j])
+                        improved = True
+        
+        return best_route
+    
+    def optimize_route(self) -> List[GPSPoint]:
+        """
+        Further optimize existing route using 2-opt
+        Call this after plan_route() for additional optimization
+        """
+        if len(self.route) > 3:
+            self.route = self._solve_tsp_2opt(self.route)
         return self.route
     
     def get_total_distance(self) -> float:
@@ -143,10 +215,46 @@ class WaypointRouter:
         steering = int((heading_error / 180.0) * max_steering)
         steering = max(-max_steering, min(max_steering, steering))
         
-        # Throttle is always forward during waypoint navigation
-        throttle = 70  # Fixed throttle (can be made dynamic based on distance)
+        # Dynamic throttle based on distance and heading error
+        distance = current_position.distance_to(target)
+        throttle = self._calculate_dynamic_throttle(distance, abs(heading_error))
         
         return (throttle, steering)
+    
+    def _calculate_dynamic_throttle(self, distance: float, heading_error: float,
+                                    max_throttle: int = 100, min_throttle: int = 30) -> int:
+        """
+        Calculate dynamic throttle based on distance to target and heading error
+        
+        - Slow down when approaching waypoint (distance < 10m)
+        - Slow down when need to turn sharply (heading error > 45°)
+        - Full speed when far away and on course
+        """
+        # Distance-based throttle reduction
+        if distance < 2:
+            distance_factor = 0.3  # Very close - creep speed
+        elif distance < 5:
+            distance_factor = 0.5  # Close - slow speed
+        elif distance < 10:
+            distance_factor = 0.7  # Approaching - reduced speed
+        else:
+            distance_factor = 1.0  # Far - full speed
+        
+        # Heading error-based throttle reduction
+        if heading_error > 90:
+            heading_factor = 0.3  # Need major turn - very slow
+        elif heading_error > 45:
+            heading_factor = 0.5  # Need significant turn - slow
+        elif heading_error > 20:
+            heading_factor = 0.7  # Need moderate turn - reduced
+        else:
+            heading_factor = 1.0  # On course - full speed
+        
+        # Calculate final throttle
+        throttle = int(max_throttle * min(distance_factor, heading_factor))
+        throttle = max(min_throttle, min(max_throttle, throttle))
+        
+        return throttle
     
     def get_mission_progress(self) -> dict:
         """Get current mission progress stats"""
@@ -190,7 +298,12 @@ class WaypointRouter:
 
 
 class ObstacleAvoidance:
-    """Simple obstacle avoidance using ultrasonic sensors"""
+    """Advanced obstacle avoidance using ultrasonic and LIDAR sensors"""
+    
+    # Threshold constants
+    EMERGENCY_THRESHOLD = 15  # cm - emergency stop
+    CLOSE_THRESHOLD = 30      # cm - significant slowdown
+    CAUTION_THRESHOLD = 60    # cm - reduce speed
     
     @staticmethod
     def check_obstacles(ultrasonic_readings: List[int], 
@@ -203,11 +316,104 @@ class ObstacleAvoidance:
         Returns: (obstacle_detected, description)
         """
         front = ultrasonic_readings[0]
+        front_left = ultrasonic_readings[1] if len(ultrasonic_readings) > 1 else 999
+        front_right = ultrasonic_readings[2] if len(ultrasonic_readings) > 2 else 999
         
-        if front < threshold:
+        if front < ObstacleAvoidance.EMERGENCY_THRESHOLD:
+            return True, "EMERGENCY_FRONT"
+        elif front < threshold:
             return True, "OBSTACLE_FRONT"
+        elif front_left < threshold or front_right < threshold:
+            return True, "OBSTACLE_SIDE"
         
         return False, "CLEAR"
+    
+    @staticmethod
+    def get_obstacle_map(ultrasonic_readings: List[int]) -> dict:
+        """
+        Generate detailed obstacle map from sensor readings
+        Returns obstacle status for each direction
+        """
+        sensor_names = ['front', 'front_left', 'front_right', 'rear_left', 'rear_right']
+        obstacle_map = {}
+        
+        for i, name in enumerate(sensor_names):
+            if i < len(ultrasonic_readings):
+                distance = ultrasonic_readings[i]
+                if distance < ObstacleAvoidance.EMERGENCY_THRESHOLD:
+                    status = 'emergency'
+                elif distance < ObstacleAvoidance.CLOSE_THRESHOLD:
+                    status = 'close'
+                elif distance < ObstacleAvoidance.CAUTION_THRESHOLD:
+                    status = 'caution'
+                else:
+                    status = 'clear'
+                
+                obstacle_map[name] = {
+                    'distance': distance,
+                    'status': status
+                }
+        
+        return obstacle_map
+    
+    @staticmethod
+    def get_avoidance_command(ultrasonic_readings: List[int], 
+                              lidar_distance: int = 999,
+                              current_throttle: int = 70,
+                              current_steering: int = 0) -> Tuple[int, int, str]:
+        """
+        Calculate avoidance maneuver with throttle and steering adjustments
+        
+        Returns: (throttle, steering, action_description)
+        """
+        front = ultrasonic_readings[0]
+        left = min(ultrasonic_readings[1], ultrasonic_readings[3]) if len(ultrasonic_readings) > 3 else 999
+        right = min(ultrasonic_readings[2], ultrasonic_readings[4]) if len(ultrasonic_readings) > 4 else 999
+        
+        # Use LIDAR for front distance if available and closer
+        front_combined = min(front, lidar_distance)
+        
+        # Emergency stop
+        if front_combined < ObstacleAvoidance.EMERGENCY_THRESHOLD:
+            return (0, 0, "EMERGENCY_STOP")
+        
+        # Close obstacle - significant slowdown and avoidance
+        if front_combined < ObstacleAvoidance.CLOSE_THRESHOLD:
+            throttle = max(20, current_throttle // 3)
+            
+            # Determine best escape direction
+            if left > right + 20:
+                steering = -80  # Sharp left
+                action = "AVOID_LEFT_SHARP"
+            elif right > left + 20:
+                steering = 80   # Sharp right
+                action = "AVOID_RIGHT_SHARP"
+            else:
+                # Backup if both sides blocked
+                throttle = -30
+                steering = 50 if right > left else -50
+                action = "BACKUP_AND_TURN"
+            
+            return (throttle, steering, action)
+        
+        # Caution zone - reduce speed and gentle avoidance
+        if front_combined < ObstacleAvoidance.CAUTION_THRESHOLD:
+            throttle = max(40, int(current_throttle * 0.6))
+            
+            if left > right + 10:
+                steering = max(-50, current_steering - 30)
+                action = "ADJUST_LEFT"
+            elif right > left + 10:
+                steering = min(50, current_steering + 30)
+                action = "ADJUST_RIGHT"
+            else:
+                steering = current_steering
+                action = "SLOW_CAUTION"
+            
+            return (throttle, steering, action)
+        
+        # Clear path
+        return (current_throttle, current_steering, "CLEAR")
     
     @staticmethod
     def get_avoidance_steering(ultrasonic_readings: List[int]) -> int:
@@ -215,15 +421,38 @@ class ObstacleAvoidance:
         Get steering adjustment to avoid obstacle
         Returns steering delta (-100 to 100)
         """
-        left = min(ultrasonic_readings[1], ultrasonic_readings[3])
-        right = min(ultrasonic_readings[2], ultrasonic_readings[4])
+        left = min(ultrasonic_readings[1], ultrasonic_readings[3]) if len(ultrasonic_readings) > 3 else 999
+        right = min(ultrasonic_readings[2], ultrasonic_readings[4]) if len(ultrasonic_readings) > 4 else 999
         
+        # Calculate proportional steering based on free space
         if left > right:
-            return -50  # Steer left
+            diff = left - right
+            steering = max(-80, -int(diff / 2))  # Steer left
         else:
-            return 50   # Steer right
+            diff = right - left
+            steering = min(80, int(diff / 2))    # Steer right
         
-        return 0
+        return steering
+    
+    @staticmethod
+    def calculate_safe_speed(obstacle_map: dict, max_speed: int = 100) -> int:
+        """
+        Calculate maximum safe speed based on obstacle proximity
+        """
+        min_front_distance = 999
+        
+        for direction in ['front', 'front_left', 'front_right']:
+            if direction in obstacle_map:
+                min_front_distance = min(min_front_distance, obstacle_map[direction]['distance'])
+        
+        if min_front_distance < ObstacleAvoidance.EMERGENCY_THRESHOLD:
+            return 0
+        elif min_front_distance < ObstacleAvoidance.CLOSE_THRESHOLD:
+            return max_speed // 4
+        elif min_front_distance < ObstacleAvoidance.CAUTION_THRESHOLD:
+            return max_speed // 2
+        else:
+            return max_speed
 
 
 # Example usage
