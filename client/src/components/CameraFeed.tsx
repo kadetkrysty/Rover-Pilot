@@ -174,6 +174,7 @@ export default function CameraFeed({
                   width: `${obj.width}%`,
                   height: `${obj.height}%`
                 }}
+                initial={{ opacity: 0.6, scale: 1 }}
                 animate={{
                   opacity: [0.6, 0.9, 0.6],
                   scale: [1, 1.02, 1]

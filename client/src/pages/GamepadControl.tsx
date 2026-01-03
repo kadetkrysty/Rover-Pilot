@@ -289,10 +289,10 @@ export default function GamepadControl() {
                 <div className="relative w-16 h-16 bg-black/50 border border-primary/20 rounded-full">
                   <motion.div
                     className="absolute w-3 h-3 bg-accent rounded-full top-1/2 left-1/2"
-                    style={{ x: '-50%', y: '-50%' }}
+                    initial={{ x: '-50%', y: '-50%' }}
                     animate={{
-                      x: `calc(-50% + ${gamepadInput.leftStickX * 24}px)`,
-                      y: `calc(-50% + ${gamepadInput.leftStickY * 24}px)`,
+                      x: `calc(-50% + ${(gamepadInput.leftStickX || 0) * 24}px)`,
+                      y: `calc(-50% + ${(gamepadInput.leftStickY || 0) * 24}px)`,
                     }}
                   />
                 </div>
@@ -309,10 +309,10 @@ export default function GamepadControl() {
                 <div className="relative w-16 h-16 bg-black/50 border border-primary/20 rounded-full">
                   <motion.div
                     className="absolute w-3 h-3 bg-secondary rounded-full top-1/2 left-1/2"
-                    style={{ x: '-50%', y: '-50%' }}
+                    initial={{ x: '-50%', y: '-50%' }}
                     animate={{
-                      x: `calc(-50% + ${gamepadInput.rightStickX * 24}px)`,
-                      y: `calc(-50% + ${gamepadInput.rightStickY * 24}px)`,
+                      x: `calc(-50% + ${(gamepadInput.rightStickX || 0) * 24}px)`,
+                      y: `calc(-50% + ${(gamepadInput.rightStickY || 0) * 24}px)`,
                     }}
                   />
                 </div>

@@ -147,9 +147,10 @@ export default function PS4Controller({ onInput, className }: PS4ControllerProps
               <div className="relative w-20 h-20 bg-black/50 border border-primary/20 rounded-full">
                 <motion.div
                   className="absolute w-3 h-3 bg-primary rounded-full top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
+                  initial={{ x: 0, y: 0 }}
                   animate={{
-                    x: gamepadInput.leftStickX * 30,
-                    y: gamepadInput.leftStickY * 30,
+                    x: (gamepadInput.leftStickX || 0) * 30,
+                    y: (gamepadInput.leftStickY || 0) * 30,
                   }}
                   transition={{ type: 'spring', stiffness: 500, damping: 50 }}
                 />
@@ -162,9 +163,10 @@ export default function PS4Controller({ onInput, className }: PS4ControllerProps
               <div className="relative w-20 h-20 bg-black/50 border border-primary/20 rounded-full">
                 <motion.div
                   className="absolute w-3 h-3 bg-secondary rounded-full top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
+                  initial={{ x: 0, y: 0 }}
                   animate={{
-                    x: gamepadInput.rightStickX * 30,
-                    y: gamepadInput.rightStickY * 30,
+                    x: (gamepadInput.rightStickX || 0) * 30,
+                    y: (gamepadInput.rightStickY || 0) * 30,
                   }}
                   transition={{ type: 'spring', stiffness: 500, damping: 50 }}
                 />
