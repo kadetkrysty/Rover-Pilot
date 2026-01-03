@@ -85,21 +85,37 @@ function renderRadar(
   }
 
   const sweepRad = (sweepAngle - 90) * (Math.PI / 180);
-  const gradient = ctx.createConicGradient(sweepRad, centerX, centerY);
-  gradient.addColorStop(0, 'rgba(0, 255, 200, 0.4)');
-  gradient.addColorStop(0.1, 'rgba(0, 255, 200, 0.1)');
-  gradient.addColorStop(0.2, 'rgba(0, 255, 200, 0)');
-  gradient.addColorStop(1, 'rgba(0, 255, 200, 0)');
+  const trailAngle = Math.PI / 3;
   
-  ctx.fillStyle = gradient;
+  for (let i = 20; i >= 0; i--) {
+    const ratio = i / 20;
+    const angleOffset = ratio * trailAngle;
+    const opacity = (1 - ratio) * 0.35;
+    
+    ctx.fillStyle = `rgba(0, 255, 200, ${opacity})`;
+    ctx.beginPath();
+    ctx.moveTo(centerX, centerY);
+    ctx.arc(centerX, centerY, maxRadius, sweepRad - angleOffset - 0.03, sweepRad - angleOffset + 0.03);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  const trailGradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, maxRadius);
+  trailGradient.addColorStop(0, 'rgba(0, 255, 200, 0.3)');
+  trailGradient.addColorStop(0.5, 'rgba(0, 255, 200, 0.15)');
+  trailGradient.addColorStop(1, 'rgba(0, 255, 200, 0.05)');
+  
+  ctx.fillStyle = trailGradient;
   ctx.beginPath();
   ctx.moveTo(centerX, centerY);
-  ctx.arc(centerX, centerY, maxRadius, sweepRad - 0.5, sweepRad);
+  ctx.arc(centerX, centerY, maxRadius, sweepRad - trailAngle, sweepRad);
   ctx.closePath();
   ctx.fill();
 
-  ctx.strokeStyle = 'rgba(0, 255, 200, 0.8)';
+  ctx.strokeStyle = 'rgba(0, 255, 200, 1)';
   ctx.lineWidth = 2;
+  ctx.shadowColor = 'rgba(0, 255, 200, 0.8)';
+  ctx.shadowBlur = 10;
   ctx.beginPath();
   ctx.moveTo(centerX, centerY);
   ctx.lineTo(
@@ -107,6 +123,8 @@ function renderRadar(
     centerY + Math.sin(sweepRad) * maxRadius
   );
   ctx.stroke();
+  ctx.shadowBlur = 0;
+  ctx.shadowColor = 'transparent';
 
   const now = Date.now();
   const recentObstacles = obstacles.filter(o => now - o.timestamp < 500);
