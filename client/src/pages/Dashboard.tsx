@@ -35,13 +35,13 @@ export default function Dashboard() {
         </div>
 
         {/* Center: Camera Feed + Map (6 cols) */}
-        <div className="col-span-6 flex flex-col gap-3 relative">
-             <div className="flex-[2] rounded-lg overflow-hidden relative group border border-border min-h-0">
+        <div className="col-span-6 flex flex-col relative">
+             <div className="flex-[3] rounded-t-lg overflow-hidden relative group border border-border border-b-0 min-h-0">
                 <CameraFeed />
              </div>
              
              {/* Google Maps - User Location */}
-             <div className="flex-1 min-h-[180px]">
+             <div className="flex-[2]">
                 <RoverLocationMap 
                   height="100%"
                   showUserLocation
