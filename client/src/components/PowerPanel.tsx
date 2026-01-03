@@ -13,9 +13,10 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface PowerPanelProps {
   power: PowerData;
+  compact?: boolean;
 }
 
-export default function PowerPanel({ power }: PowerPanelProps) {
+export default function PowerPanel({ power, compact = false }: PowerPanelProps) {
   const [showInfoModal, setShowInfoModal] = useState(false);
   
   const getBatteryColor = () => {
@@ -30,11 +31,27 @@ export default function PowerPanel({ power }: PowerPanelProps) {
     return 'bg-destructive';
   };
 
+  if (compact) {
+    return (
+      <div className="flex flex-col h-full">
+        <div className="flex items-center gap-1 text-primary/80 uppercase tracking-wider font-display text-xs">
+          <Battery className="w-3 h-3" /> Power
+        </div>
+        <div className="flex items-end gap-1 mt-2">
+          <span className={`text-2xl font-mono font-bold ${getBatteryColor()}`}>
+            {power.batteryPercent.toFixed(0)}
+          </span>
+          <span className="text-muted-foreground mb-0.5 text-[10px]">%</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
       <div className="space-y-2">
         <div className="flex justify-between items-center">
-          <h3 className="text-[9px] font-display text-primary/50">POWER STATUS</h3>
+          <h3 className="text-[10px] font-display text-primary/80">POWER STATUS</h3>
           <Button 
             variant="ghost" 
             size="sm" 
@@ -42,7 +59,7 @@ export default function PowerPanel({ power }: PowerPanelProps) {
             onClick={() => setShowInfoModal(true)}
             data-testid="button-power-info"
           >
-            <Info className="w-3 h-3 text-primary/50" />
+            <Info className="w-3 h-3 text-primary/60" />
           </Button>
         </div>
         
@@ -58,7 +75,7 @@ export default function PowerPanel({ power }: PowerPanelProps) {
             <div className={`text-2xl font-mono font-bold ${getBatteryColor()}`} data-testid="text-battery-percent">
               {power.batteryPercent.toFixed(0)}%
             </div>
-            <div className="text-[9px] text-muted-foreground font-mono">
+            <div className="text-[10px] text-foreground/70 font-mono">
               {power.batteryVoltage.toFixed(1)}V / {power.remainingCapacityAh.toFixed(1)}Ah
             </div>
           </div>
@@ -66,7 +83,7 @@ export default function PowerPanel({ power }: PowerPanelProps) {
         
         <div className="grid grid-cols-2 gap-1.5 mt-2">
           <div className="bg-card/50 border border-border rounded p-1.5">
-            <div className="flex items-center gap-1 text-[8px] text-muted-foreground mb-0.5">
+            <div className="flex items-center gap-1 text-[9px] text-foreground/70 mb-0.5">
               <Zap className="w-2.5 h-2.5" />
               <span>POWER</span>
             </div>
@@ -76,7 +93,7 @@ export default function PowerPanel({ power }: PowerPanelProps) {
           </div>
           
           <div className="bg-card/50 border border-border rounded p-1.5">
-            <div className="flex items-center gap-1 text-[8px] text-muted-foreground mb-0.5">
+            <div className="flex items-center gap-1 text-[9px] text-foreground/70 mb-0.5">
               <Battery className="w-2.5 h-2.5" />
               <span>CURRENT</span>
             </div>
@@ -86,7 +103,7 @@ export default function PowerPanel({ power }: PowerPanelProps) {
           </div>
           
           <div className="bg-card/50 border border-border rounded p-1.5">
-            <div className="flex items-center gap-1 text-[8px] text-muted-foreground mb-0.5">
+            <div className="flex items-center gap-1 text-[9px] text-foreground/70 mb-0.5">
               <Navigation className="w-2.5 h-2.5" />
               <span>RANGE</span>
             </div>
@@ -96,7 +113,7 @@ export default function PowerPanel({ power }: PowerPanelProps) {
           </div>
           
           <div className="bg-card/50 border border-border rounded p-1.5">
-            <div className="flex items-center gap-1 text-[8px] text-muted-foreground mb-0.5">
+            <div className="flex items-center gap-1 text-[9px] text-foreground/70 mb-0.5">
               <Clock className="w-2.5 h-2.5" />
               <span>RUNTIME</span>
             </div>
@@ -109,7 +126,7 @@ export default function PowerPanel({ power }: PowerPanelProps) {
         {power.batteryPercent < 20 && (
           <div className="flex items-center gap-1.5 bg-destructive/20 border border-destructive/50 rounded px-2 py-1 mt-2">
             <AlertTriangle className="w-3 h-3 text-destructive" />
-            <span className="text-[9px] font-mono text-destructive">LOW BATTERY WARNING</span>
+            <span className="text-[10px] font-mono text-destructive">LOW BATTERY WARNING</span>
           </div>
         )}
       </div>
