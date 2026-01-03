@@ -92,28 +92,38 @@ export default function Joystick({ onMove, onHeadingChange, className, size = 19
     if (onMove) onMove(0, 0);
   };
 
-  const labelOffset = 20;
-  const diagonalPos = labelOffset + (computedSize / 2) * (1 - 0.707) - 6;
+  const labelOffset = 18;
+  const containerSize = computedSize + labelOffset * 2;
+  const center = containerSize / 2;
+  const labelRadius = computedSize / 2 + labelOffset / 2 + 2;
+
+  const getRadialPosition = (angleDeg: number) => {
+    const angleRad = (angleDeg - 90) * (Math.PI / 180);
+    const posX = center + labelRadius * Math.cos(angleRad);
+    const posY = center + labelRadius * Math.sin(angleRad);
+    return {
+      left: posX,
+      top: posY,
+      transform: 'translate(-50%, -50%)',
+    };
+  };
 
   return (
     <div ref={containerRef} className={`flex flex-col items-center w-full ${className}`}>
       <div 
         className="relative"
-        style={{ width: computedSize + labelOffset * 2, height: computedSize + labelOffset * 2 }}
+        style={{ width: containerSize, height: containerSize }}
       >
-        {/* Cardinal point labels - OUTSIDE the circle */}
+        {/* All cardinal point labels positioned radially */}
         <div className="absolute inset-0 pointer-events-none font-bold text-sm">
-          {/* Primary cardinals */}
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 text-primary">N</div>
-          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 text-primary/60">S</div>
-          <div className="absolute left-0 top-1/2 -translate-y-1/2 text-primary/60">W</div>
-          <div className="absolute right-0 top-1/2 -translate-y-1/2 text-primary/60">E</div>
-          
-          {/* Intercardinals - positioned at 45 degrees, same distance from circle as main cardinals */}
-          <div className="absolute text-xs text-primary/50" style={{ top: diagonalPos, right: diagonalPos }}>NE</div>
-          <div className="absolute text-xs text-primary/50" style={{ bottom: diagonalPos, right: diagonalPos }}>SE</div>
-          <div className="absolute text-xs text-primary/50" style={{ bottom: diagonalPos, left: diagonalPos }}>SW</div>
-          <div className="absolute text-xs text-primary/50" style={{ top: diagonalPos, left: diagonalPos }}>NW</div>
+          <div className="absolute text-primary" style={getRadialPosition(0)}>N</div>
+          <div className="absolute text-xs text-primary/50" style={getRadialPosition(45)}>NE</div>
+          <div className="absolute text-primary/60" style={getRadialPosition(90)}>E</div>
+          <div className="absolute text-xs text-primary/50" style={getRadialPosition(135)}>SE</div>
+          <div className="absolute text-primary/60" style={getRadialPosition(180)}>S</div>
+          <div className="absolute text-xs text-primary/50" style={getRadialPosition(225)}>SW</div>
+          <div className="absolute text-primary/60" style={getRadialPosition(270)}>W</div>
+          <div className="absolute text-xs text-primary/50" style={getRadialPosition(315)}>NW</div>
         </div>
 
         {/* Joystick circle container */}
