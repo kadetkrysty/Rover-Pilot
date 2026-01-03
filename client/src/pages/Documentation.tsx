@@ -64,37 +64,37 @@ export default function Documentation() {
                             <div>
                                 <h3 className="text-xl text-primary font-display mb-4">SYSTEM ARCHITECTURE v3.0</h3>
                                 <pre className="bg-black/50 p-4 border border-border rounded-lg text-xs overflow-x-auto font-mono text-green-300">
-{`┌─────────────────────────────────────────────────────────────────┐
-│                         ROVER SYSTEM v3.0                       │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  ┌─────────────────┐     USB Serial      ┌──────────────────┐  │
-│  │   MINI PC       │◄──────────────────► │  ARDUINO MEGA    │  │
-│  │  Intel Celeron  │     115200 baud     │     2560         │  │
-│  │  8GB RAM        │                     │                  │  │
-│  │  Ubuntu OS      │                     │  Sensors:        │  │
-│  │                 │                     │  - TF Mini Pro   │  │
-│  │  Runs:          │                     │  - MPU6050 IMU   │  │
-│  │  - Web Server   │                     │  - Neo-6M GPS    │  │
-│  │  - WebSocket    │                     │  - 5x Ultrasonic │  │
-│  │  - SLAM/EKF     │                     │  - HuskyLens     │  │
-│  │                 │                     │                  │  │
-│  └────────┬────────┘                     │  RC Control:     │  │
-│           │                              │  - iBUS (Serial1)│  │
-│           │ WiFi                         └────────┬─────────┘  │
-│           ▼                                       │            │
-│  ┌─────────────────┐                     ┌────────▼─────────┐  │
-│  │  WEB DASHBOARD  │                     │ FLYSKY FS-IA10B  │  │
-│  │  React + Vite   │                     │  (iBUS Protocol) │  │
-│  │  Mobile/Desktop │                     └──────────────────┘  │
-│  └─────────────────┘                              ▲            │
-│                                                   │ 2.4GHz     │
-│  ┌─────────────────┐                     ┌────────┴─────────┐  │
-│  │  HOVERBOARD     │◄── UART ── Arduino  │ FLYSKY FS-I6x    │  │
-│  │  FOC Controller │                     │  Transmitter     │  │
-│  └─────────────────┘                     └──────────────────┘  │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘`}
+{`+-------------------------------------------------------------------+
+|                        ROVER SYSTEM v3.0                          |
++-------------------------------------------------------------------+
+|                                                                   |
+|  +-------------------+     USB Serial     +-------------------+   |
+|  |    MINI PC        |<----------------->|   ARDUINO MEGA    |   |
+|  |   Intel Celeron   |    115200 baud    |       2560        |   |
+|  |   8GB RAM         |                   |                   |   |
+|  |   Ubuntu OS       |                   |  Sensors:         |   |
+|  |                   |                   |  - TF Mini Pro    |   |
+|  |  Runs:            |                   |  - MPU6050 IMU    |   |
+|  |  - Web Server     |                   |  - Neo-6M GPS     |   |
+|  |  - WebSocket      |                   |  - 5x Ultrasonic  |   |
+|  |  - SLAM/EKF       |                   |  - HuskyLens      |   |
+|  |                   |                   |                   |   |
+|  +---------+---------+                   |  RC Control:      |   |
+|            |                             |  - iBUS (Serial1) |   |
+|            | WiFi                        +---------+---------+   |
+|            v                                       |             |
+|  +-------------------+                   +---------v---------+   |
+|  |  WEB DASHBOARD    |                   |  FLYSKY FS-IA10B  |   |
+|  |  React + Vite     |                   |  (iBUS Protocol)  |   |
+|  |  Mobile/Desktop   |                   +-------------------+   |
+|  +-------------------+                             ^             |
+|                                                    | 2.4GHz      |
+|  +-------------------+                   +---------+---------+   |
+|  |  HOVERBOARD       |<-- UART - Arduino |  FLYSKY FS-I6x   |   |
+|  |  FOC Controller   |                   |   Transmitter     |   |
+|  +-------------------+                   +-------------------+   |
+|                                                                   |
++-------------------------------------------------------------------+`}
                                 </pre>
                             </div>
 
@@ -645,40 +645,40 @@ set_tilt(0)`}
 {`Arduino Mega 2560 Pin Assignment v3.0
 =====================================
 
-USB ─────────────────────── Mini PC (Serial 115200)
+USB ----------------------- Mini PC (Serial 115200)
 
 Serial1 (iBUS - FlySky Receiver):
-  Pin 19 (RX1) ─────────── FS-IA10B iBUS Signal
+  Pin 19 (RX1) ----------- FS-IA10B iBUS Signal
   
 Serial2 (LIDAR):
-  Pin 16 (TX2) ─────────── TF Mini Pro RX
-  Pin 17 (RX2) ─────────── TF Mini Pro TX
+  Pin 16 (TX2) ----------- TF Mini Pro RX
+  Pin 17 (RX2) ----------- TF Mini Pro TX
 
 Serial3 (GPS):
-  Pin 14 (TX3) ─────────── Neo-6M RX
-  Pin 15 (RX3) ─────────── Neo-6M TX
+  Pin 14 (TX3) ----------- Neo-6M RX
+  Pin 15 (RX3) ----------- Neo-6M TX
 
 I2C:
-  Pin 20 (SDA) ─────────── MPU6050 SDA, HuskyLens SDA
-  Pin 21 (SCL) ─────────── MPU6050 SCL, HuskyLens SCL
+  Pin 20 (SDA) ----------- MPU6050 SDA, HuskyLens SDA
+  Pin 21 (SCL) ----------- MPU6050 SCL, HuskyLens SCL
 
 Hoverboard (SoftwareSerial):
-  Pin 10 (RX) ──────────── Hoverboard TX (via level shifter!)
-  Pin 11 (TX) ──────────── Hoverboard RX (via level shifter!)
+  Pin 10 (RX) ------------ Hoverboard TX (via level shifter!)
+  Pin 11 (TX) ------------ Hoverboard RX (via level shifter!)
 
 Ultrasonic Sensors:
-  Pin 22/23 ────────────── HC-SR04 #1 (Front Center)
-  Pin 24/25 ────────────── HC-SR04 #2 (Front Left)
-  Pin 26/27 ────────────── HC-SR04 #3 (Front Right)
-  Pin 28/29 ────────────── HC-SR04 #4 (Rear Left)
-  Pin 30/31 ────────────── HC-SR04 #5 (Rear Right)
+  Pin 22/23 -------------- HC-SR04 #1 (Front Center)
+  Pin 24/25 -------------- HC-SR04 #2 (Front Left)
+  Pin 26/27 -------------- HC-SR04 #3 (Front Right)
+  Pin 28/29 -------------- HC-SR04 #4 (Rear Left)
+  Pin 30/31 -------------- HC-SR04 #5 (Rear Right)
 
 Status LED:
-  Pin 13 ───────────────── Built-in LED (heartbeat)
+  Pin 13 ----------------- Built-in LED (heartbeat)
 
 Power:
-  5V ───────────────────── All sensors, FS-IA10B receiver
-  GND ──────────────────── Common ground`}
+  5V --------------------- All sensors, FS-IA10B receiver
+  GND -------------------- Common ground`}
                             </pre>
 
                             <h3 className="text-xl text-primary font-display mt-8">POWER DISTRIBUTION</h3>
@@ -687,24 +687,24 @@ Power:
 ====================
 
 [36V LiPo Battery]
-       │
-       ├──────────────────────► Hoverboard Mainboard
-       │                              │
-       │                              ├──► Left Motor
-       │                              └──► Right Motor
-       │
-       └──► [DC-DC Buck Converter 36V → 5V/5A]
-                     │
-                     ├──► Mini PC (USB-C PD or barrel jack)
-                     │
-                     └──► Arduino Mega (VIN or USB)
-                               │
-                               ├──► TF Mini Pro (5V)
-                               ├──► MPU6050 (3.3V from Arduino)
-                               ├──► Neo-6M GPS (3.3V-5V)
-                               ├──► HuskyLens (5V)
-                               ├──► HC-SR04 x5 (5V)
-                               └──► FS-IA10B Receiver (5V)`}
+       |
+       +----------------------> Hoverboard Mainboard
+       |                              |
+       |                              +--> Left Motor
+       |                              +--> Right Motor
+       |
+       +--> [DC-DC Buck Converter 36V -> 5V/5A]
+                     |
+                     +--> Mini PC (USB-C PD or barrel jack)
+                     |
+                     +--> Arduino Mega (VIN or USB)
+                               |
+                               +--> TF Mini Pro (5V)
+                               +--> MPU6050 (3.3V from Arduino)
+                               +--> Neo-6M GPS (3.3V-5V)
+                               +--> HuskyLens (5V)
+                               +--> HC-SR04 x5 (5V)
+                               +--> FS-IA10B Receiver (5V)`}
                             </pre>
 
                             <div className="bg-red-500/10 border border-red-500/30 p-4 rounded mt-4">
@@ -913,9 +913,9 @@ sudo systemctl start rover`}
 
     FS-IA10B Receiver              Arduino Mega
     -----------------              ------------
-    iBUS Pin ───────────────────► Pin 19 (RX1)
-    VCC (5V) ───────────────────► 5V
-    GND ────────────────────────► GND
+    iBUS Pin ------------------>   Pin 19 (RX1)
+    VCC (5V) ------------------>   5V
+    GND ----------------------->   GND
 
 That's it! Just 3 wires for all 10 channels.`}
                             </pre>
