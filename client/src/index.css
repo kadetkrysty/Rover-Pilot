@@ -222,3 +222,34 @@
   position: relative;
   z-index: 1;
 }
+
+/* HUD-styled scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: hsl(220 35% 13%);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(180 100% 50% / 0.4);
+  border-radius: 3px;
+  border: 1px solid hsl(180 100% 50% / 0.2);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(180 100% 50% / 0.6);
+}
+
+::-webkit-scrollbar-corner {
+  background: hsl(220 35% 13%);
+}
+
+/* Firefox scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(180 100% 50% / 0.4) hsl(220 35% 13%);
+}

@@ -46,9 +46,9 @@ export default function RadarScanner({ ultrasonicData, lidarDistance, className 
   const [containerHeight, setContainerHeight] = useState(200);
   
   const size = useMemo(() => {
-    const maxByWidth = Math.floor(containerWidth * 0.8);
-    const maxByHeight = Math.floor(containerHeight * 0.5);
-    return Math.min(maxByWidth, maxByHeight, 280);
+    const widthBased = Math.floor(containerWidth * 0.8);
+    const maxHeight = Math.floor(containerHeight * 0.55);
+    return Math.min(widthBased, maxHeight, 400);
   }, [containerWidth, containerHeight]);
 
   useEffect(() => {
