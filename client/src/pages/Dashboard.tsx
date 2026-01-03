@@ -53,37 +53,14 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Center Column - Proximity Radar (swapped from left) */}
-        <div className="col-span-6 grid grid-rows-[1fr_auto] gap-1.5 min-h-0">
-          {/* Proximity Radar - Swapped from left column */}
-          <div className="hud-panel p-[10px] min-h-0 overflow-hidden">
+        {/* Center Column - Proximity Radar */}
+        <div className="col-span-6 min-h-0">
+          {/* Proximity Radar */}
+          <div className="hud-panel p-[10px] h-full overflow-hidden">
             <RadarScanner 
               ultrasonicData={data.sensors.ultrasonic}
               lidarDistance={data.lidarDistance}
             />
-          </div>
-             
-          {/* Nav Control Panel */}
-          <div className="hud-panel navigation-control-panel p-[10px] h-[100px]" data-joystick-panel>
-            <div className="map-background" aria-hidden="true"></div>
-            <div className="panel-content flex h-full gap-4">
-              <div className="flex-1 flex items-center justify-center">
-                <Joystick 
-                  onMove={(x, y) => { if (x === 0 && y === 0) reset(); }} 
-                  onHeadingChange={handleHeadingChange}
-                  size="85px" 
-                />
-              </div>
-              <div className="flex flex-col justify-center">
-                <h3 className="text-[10px] font-display text-primary/80 mb-1">NAV CONTROL</h3>
-                <div className="font-mono text-lg text-primary font-bold">
-                  {joystickData.heading !== null ? `${joystickData.heading.toFixed(0)}°` : '---'}
-                </div>
-                <div className="text-[10px] text-muted-foreground">
-                  {joystickData.cardinalDirection || '---'}
-                </div>
-              </div>
-            </div>
           </div>
         </div>
 
@@ -151,6 +128,26 @@ export default function Dashboard() {
                   {location.loading ? '---' : location.longitude?.toFixed(6) ?? '---'}
                 </div>
                 <div className="text-[8px] text-muted-foreground">LNG</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Nav Control Panel - Moved from center column */}
+          <div className="hud-panel navigation-control-panel p-[10px] flex-1 min-h-0" data-joystick-panel>
+            <div className="map-background" aria-hidden="true"></div>
+            <div className="panel-content flex flex-col h-full">
+              <div className="flex justify-between items-center pb-1">
+                <h3 className="text-[10px] font-display text-primary/80">NAV CONTROL</h3>
+                <div className="font-mono text-[10px] text-primary/80">
+                  {joystickData.heading !== null ? `${joystickData.heading.toFixed(0)}° ${joystickData.cardinalDirection}` : '---'}
+                </div>
+              </div>
+              <div className="flex-1 flex items-center justify-center">
+                <Joystick 
+                  onMove={(x, y) => { if (x === 0 && y === 0) reset(); }} 
+                  onHeadingChange={handleHeadingChange}
+                  size="90%" 
+                />
               </div>
             </div>
           </div>
