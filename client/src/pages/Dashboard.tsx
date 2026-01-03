@@ -1,4 +1,5 @@
 import { useRoverData } from '@/lib/mockData';
+import { useLocation } from '@/hooks/useLocation';
 import CameraFeed from '@/components/CameraFeed';
 import TelemetryPanel from '@/components/TelemetryPanel';
 import SensorStatus from '@/components/SensorStatus';
@@ -9,6 +10,7 @@ import { AspectRatio } from '@/components/ui/aspect-ratio';
 
 export default function Dashboard() {
   const data = useRoverData();
+  const location = useLocation();
 
   return (
     <div className="min-h-screen bg-background text-foreground font-sans selection:bg-primary/30 overflow-hidden relative" data-testid="page-dashboard">
@@ -66,13 +68,13 @@ export default function Dashboard() {
                 <div className="grid grid-cols-2 gap-2">
                     <div>
                         <div className="text-xl font-mono text-foreground font-bold" data-testid="text-latitude">
-                            {data.gps.lat.toFixed(4)}
+                            {location.loading ? '---' : location.latitude?.toFixed(4) ?? '---'}
                         </div>
                         <div className="text-[10px] text-muted-foreground">LATITUDE</div>
                     </div>
                     <div>
                         <div className="text-xl font-mono text-foreground font-bold" data-testid="text-longitude">
-                            {data.gps.lng.toFixed(4)}
+                            {location.loading ? '---' : location.longitude?.toFixed(4) ?? '---'}
                         </div>
                         <div className="text-[10px] text-muted-foreground">LONGITUDE</div>
                     </div>
