@@ -254,9 +254,10 @@ export default function RadarScanner({ ultrasonicData, lidarDistance, className 
 
   const fullscreenSize = useMemo(() => {
     if (typeof window === 'undefined') return 400;
-    const maxHeight = window.innerHeight * 0.75;
-    const maxWidth = (window.innerWidth * 0.9 * 2) / 3 * 0.85;
-    return Math.min(maxWidth, maxHeight, 600);
+    const maxHeight = window.innerHeight * 0.7;
+    const columnWidth = (window.innerWidth * 0.95 * 2) / 3;
+    const widthBased = columnWidth * 0.95;
+    return Math.floor(Math.min(widthBased, maxHeight, 700));
   }, [isFullscreen]);
 
   useEffect(() => {
@@ -425,9 +426,9 @@ export default function RadarScanner({ ultrasonicData, lidarDistance, className 
             </div>
 
             {/* Two column layout: 2/3 Radar | 1/3 Obstacles */}
-            <div className="flex-1 grid grid-cols-3 gap-6 mt-4 min-h-0">
+            <div className="flex-1 grid grid-cols-3 gap-6 mt-4 min-h-0 items-center justify-items-center">
               {/* Radar Column - 2/3 */}
-              <div className="col-span-2 flex flex-col items-center justify-center">
+              <div className="col-span-2 flex flex-col items-center justify-center w-full">
                 <canvas
                   ref={fullscreenCanvasRef}
                   style={{ width: fullscreenSize, height: fullscreenSize }}
@@ -447,7 +448,7 @@ export default function RadarScanner({ ultrasonicData, lidarDistance, className 
               </div>
 
               {/* Obstacles Column - 1/3 */}
-              <div className="col-span-1 min-h-0">
+              <div className="col-span-1 min-h-0 flex flex-col items-center justify-center h-full">
                 <ObstaclesList large />
               </div>
             </div>
