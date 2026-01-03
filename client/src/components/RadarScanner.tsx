@@ -292,134 +292,74 @@ export default function RadarScanner({ ultrasonicData, lidarDistance, className 
     };
   }, [obstacles]);
 
-  const ObstaclesList = ({ variant = 'compact' }: { variant?: 'compact' | 'fullscreen' }) => {
-    const isFullscreen = variant === 'fullscreen';
-    
-    if (isFullscreen) {
-      return (
-        <div className="flex flex-col h-full overflow-hidden w-full">
-          <h4 className="text-base font-display text-primary/80 mb-4">DETECTED OBSTACLES</h4>
-          <ScrollArea className="flex-1">
-            <h5 className="text-sm font-display text-green-400/80 mb-2 flex items-center gap-1.5">
-              <div className="w-2 h-2 rounded-full bg-green-400"></div>
-              ULTRASONIC ({ultrasonicObstacles.length})
-            </h5>
-            {ultrasonicObstacles.length > 0 ? (
-              <div className="grid grid-cols-1 gap-1.5 mb-5">
-                {ultrasonicObstacles.map((obstacle) => (
-                  <div 
-                    key={obstacle.id}
-                    className="flex items-center justify-between px-3 py-2 bg-card/50 border border-green-400/30 rounded text-sm font-mono"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="text-green-400 font-bold">{obstacle.id}</span>
-                      <span className="text-foreground/70">{obstacle.label}</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className="text-foreground font-bold">{obstacle.distance.toFixed(0)}cm</span>
-                      <span className="text-foreground/60">{obstacle.angle}°</span>
-                      <span className="text-primary/70">{obstacle.cardinal}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center text-sm py-4 text-foreground/50 mb-5 border border-dashed border-green-400/20 rounded">
-                NO OBSTACLES
-              </div>
-            )}
-
-            <h5 className="text-sm font-display text-cyan-400/80 mb-2 flex items-center gap-1.5">
-              <div className="w-2 h-2 rounded-full bg-cyan-400"></div>
-              LIDAR ({lidarObstacles.length})
-            </h5>
-            {lidarObstacles.length > 0 ? (
-              <div className="grid grid-cols-1 gap-1.5">
-                {lidarObstacles.map((obstacle) => (
-                  <div 
-                    key={obstacle.id}
-                    className="flex items-center justify-between px-3 py-2 bg-card/50 border border-cyan-400/30 rounded text-sm font-mono"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="text-cyan-400 font-bold">{obstacle.id}</span>
-                      <span className="text-foreground/70">{obstacle.label}</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className="text-foreground font-bold">{obstacle.distance.toFixed(0)}cm</span>
-                      <span className="text-foreground/60">{obstacle.angle}°</span>
-                      <span className="text-primary/70">{obstacle.cardinal}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center text-sm py-4 text-foreground/50 border border-dashed border-cyan-400/20 rounded">
-                NO OBSTACLES
-              </div>
-            )}
-          </ScrollArea>
-        </div>
-      );
-    }
+  const ObstaclesList = ({ size = 'normal' }: { size?: 'normal' | 'large' }) => {
+    const isLarge = size === 'large';
+    const textSize = isLarge ? 'text-sm' : 'text-[10px]';
+    const headerSize = isLarge ? 'text-base' : 'text-[10px]';
+    const sectionSize = isLarge ? 'text-sm' : 'text-[9px]';
+    const dotSize = isLarge ? 'w-2 h-2' : 'w-1.5 h-1.5';
+    const padding = isLarge ? 'px-3 py-2' : 'px-2 py-1.5';
+    const gap = isLarge ? 'gap-1.5' : 'gap-1';
+    const mb = isLarge ? 'mb-5' : 'mb-3';
 
     return (
-      <div className="flex flex-col min-h-0 overflow-hidden h-full justify-center">
-        <h4 className="text-[9px] font-display text-primary/80 mb-2">DETECTED OBSTACLES</h4>
+      <div className="flex flex-col h-full w-full overflow-hidden">
+        <h4 className={`${headerSize} font-display text-primary/80 mb-3`}>DETECTED OBSTACLES</h4>
         <ScrollArea className="flex-1">
-          <h5 className="text-[8px] font-display text-green-400/80 mb-1 flex items-center gap-1">
-            <div className="w-1.5 h-1.5 rounded-full bg-green-400"></div>
+          <h5 className={`${sectionSize} font-display text-green-400/80 mb-2 flex items-center gap-1.5`}>
+            <div className={`${dotSize} rounded-full bg-green-400`}></div>
             ULTRASONIC ({ultrasonicObstacles.length})
           </h5>
           {ultrasonicObstacles.length > 0 ? (
-            <div className="grid grid-cols-1 gap-0.5 mb-3">
+            <div className={`grid grid-cols-1 ${gap} ${mb}`}>
               {ultrasonicObstacles.map((obstacle) => (
                 <div 
                   key={obstacle.id}
-                  className="flex items-center justify-between px-2 py-1 bg-card/50 border border-green-400/30 rounded text-[9px] font-mono"
+                  className={`w-full flex items-center justify-between ${padding} bg-card/50 border border-green-400/30 rounded ${textSize} font-mono`}
                 >
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-2">
                     <span className="text-green-400 font-bold">{obstacle.id}</span>
                     <span className="text-foreground/70">{obstacle.label}</span>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-3">
                     <span className="text-foreground font-bold">{obstacle.distance.toFixed(0)}cm</span>
-                    <span className="text-foreground/60 text-[8px]">{obstacle.angle}°</span>
-                    <span className="text-primary/60 text-[8px]">{obstacle.cardinal}</span>
+                    <span className="text-foreground/60">{obstacle.angle}°</span>
+                    <span className="text-primary/70">{obstacle.cardinal}</span>
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <div className="text-center text-[9px] text-foreground/50 py-2 mb-3 border border-dashed border-green-400/20 rounded">
+            <div className={`text-center ${textSize} py-3 text-foreground/50 ${mb} border border-dashed border-green-400/20 rounded`}>
               NO OBSTACLES
             </div>
           )}
 
-          <h5 className="text-[8px] font-display text-cyan-400/80 mb-1 flex items-center gap-1">
-            <div className="w-1.5 h-1.5 rounded-full bg-cyan-400"></div>
+          <h5 className={`${sectionSize} font-display text-cyan-400/80 mb-2 flex items-center gap-1.5`}>
+            <div className={`${dotSize} rounded-full bg-cyan-400`}></div>
             LIDAR ({lidarObstacles.length})
           </h5>
           {lidarObstacles.length > 0 ? (
-            <div className="grid grid-cols-1 gap-0.5">
+            <div className={`grid grid-cols-1 ${gap}`}>
               {lidarObstacles.map((obstacle) => (
                 <div 
                   key={obstacle.id}
-                  className="flex items-center justify-between px-2 py-1 bg-card/50 border border-cyan-400/30 rounded text-[9px] font-mono"
+                  className={`w-full flex items-center justify-between ${padding} bg-card/50 border border-cyan-400/30 rounded ${textSize} font-mono`}
                 >
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-2">
                     <span className="text-cyan-400 font-bold">{obstacle.id}</span>
                     <span className="text-foreground/70">{obstacle.label}</span>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-3">
                     <span className="text-foreground font-bold">{obstacle.distance.toFixed(0)}cm</span>
-                    <span className="text-foreground/60 text-[8px]">{obstacle.angle}°</span>
-                    <span className="text-primary/60 text-[8px]">{obstacle.cardinal}</span>
+                    <span className="text-foreground/60">{obstacle.angle}°</span>
+                    <span className="text-primary/70">{obstacle.cardinal}</span>
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <div className="text-center text-[9px] text-foreground/50 py-2 border border-dashed border-cyan-400/20 rounded">
+            <div className={`text-center ${textSize} py-3 text-foreground/50 border border-dashed border-cyan-400/20 rounded`}>
               NO OBSTACLES
             </div>
           )}
@@ -451,9 +391,9 @@ export default function RadarScanner({ ultrasonicData, lidarDistance, className 
         </div>
         
         {/* Two column layout: Radar | Obstacles List */}
-        <div className="flex-1 grid grid-cols-2 gap-3 min-h-0 items-center">
+        <div className="flex-1 flex items-center gap-3 min-h-0">
           {/* Left Column - Radar Display */}
-          <div className="flex flex-col items-center justify-center">
+          <div className="flex-1 flex flex-col items-center justify-center">
             <canvas
               ref={canvasRef}
               style={{ width: size, height: size }}
@@ -473,7 +413,7 @@ export default function RadarScanner({ ultrasonicData, lidarDistance, className 
           </div>
 
           {/* Right Column - Obstacles List */}
-          <div className="flex items-center justify-center h-full">
+          <div className="flex-1 h-full">
             <ObstaclesList />
           </div>
         </div>
@@ -523,8 +463,8 @@ export default function RadarScanner({ ultrasonicData, lidarDistance, className 
               </div>
 
               {/* Obstacles Column - 1/3 */}
-              <div className="flex-1 flex items-center justify-center self-center max-h-[60vh]">
-                <ObstaclesList variant="fullscreen" />
+              <div className="flex-1 flex items-center self-center max-h-[70vh]">
+                <ObstaclesList size="large" />
               </div>
             </div>
           </div>
