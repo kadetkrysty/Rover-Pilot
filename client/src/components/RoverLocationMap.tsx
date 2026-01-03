@@ -1,9 +1,10 @@
-import { GoogleMap, LoadScript, Marker, Circle } from '@react-google-maps/api';
+import { GoogleMap, useLoadScript, Marker, Circle } from '@react-google-maps/api';
 import { useQuery } from '@tanstack/react-query';
 import { getConfig } from '@/lib/api';
 import { useLocation } from '@/hooks/useLocation';
 import { MapPin, Loader2, AlertCircle, LocateFixed } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useMemo, useState, useEffect } from 'react';
 
 interface RoverLocationMapProps {
   roverLat?: number;
@@ -42,6 +43,141 @@ const darkMapStyle = [
     stylers: [{ color: '#1a1a2e' }],
   },
 ];
+
+function GoogleMapWrapper({ 
+  apiKey, 
+  lat, 
+  lng, 
+  location, 
+  showUserLocation,
+  height,
+}: { 
+  apiKey: string;
+  lat: number; 
+  lng: number; 
+  location: ReturnType<typeof useLocation>; 
+  showUserLocation: boolean;
+  height: string;
+}) {
+  const { isLoaded, loadError } = useLoadScript({
+    googleMapsApiKey: apiKey,
+    id: 'rover-google-map',
+  });
+
+  const roverIcon = useMemo(() => {
+    if (!isLoaded || typeof google === 'undefined') return undefined;
+    return {
+      path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+      fillColor: '#00ff88',
+      fillOpacity: 1,
+      strokeColor: '#004422',
+      strokeWeight: 2,
+      scale: 6,
+      rotation: location.heading || 0,
+    };
+  }, [isLoaded, location.heading]);
+
+  const userIcon = useMemo(() => {
+    if (!isLoaded || typeof google === 'undefined') return undefined;
+    return {
+      path: google.maps.SymbolPath.CIRCLE,
+      fillColor: '#4a9eff',
+      fillOpacity: 1,
+      strokeColor: '#ffffff',
+      strokeWeight: 2,
+      scale: 6,
+    };
+  }, [isLoaded]);
+
+  if (loadError) {
+    return (
+      <div 
+        className="bg-black/50 border border-border rounded flex items-center justify-center"
+        style={{ height }}
+        data-testid="rover-map-load-error"
+      >
+        <div className="flex flex-col items-center gap-2 text-muted-foreground p-4">
+          <AlertCircle className="w-6 h-6 text-red-500" />
+          <span className="text-xs font-mono text-center">Failed to load map</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isLoaded) {
+    return (
+      <div 
+        className="bg-black/50 border border-border rounded flex items-center justify-center"
+        style={{ height }}
+        data-testid="rover-map-loading-script"
+      >
+        <div className="flex flex-col items-center gap-2 text-muted-foreground">
+          <Loader2 className="w-6 h-6 animate-spin text-primary" />
+          <span className="text-xs font-mono">LOADING MAP...</span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div 
+      className="rounded overflow-hidden border border-border relative"
+      style={{ height }}
+      data-testid="rover-map-container"
+    >
+      <GoogleMap
+        mapContainerStyle={mapContainerStyle}
+        center={{ lat, lng }}
+        zoom={17}
+        options={{
+          styles: darkMapStyle,
+          disableDefaultUI: true,
+          zoomControl: true,
+          mapTypeControl: false,
+          streetViewControl: false,
+          fullscreenControl: false,
+        }}
+      >
+        <Marker
+          position={{ lat, lng }}
+          icon={roverIcon}
+        />
+        
+        {location.accuracy && (
+          <Circle
+            center={{ lat, lng }}
+            radius={location.accuracy}
+            options={{
+              fillColor: '#00ff88',
+              fillOpacity: 0.1,
+              strokeColor: '#00ff88',
+              strokeOpacity: 0.3,
+              strokeWeight: 1,
+            }}
+          />
+        )}
+
+        {showUserLocation && location.latitude && location.longitude && 
+         (location.latitude !== lat || location.longitude !== lng) && (
+          <Marker
+            position={{ lat: location.latitude, lng: location.longitude }}
+            icon={userIcon}
+          />
+        )}
+      </GoogleMap>
+
+      <div className="absolute bottom-2 left-2 bg-black/70 px-2 py-1 rounded text-[10px] font-mono text-green-400">
+        {lat.toFixed(6)}, {lng.toFixed(6)}
+      </div>
+
+      {location.accuracy && (
+        <div className="absolute bottom-2 right-2 bg-black/70 px-2 py-1 rounded text-[10px] font-mono text-cyan-400">
+          ±{location.accuracy.toFixed(0)}m
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function RoverLocationMap({
   roverLat,
@@ -129,78 +265,13 @@ export default function RoverLocationMap({
   }
 
   return (
-    <div 
-      className="rounded overflow-hidden border border-border relative"
-      style={{ height }}
-      data-testid="rover-map-container"
-    >
-      <LoadScript googleMapsApiKey={mapApiKey}>
-        <GoogleMap
-          mapContainerStyle={mapContainerStyle}
-          center={{ lat, lng }}
-          zoom={17}
-          options={{
-            styles: darkMapStyle,
-            disableDefaultUI: true,
-            zoomControl: true,
-            mapTypeControl: false,
-            streetViewControl: false,
-            fullscreenControl: false,
-          }}
-        >
-          <Marker
-            position={{ lat, lng }}
-            icon={{
-              path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
-              fillColor: '#00ff88',
-              fillOpacity: 1,
-              strokeColor: '#004422',
-              strokeWeight: 2,
-              scale: 6,
-              rotation: location.heading || 0,
-            }}
-          />
-          
-          {location.accuracy && (
-            <Circle
-              center={{ lat, lng }}
-              radius={location.accuracy}
-              options={{
-                fillColor: '#00ff88',
-                fillOpacity: 0.1,
-                strokeColor: '#00ff88',
-                strokeOpacity: 0.3,
-                strokeWeight: 1,
-              }}
-            />
-          )}
-
-          {showUserLocation && location.latitude && location.longitude && 
-           (location.latitude !== lat || location.longitude !== lng) && (
-            <Marker
-              position={{ lat: location.latitude, lng: location.longitude }}
-              icon={{
-                path: google.maps.SymbolPath.CIRCLE,
-                fillColor: '#4a9eff',
-                fillOpacity: 1,
-                strokeColor: '#ffffff',
-                strokeWeight: 2,
-                scale: 6,
-              }}
-            />
-          )}
-        </GoogleMap>
-      </LoadScript>
-
-      <div className="absolute bottom-2 left-2 bg-black/70 px-2 py-1 rounded text-[10px] font-mono text-green-400">
-        {lat.toFixed(6)}, {lng.toFixed(6)}
-      </div>
-
-      {location.accuracy && (
-        <div className="absolute bottom-2 right-2 bg-black/70 px-2 py-1 rounded text-[10px] font-mono text-cyan-400">
-          ±{location.accuracy.toFixed(0)}m
-        </div>
-      )}
-    </div>
+    <GoogleMapWrapper
+      apiKey={mapApiKey}
+      lat={lat}
+      lng={lng}
+      location={location}
+      showUserLocation={showUserLocation}
+      height={height}
+    />
   );
 }
