@@ -92,8 +92,7 @@ export default function Joystick({ onMove, onHeadingChange, className, size = 19
     if (onMove) onMove(0, 0);
   };
 
-  const labelOffset = 20;
-  const diagonalOffset = Math.cos(Math.PI / 4);
+  const labelOffset = 24;
 
   return (
     <div ref={containerRef} className={`flex flex-col items-center w-full ${className}`}>
@@ -104,40 +103,16 @@ export default function Joystick({ onMove, onHeadingChange, className, size = 19
         {/* Cardinal point labels - OUTSIDE the circle */}
         <div className="absolute inset-0 pointer-events-none font-bold text-sm">
           {/* Primary cardinals */}
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1 text-primary">N</div>
-          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1 text-primary/60">S</div>
-          <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1 text-primary/60">W</div>
-          <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1 text-primary/60">E</div>
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 text-primary">N</div>
+          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 text-primary/60">S</div>
+          <div className="absolute left-0 top-1/2 -translate-y-1/2 text-primary/60">W</div>
+          <div className="absolute right-0 top-1/2 -translate-y-1/2 text-primary/60">E</div>
           
-          {/* Intercardinals */}
-          <div 
-            className="absolute text-[10px] text-primary/40"
-            style={{ 
-              top: `${labelOffset + (computedSize / 2) * (1 - diagonalOffset) - 8}px`,
-              right: `${labelOffset + (computedSize / 2) * (1 - diagonalOffset) - 8}px`,
-            }}
-          >NE</div>
-          <div 
-            className="absolute text-[10px] text-primary/40"
-            style={{ 
-              bottom: `${labelOffset + (computedSize / 2) * (1 - diagonalOffset) - 8}px`,
-              right: `${labelOffset + (computedSize / 2) * (1 - diagonalOffset) - 8}px`,
-            }}
-          >SE</div>
-          <div 
-            className="absolute text-[10px] text-primary/40"
-            style={{ 
-              bottom: `${labelOffset + (computedSize / 2) * (1 - diagonalOffset) - 8}px`,
-              left: `${labelOffset + (computedSize / 2) * (1 - diagonalOffset) - 8}px`,
-            }}
-          >SW</div>
-          <div 
-            className="absolute text-[10px] text-primary/40"
-            style={{ 
-              top: `${labelOffset + (computedSize / 2) * (1 - diagonalOffset) - 8}px`,
-              left: `${labelOffset + (computedSize / 2) * (1 - diagonalOffset) - 8}px`,
-            }}
-          >NW</div>
+          {/* Intercardinals - outside the circle at 45 degree positions */}
+          <div className="absolute top-[3px] right-[3px] text-xs text-primary/50">NE</div>
+          <div className="absolute bottom-[3px] right-[3px] text-xs text-primary/50">SE</div>
+          <div className="absolute bottom-[3px] left-[3px] text-xs text-primary/50">SW</div>
+          <div className="absolute top-[3px] left-[3px] text-xs text-primary/50">NW</div>
         </div>
 
         {/* Joystick circle container */}
@@ -157,46 +132,6 @@ export default function Joystick({ onMove, onHeadingChange, className, size = 19
             <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-0.5 h-3 bg-primary/50"></div>
             <div className="absolute left-0 top-1/2 -translate-y-1/2 h-0.5 w-3 bg-primary/50"></div>
             <div className="absolute right-0 top-1/2 -translate-y-1/2 h-0.5 w-3 bg-primary/50"></div>
-          </div>
-
-          {/* Compass tick marks - intercardinal (NE, SE, SW, NW) at 45 degree angles */}
-          <div className="absolute inset-0 pointer-events-none">
-            {/* NE tick - 45 degrees */}
-            <div 
-              className="absolute w-0.5 h-2 bg-primary/30 origin-bottom"
-              style={{ 
-                top: `${(computedSize / 2) * (1 - diagonalOffset) - 1}px`,
-                left: `${(computedSize / 2) + (computedSize / 2) * diagonalOffset - 1}px`,
-                transform: 'rotate(45deg)',
-              }}
-            />
-            {/* SE tick - 135 degrees */}
-            <div 
-              className="absolute w-0.5 h-2 bg-primary/30 origin-top"
-              style={{ 
-                bottom: `${(computedSize / 2) * (1 - diagonalOffset) - 1}px`,
-                left: `${(computedSize / 2) + (computedSize / 2) * diagonalOffset - 1}px`,
-                transform: 'rotate(-45deg)',
-              }}
-            />
-            {/* SW tick - 225 degrees */}
-            <div 
-              className="absolute w-0.5 h-2 bg-primary/30 origin-top"
-              style={{ 
-                bottom: `${(computedSize / 2) * (1 - diagonalOffset) - 1}px`,
-                right: `${(computedSize / 2) + (computedSize / 2) * diagonalOffset - 1}px`,
-                transform: 'rotate(45deg)',
-              }}
-            />
-            {/* NW tick - 315 degrees */}
-            <div 
-              className="absolute w-0.5 h-2 bg-primary/30 origin-bottom"
-              style={{ 
-                top: `${(computedSize / 2) * (1 - diagonalOffset) - 1}px`,
-                right: `${(computedSize / 2) + (computedSize / 2) * diagonalOffset - 1}px`,
-                transform: 'rotate(-45deg)',
-              }}
-            />
           </div>
 
           {/* Diagonal lines */}
