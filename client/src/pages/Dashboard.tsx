@@ -23,8 +23,8 @@ export default function Dashboard() {
       {/* Desktop Layout (≥1024px): 3 columns - strict viewport fit, NO scrolling */}
       <main className="hidden lg:grid grid-cols-12 gap-1.5 p-1.5 h-full">
         
-        {/* Left Column - Core Systems, Camera Feed, Google Maps (swapped from radar) */}
-        <div className="col-span-3 grid grid-rows-[auto_auto_1fr] gap-1.5 min-h-0">
+        {/* Left Column - Core Systems, Camera Pan/Tilt, Camera Feed, Google Maps */}
+        <div className="col-span-3 grid grid-rows-[auto_auto_auto_1fr] gap-1.5 min-h-0">
           {/* Core Systems */}
           <div className="hud-panel p-[10px] min-h-0 overflow-hidden max-h-[25vh]">
             <ScrollArea className="h-full w-full">
@@ -32,7 +32,12 @@ export default function Dashboard() {
             </ScrollArea>
           </div>
           
-          {/* Camera Feed - Moved under Core Systems */}
+          {/* Camera Pan/Tilt Panel - Moved under Core Systems */}
+          <div className="hud-panel p-[10px]">
+            <CameraPanTilt compact />
+          </div>
+          
+          {/* Camera Feed */}
           <div className="hud-panel overflow-hidden">
             <AspectRatio ratio={16 / 9}>
               <CameraFeed className="h-full" />
@@ -148,11 +153,6 @@ export default function Dashboard() {
                 <div className="text-[8px] text-muted-foreground">LNG</div>
               </div>
             </div>
-          </div>
-
-          {/* Camera Pan/Tilt Panel */}
-          <div className="hud-panel p-[10px] flex-1 min-h-0 overflow-hidden">
-            <CameraPanTilt compact />
           </div>
         </div>
       </main>
