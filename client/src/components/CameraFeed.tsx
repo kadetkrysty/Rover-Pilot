@@ -131,6 +131,8 @@ export default function CameraFeed({
                   }}
                 />
                 <motion.circle
+                  cx={50}
+                  cy={95}
                   r="1"
                   fill="#ef4444"
                   animate={{

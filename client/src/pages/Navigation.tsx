@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { MapPin, Trash2, Play, Pause, RotateCcw, Search, Key, Save, Download, Upload, Navigation2, Flag, LocateFixed } from 'lucide-react';
 import { useRoverData } from '@/lib/mockData';
-import { GoogleMap, LoadScript, Marker, Polyline } from '@react-google-maps/api';
+import { GoogleMap, LoadScript, MarkerF, Polyline } from '@react-google-maps/api';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getRoutes, createRoute, createWaypoints, getWaypoints, deleteRoute, startNavigation as apiStartNavigation } from '@/lib/api';
 import {
@@ -550,7 +550,7 @@ export default function Navigation() {
 
                         {/* Rover Position Marker */}
                         {map && (
-                        <Marker
+                        <MarkerF
                             position={{ lat: data.gps.lat, lng: data.gps.lng }}
                             icon={{
                                 path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
@@ -565,7 +565,7 @@ export default function Navigation() {
 
                         {/* Waypoints - Draggable */}
                         {waypoints.map((wp, idx) => (
-                            <Marker
+                            <MarkerF
                                 key={wp.id}
                                 position={{ lat: wp.lat, lng: wp.lng }}
                                 draggable={true}

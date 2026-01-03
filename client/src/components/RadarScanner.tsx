@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useMemo } from 'react';
 import { useWebSocket } from '@/lib/useWebSocket';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Maximize2, X } from 'lucide-react';
 import { usePerformanceSettings } from '@/lib/performanceSettings';
 
@@ -432,7 +432,8 @@ export default function RadarScanner({ ultrasonicData, lidarDistance, className 
 
       {/* Fullscreen Modal */}
       <Dialog open={isFullscreen} onOpenChange={setIsFullscreen}>
-        <DialogContent className="max-w-[95vw] w-[95vw] h-[90vh] bg-background/95 backdrop-blur-md border-primary/30 p-0 [&>button]:hidden">
+        <DialogContent className="max-w-[95vw] w-[95vw] h-[90vh] bg-background/95 backdrop-blur-md border-primary/30 p-0 [&>button]:hidden" aria-describedby={undefined}>
+          <DialogTitle className="sr-only">Proximity Radar Fullscreen</DialogTitle>
           <div className="flex flex-col h-full p-6">
             {/* Header */}
             <div className="flex justify-between items-center pb-4 border-b border-primary/20">

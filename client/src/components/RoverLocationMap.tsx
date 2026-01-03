@@ -1,4 +1,4 @@
-import { GoogleMap, useLoadScript, Marker, Circle } from '@react-google-maps/api';
+import { GoogleMap, useLoadScript, MarkerF, Circle } from '@react-google-maps/api';
 import { useQuery } from '@tanstack/react-query';
 import { getConfig } from '@/lib/api';
 import { useLocation } from '@/hooks/useLocation';
@@ -138,7 +138,7 @@ function GoogleMapWrapper({
           fullscreenControl: false,
         }}
       >
-        <Marker
+        <MarkerF
           position={{ lat, lng }}
           icon={roverIcon}
         />
@@ -159,7 +159,7 @@ function GoogleMapWrapper({
 
         {showUserLocation && location.latitude && location.longitude && 
          (location.latitude !== lat || location.longitude !== lng) && (
-          <Marker
+          <MarkerF
             position={{ lat: location.latitude, lng: location.longitude }}
             icon={userIcon}
           />
