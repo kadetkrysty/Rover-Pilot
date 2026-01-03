@@ -292,86 +292,155 @@ export default function RadarScanner({ ultrasonicData, lidarDistance, className 
     };
   }, [obstacles]);
 
-  const ObstaclesList = ({ large = false }: { large?: boolean }) => (
-    <div className="flex flex-col h-full overflow-hidden w-full">
-      <h4 className={`${large ? 'text-base' : 'text-[9px]'} font-display text-primary/80 mb-3`}>DETECTED OBSTACLES</h4>
-      <ScrollArea className="flex-1">
-        <h5 className={`${large ? 'text-sm' : 'text-[8px]'} font-display text-green-400/80 mb-2 flex items-center gap-1`}>
-          <div className={`${large ? 'w-2.5 h-2.5' : 'w-1.5 h-1.5'} rounded-full bg-green-400`}></div>
-          ULTRASONIC ({ultrasonicObstacles.length})
-        </h5>
-        {ultrasonicObstacles.length > 0 ? (
-          <div className={`grid grid-cols-1 ${large ? 'gap-3 mb-6' : 'gap-1 mb-4'}`}>
-            {ultrasonicObstacles.map((obstacle) => (
-              <div 
-                key={obstacle.id}
-                className={`bg-card/60 border border-green-400/30 rounded-lg ${large ? 'p-4' : 'px-3 py-2'} font-mono`}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <span className={`text-green-400 font-bold ${large ? 'text-lg' : 'text-[10px]'}`}>{obstacle.id}</span>
-                    <span className={`text-foreground/70 ${large ? 'text-base' : 'text-[9px]'}`}>{obstacle.label}</span>
+  const ObstaclesList = ({ variant = 'compact' }: { variant?: 'compact' | 'fullscreen' }) => {
+    const isFullscreen = variant === 'fullscreen';
+    
+    if (isFullscreen) {
+      return (
+        <div className="flex flex-col h-full overflow-hidden w-full">
+          <h4 className="text-base font-display text-primary/80 mb-3">DETECTED OBSTACLES</h4>
+          <ScrollArea className="flex-1">
+            <h5 className="text-sm font-display text-green-400/80 mb-2 flex items-center gap-1">
+              <div className="w-2.5 h-2.5 rounded-full bg-green-400"></div>
+              ULTRASONIC ({ultrasonicObstacles.length})
+            </h5>
+            {ultrasonicObstacles.length > 0 ? (
+              <div className="grid grid-cols-1 gap-3 mb-6">
+                {ultrasonicObstacles.map((obstacle) => (
+                  <div 
+                    key={obstacle.id}
+                    className="bg-card/60 border border-green-400/30 rounded-lg p-4 font-mono"
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-green-400 font-bold text-lg">{obstacle.id}</span>
+                        <span className="text-foreground/70 text-base">{obstacle.label}</span>
+                      </div>
+                      <span className="text-primary/60 text-sm">{obstacle.cardinal}</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div className="flex flex-col">
+                        <span className="text-foreground/50 text-xs uppercase">Distance</span>
+                        <span className="text-foreground font-bold">{obstacle.distance.toFixed(0)} cm</span>
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-foreground/50 text-xs uppercase">Angle</span>
+                        <span className="text-foreground font-bold">{obstacle.angle}°</span>
+                      </div>
+                    </div>
                   </div>
-                  <span className={`text-primary/60 ${large ? 'text-sm' : 'text-[8px]'}`}>{obstacle.cardinal}</span>
-                </div>
-                <div className={`grid grid-cols-2 gap-2 ${large ? 'text-sm' : 'text-[9px]'}`}>
-                  <div className="flex flex-col">
-                    <span className="text-foreground/50 text-[8px] uppercase">Distance</span>
-                    <span className="text-foreground font-bold">{obstacle.distance.toFixed(0)} cm</span>
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-foreground/50 text-[8px] uppercase">Angle</span>
-                    <span className="text-foreground font-bold">{obstacle.angle}°</span>
-                  </div>
-                </div>
+                ))}
               </div>
-            ))}
-          </div>
-        ) : (
-          <div className={`text-center ${large ? 'text-sm py-6' : 'text-[9px] py-2'} text-foreground/50 mb-4 border border-dashed border-green-400/20 rounded-lg`}>
-            NO OBSTACLES
-          </div>
-        )}
+            ) : (
+              <div className="text-center text-sm py-6 text-foreground/50 mb-6 border border-dashed border-green-400/20 rounded-lg">
+                NO OBSTACLES
+              </div>
+            )}
 
-        <h5 className={`${large ? 'text-sm' : 'text-[8px]'} font-display text-cyan-400/80 mb-2 flex items-center gap-1`}>
-          <div className={`${large ? 'w-2.5 h-2.5' : 'w-1.5 h-1.5'} rounded-full bg-cyan-400`}></div>
-          LIDAR ({lidarObstacles.length})
-        </h5>
-        {lidarObstacles.length > 0 ? (
-          <div className={`grid grid-cols-1 ${large ? 'gap-3' : 'gap-1'}`}>
-            {lidarObstacles.map((obstacle) => (
-              <div 
-                key={obstacle.id}
-                className={`bg-card/60 border border-cyan-400/30 rounded-lg ${large ? 'p-4' : 'px-3 py-2'} font-mono`}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <span className={`text-cyan-400 font-bold ${large ? 'text-lg' : 'text-[10px]'}`}>{obstacle.id}</span>
-                    <span className={`text-foreground/70 ${large ? 'text-base' : 'text-[9px]'}`}>{obstacle.label}</span>
+            <h5 className="text-sm font-display text-cyan-400/80 mb-2 flex items-center gap-1">
+              <div className="w-2.5 h-2.5 rounded-full bg-cyan-400"></div>
+              LIDAR ({lidarObstacles.length})
+            </h5>
+            {lidarObstacles.length > 0 ? (
+              <div className="grid grid-cols-1 gap-3">
+                {lidarObstacles.map((obstacle) => (
+                  <div 
+                    key={obstacle.id}
+                    className="bg-card/60 border border-cyan-400/30 rounded-lg p-4 font-mono"
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-cyan-400 font-bold text-lg">{obstacle.id}</span>
+                        <span className="text-foreground/70 text-base">{obstacle.label}</span>
+                      </div>
+                      <span className="text-primary/60 text-sm">{obstacle.cardinal}</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div className="flex flex-col">
+                        <span className="text-foreground/50 text-xs uppercase">Distance</span>
+                        <span className="text-foreground font-bold">{obstacle.distance.toFixed(0)} cm</span>
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-foreground/50 text-xs uppercase">Angle</span>
+                        <span className="text-foreground font-bold">{obstacle.angle}°</span>
+                      </div>
+                    </div>
                   </div>
-                  <span className={`text-primary/60 ${large ? 'text-sm' : 'text-[8px]'}`}>{obstacle.cardinal}</span>
-                </div>
-                <div className={`grid grid-cols-2 gap-2 ${large ? 'text-sm' : 'text-[9px]'}`}>
-                  <div className="flex flex-col">
-                    <span className="text-foreground/50 text-[8px] uppercase">Distance</span>
-                    <span className="text-foreground font-bold">{obstacle.distance.toFixed(0)} cm</span>
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-foreground/50 text-[8px] uppercase">Angle</span>
-                    <span className="text-foreground font-bold">{obstacle.angle}°</span>
-                  </div>
-                </div>
+                ))}
               </div>
-            ))}
-          </div>
-        ) : (
-          <div className={`text-center ${large ? 'text-sm py-6' : 'text-[9px] py-2'} text-foreground/50 border border-dashed border-cyan-400/20 rounded-lg`}>
-            NO OBSTACLES
-          </div>
-        )}
-      </ScrollArea>
-    </div>
-  );
+            ) : (
+              <div className="text-center text-sm py-6 text-foreground/50 border border-dashed border-cyan-400/20 rounded-lg">
+                NO OBSTACLES
+              </div>
+            )}
+          </ScrollArea>
+        </div>
+      );
+    }
+
+    return (
+      <div className="flex flex-col min-h-0 overflow-hidden">
+        <h4 className="text-[9px] font-display text-primary/80 mb-2">DETECTED OBSTACLES</h4>
+        <ScrollArea className="flex-1">
+          <h5 className="text-[8px] font-display text-green-400/80 mb-1 flex items-center gap-1">
+            <div className="w-1.5 h-1.5 rounded-full bg-green-400"></div>
+            ULTRASONIC ({ultrasonicObstacles.length})
+          </h5>
+          {ultrasonicObstacles.length > 0 ? (
+            <div className="grid grid-cols-1 gap-0.5 mb-3">
+              {ultrasonicObstacles.map((obstacle) => (
+                <div 
+                  key={obstacle.id}
+                  className="flex items-center justify-between px-2 py-1 bg-card/50 border border-green-400/30 rounded text-[9px] font-mono"
+                >
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-green-400 font-bold">{obstacle.id}</span>
+                    <span className="text-foreground/70">{obstacle.label}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-foreground font-bold">{obstacle.distance.toFixed(0)}cm</span>
+                    <span className="text-primary/60 text-[8px]">{obstacle.cardinal}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center text-[9px] text-foreground/50 py-2 mb-3 border border-dashed border-green-400/20 rounded">
+              NO OBSTACLES
+            </div>
+          )}
+
+          <h5 className="text-[8px] font-display text-cyan-400/80 mb-1 flex items-center gap-1">
+            <div className="w-1.5 h-1.5 rounded-full bg-cyan-400"></div>
+            LIDAR ({lidarObstacles.length})
+          </h5>
+          {lidarObstacles.length > 0 ? (
+            <div className="grid grid-cols-1 gap-0.5">
+              {lidarObstacles.map((obstacle) => (
+                <div 
+                  key={obstacle.id}
+                  className="flex items-center justify-between px-2 py-1 bg-card/50 border border-cyan-400/30 rounded text-[9px] font-mono"
+                >
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-cyan-400 font-bold">{obstacle.id}</span>
+                    <span className="text-foreground/70">{obstacle.label}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-foreground font-bold">{obstacle.distance.toFixed(0)}cm</span>
+                    <span className="text-primary/60 text-[8px]">{obstacle.cardinal}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center text-[9px] text-foreground/50 py-2 border border-dashed border-cyan-400/20 rounded">
+              NO OBSTACLES
+            </div>
+          )}
+        </ScrollArea>
+      </div>
+    );
+  };
 
   return (
     <>
@@ -467,7 +536,7 @@ export default function RadarScanner({ ultrasonicData, lidarDistance, className 
 
               {/* Obstacles Column - 1/3 */}
               <div className="flex-1 flex items-center justify-center self-center max-h-[60vh]">
-                <ObstaclesList large />
+                <ObstaclesList variant="fullscreen" />
               </div>
             </div>
           </div>
