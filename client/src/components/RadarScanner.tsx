@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import { useWebSocket } from '@/lib/useWebSocket';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface RadarScannerProps {
   ultrasonicData: [number, number, number, number, number];
@@ -11,8 +12,17 @@ interface ObstaclePoint {
   angle: number;
   distance: number;
   type: 'ultrasonic' | 'lidar';
+  label: string;
   timestamp: number;
 }
+
+const ULTRASONIC_LABELS = [
+  'FRONT',
+  'FRONT-L',
+  'FRONT-R',
+  'LEFT',
+  'RIGHT',
+];
 
 const ULTRASONIC_ANGLES = [
   0,    // Front center
@@ -30,14 +40,15 @@ export default function RadarScanner({ ultrasonicData, lidarDistance, className 
   const containerRef = useRef<HTMLDivElement>(null);
   const [sweepAngle, setSweepAngle] = useState(0);
   const [obstacles, setObstacles] = useState<ObstaclePoint[]>([]);
-  const [size, setSize] = useState(200);
+  const [containerWidth, setContainerWidth] = useState(200);
   const { isConnected } = useWebSocket();
+
+  const size = useMemo(() => Math.floor(containerWidth * 0.8), [containerWidth]);
 
   useEffect(() => {
     const updateSize = () => {
       if (containerRef.current) {
-        const containerWidth = containerRef.current.clientWidth;
-        setSize(Math.min(containerWidth - 20, 280));
+        setContainerWidth(containerRef.current.clientWidth);
       }
     };
     
@@ -64,6 +75,7 @@ export default function RadarScanner({ ultrasonicData, lidarDistance, className 
           angle: ULTRASONIC_ANGLES[index],
           distance,
           type: 'ultrasonic',
+          label: ULTRASONIC_LABELS[index],
           timestamp: now,
         });
       }
@@ -74,6 +86,7 @@ export default function RadarScanner({ ultrasonicData, lidarDistance, className 
         angle: 0,
         distance: lidarDistance,
         type: 'lidar',
+        label: 'LIDAR',
         timestamp: now,
       });
     }
@@ -93,7 +106,7 @@ export default function RadarScanner({ ultrasonicData, lidarDistance, className 
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas || size < 50) return;
     
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
@@ -105,7 +118,7 @@ export default function RadarScanner({ ultrasonicData, lidarDistance, className 
 
     const centerX = size / 2;
     const centerY = size / 2;
-    const maxRadius = size / 2 - 20;
+    const maxRadius = size / 2 - 15;
 
     ctx.fillStyle = 'rgba(0, 20, 30, 0.95)';
     ctx.fillRect(0, 0, size, size);
@@ -185,48 +198,48 @@ export default function RadarScanner({ ultrasonicData, lidarDistance, className 
     ctx.arc(centerX, centerY, 4, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.font = '10px monospace';
+    const fontSize = Math.max(8, Math.floor(size / 20));
+    ctx.font = `${fontSize}px monospace`;
     ctx.fillStyle = 'rgba(0, 255, 200, 0.6)';
     ctx.textAlign = 'center';
     
-    ctx.fillText('N', centerX, 14);
-    ctx.fillText('S', centerX, size - 6);
-    ctx.fillText('W', 8, centerY + 3);
-    ctx.fillText('E', size - 8, centerY + 3);
+    ctx.fillText('N', centerX, fontSize + 2);
+    ctx.fillText('S', centerX, size - 4);
+    ctx.fillText('W', fontSize - 2, centerY + 3);
+    ctx.fillText('E', size - fontSize + 2, centerY + 3);
 
   }, [size, sweepAngle, obstacles]);
 
-  const closestObstacle = obstacles.length > 0 
-    ? obstacles.reduce((min, o) => o.distance < min.distance ? o : min, obstacles[0])
-    : null;
+  const latestObstacles = useMemo(() => {
+    const now = Date.now();
+    const recent = obstacles.filter(o => now - o.timestamp < 500);
+    const uniqueByLabel = new Map<string, ObstaclePoint>();
+    recent.forEach(o => {
+      const existing = uniqueByLabel.get(o.label);
+      if (!existing || o.timestamp > existing.timestamp) {
+        uniqueByLabel.set(o.label, o);
+      }
+    });
+    return Array.from(uniqueByLabel.values()).sort((a, b) => a.distance - b.distance);
+  }, [obstacles]);
 
   return (
     <div ref={containerRef} className={`flex flex-col h-full ${className}`}>
       <div className="flex justify-between items-center" style={{ paddingBottom: '12px' }}>
         <h3 className="text-xs font-display text-primary/50">PROXIMITY RADAR</h3>
-        <div className="font-mono text-[10px] text-primary/60">
-          {closestObstacle ? (
-            <>{closestObstacle.distance.toFixed(0)}cm @ {closestObstacle.angle}°</>
-          ) : (
-            <>CLEAR</>
-          )}
-        </div>
+        {!isConnected && (
+          <div className="bg-accent/80 px-1.5 py-0.5 rounded text-[8px] font-mono">
+            DEMO
+          </div>
+        )}
       </div>
       
-      <div className="flex-1 flex items-center justify-center">
-        <div className="relative">
-          <canvas
-            ref={canvasRef}
-            style={{ width: size, height: size }}
-            className="rounded-full border border-primary/30"
-          />
-          
-          {!isConnected && (
-            <div className="absolute top-2 right-2 bg-accent/80 px-1.5 py-0.5 rounded text-[8px] font-mono">
-              DEMO
-            </div>
-          )}
-        </div>
+      <div className="flex justify-center">
+        <canvas
+          ref={canvasRef}
+          style={{ width: size, height: size }}
+          className="rounded-full border border-primary/30"
+        />
       </div>
 
       <div className="flex justify-center gap-4 mt-2 text-[9px] font-mono">
@@ -238,6 +251,38 @@ export default function RadarScanner({ ultrasonicData, lidarDistance, className 
           <div className="w-2 h-2 rounded-full bg-cyan-400"></div>
           <span className="text-muted-foreground">LIDAR</span>
         </div>
+      </div>
+
+      <div className="mt-3 flex-1 min-h-0">
+        <h4 className="text-[10px] font-display text-primary/40 mb-2">DETECTED OBSTACLES</h4>
+        <ScrollArea className="h-full max-h-[120px]">
+          {latestObstacles.length > 0 ? (
+            <div className="grid grid-cols-2 gap-x-2 gap-y-1">
+              {latestObstacles.map((obstacle, i) => (
+                <div 
+                  key={`${obstacle.label}-${i}`}
+                  className="flex items-center justify-between px-2 py-1 bg-card/50 border border-border rounded text-[10px] font-mono"
+                >
+                  <div className="flex items-center gap-1.5">
+                    <div 
+                      className={`w-1.5 h-1.5 rounded-full ${
+                        obstacle.type === 'ultrasonic' ? 'bg-green-400' : 'bg-cyan-400'
+                      }`}
+                    />
+                    <span className="text-muted-foreground">{obstacle.label}</span>
+                  </div>
+                  <span className="text-foreground">
+                    {obstacle.distance.toFixed(0)}cm {obstacle.angle >= 0 ? '+' : ''}{obstacle.angle}°
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center text-[10px] text-muted-foreground py-2">
+              NO OBSTACLES DETECTED
+            </div>
+          )}
+        </ScrollArea>
       </div>
     </div>
   );
