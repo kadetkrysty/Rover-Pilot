@@ -673,9 +673,9 @@ function DeviceCameraFeed({ zoom, pan, tilt, isRecording }: {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
           video: {
-            width: { ideal: 1920 },
-            height: { ideal: 1080 },
-            facingMode: 'environment'
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+            facingMode: 'user'
           },
           audio: true
         });
@@ -683,7 +683,21 @@ function DeviceCameraFeed({ zoom, pan, tilt, isRecording }: {
         streamRef.current = stream;
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
-          setCameraStatus('active');
+          
+          videoRef.current.onloadedmetadata = () => {
+            videoRef.current?.play().then(() => {
+              setCameraStatus('active');
+            }).catch((err) => {
+              console.error('Video play error:', err);
+              setCameraStatus('error');
+              setErrorMessage('Failed to play video stream.');
+            });
+          };
+          
+          videoRef.current.onerror = () => {
+            setCameraStatus('error');
+            setErrorMessage('Video stream error.');
+          };
         }
       } catch (err: any) {
         console.error('Camera access error:', err);
@@ -693,6 +707,9 @@ function DeviceCameraFeed({ zoom, pan, tilt, isRecording }: {
         } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
           setCameraStatus('error');
           setErrorMessage('No camera found on this device.');
+        } else if (err.name === 'NotReadableError') {
+          setCameraStatus('error');
+          setErrorMessage('Camera is in use by another application. Close other tabs using camera.');
         } else {
           setCameraStatus('error');
           setErrorMessage(err.message || 'Failed to access camera.');
@@ -772,22 +789,20 @@ function DeviceCameraFeed({ zoom, pan, tilt, isRecording }: {
 
   return (
     <div className="w-full h-full bg-black flex items-center justify-center relative overflow-hidden">
-      {cameraStatus === 'active' && (
-        <video
-          ref={videoRef}
-          autoPlay
-          playsInline
-          muted
-          className="w-full h-full object-cover transition-transform duration-100"
-          style={{ 
-            transform: `scale(${zoom}) translate(${-pan * 0.5}px, ${tilt * 0.5}px)`,
-            transformOrigin: 'center center'
-          }}
-        />
-      )}
+      <video
+        ref={videoRef}
+        autoPlay
+        playsInline
+        muted
+        className={`w-full h-full object-cover transition-transform duration-100 ${cameraStatus !== 'active' ? 'hidden' : ''}`}
+        style={{ 
+          transform: `scale(${zoom}) translate(${-pan * 0.5}px, ${tilt * 0.5}px)`,
+          transformOrigin: 'center center'
+        }}
+      />
 
       {cameraStatus === 'loading' && (
-        <div className="text-center">
+        <div className="text-center absolute inset-0 flex flex-col items-center justify-center">
           <div className="w-16 h-16 border-4 border-primary/30 border-t-primary rounded-full animate-spin mx-auto mb-4"></div>
           <div className="text-primary font-mono text-sm">REQUESTING CAMERA ACCESS...</div>
           <div className="text-muted-foreground font-mono text-xs mt-2">Please allow camera and microphone permissions</div>
@@ -795,7 +810,7 @@ function DeviceCameraFeed({ zoom, pan, tilt, isRecording }: {
       )}
 
       {(cameraStatus === 'denied' || cameraStatus === 'error') && (
-        <div className="text-center p-4">
+        <div className="text-center p-4 absolute inset-0 flex flex-col items-center justify-center">
           <div className="w-16 h-16 border-2 border-destructive/50 rounded-full mx-auto mb-4 flex items-center justify-center">
             <Camera className="w-8 h-8 text-destructive/70" />
           </div>
