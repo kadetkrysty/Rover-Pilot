@@ -39,7 +39,7 @@ const ULTRASONIC_ANGLES = [
 const MAX_RANGE = 600;
 const FADE_DURATION = 2000;
 
-let obstacleIdCounter = 1;
+const ULTRASONIC_IDS = ['U1', 'U2', 'U3', 'U4', 'U5'];
 
 function renderRadar(
   canvas: HTMLCanvasElement,
@@ -219,7 +219,7 @@ export default function RadarScanner({ ultrasonicData, lidarDistance, className 
       if (distance > 0 && distance < MAX_RANGE) {
         const angle = ULTRASONIC_ANGLES[index];
         newObstacles.push({
-          id: `U${obstacleIdCounter++}`,
+          id: ULTRASONIC_IDS[index],
           angle,
           distance,
           type: 'ultrasonic',
@@ -232,7 +232,7 @@ export default function RadarScanner({ ultrasonicData, lidarDistance, className 
 
     if (lidarDistance > 0 && lidarDistance < MAX_RANGE) {
       newObstacles.push({
-        id: `L${obstacleIdCounter++}`,
+        id: 'L1',
         angle: 0,
         distance: lidarDistance,
         type: 'lidar',
@@ -242,10 +242,7 @@ export default function RadarScanner({ ultrasonicData, lidarDistance, className 
       });
     }
 
-    setObstacles(prev => {
-      const filtered = prev.filter(p => now - p.timestamp < FADE_DURATION);
-      return [...filtered, ...newObstacles];
-    });
+    setObstacles(newObstacles);
   }, [ultrasonicData, lidarDistance]);
 
   useEffect(() => {
