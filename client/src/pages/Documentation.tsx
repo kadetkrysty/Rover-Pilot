@@ -214,52 +214,52 @@ export default function Documentation() {
                             <div>
                                 <h4 className="font-display text-primary mb-3">WIRING DIAGRAM</h4>
                                 <pre className="bg-black/50 p-4 border border-border rounded-lg text-xs overflow-x-auto font-mono text-green-300">
-{`┌─────────────────────────────────────────────────────────────────────────┐
-│                    CAMERA PAN/TILT WIRING DIAGRAM                       │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                         │
-│  ┌────────────────────┐      40-Pin GPIO       ┌────────────────────┐  │
-│  │  RASPBERRY PI 3B+  │◄─────────────────────► │  SLUSHENGINE X LT  │  │
-│  │                    │      (HAT Mount)       │                    │  │
-│  │  Power: 5V 2.5A    │                        │  Power: 12V DC     │  │
-│  │  via USB-C or GPIO │                        │  (VPP Terminal)    │  │
-│  └────────────────────┘                        │                    │  │
-│                                                │  ┌──────────────┐  │  │
-│  ┌──────────────────────────────────────────┐  │  │   Motor 1    │  │  │
-│  │              MOTOR CONNECTIONS           │  │  │   (PAN)      │  │  │
-│  ├──────────────────────────────────────────┤  │  │              │  │  │
-│  │                                          │  │  │ A+ ─► Coil A+│  │  │
-│  │  PAN MOTOR (Motor Port 1)                │  │  │ A- ─► Coil A-│  │  │
-│  │  ├─ A+ (Green)  ─► SlushEngine Motor1 A+ │  │  │ B+ ─► Coil B+│  │  │
-│  │  ├─ A- (Black)  ─► SlushEngine Motor1 A- │  │  │ B- ─► Coil B-│  │  │
-│  │  ├─ B+ (Red)    ─► SlushEngine Motor1 B+ │  │  └──────────────┘  │  │
-│  │  └─ B- (Blue)   ─► SlushEngine Motor1 B- │  │                    │  │
-│  │                                          │  │  ┌──────────────┐  │  │
-│  │  TILT MOTOR (Motor Port 2)               │  │  │   Motor 2    │  │  │
-│  │  ├─ A+ (Green)  ─► SlushEngine Motor2 A+ │  │  │   (TILT)     │  │  │
-│  │  ├─ A- (Black)  ─► SlushEngine Motor2 A- │  │  │              │  │  │
-│  │  ├─ B+ (Red)    ─► SlushEngine Motor2 B+ │  │  │ A+ ─► Coil A+│  │  │
-│  │  └─ B- (Blue)   ─► SlushEngine Motor2 B- │  │  │ A- ─► Coil A-│  │  │
-│  │                                          │  │  │ B+ ─► Coil B+│  │  │
-│  └──────────────────────────────────────────┘  │  │ B- ─► Coil B-│  │  │
-│                                                │  └──────────────┘  │  │
-│  ┌──────────────────────────────────────────┐  │                    │  │
-│  │           POWER CONNECTIONS              │  │  ┌──────────────┐  │  │
-│  ├──────────────────────────────────────────┤  │  │    Power     │  │  │
-│  │  12V DC Power Supply ───► VPP (+)        │  │  │   Terminal   │  │  │
-│  │  GND ───────────────────► GND (-)        │  │  │              │  │  │
-│  │                                          │  │  │ VPP: 9-36V   │  │  │
-│  │  ⚠️  CAUTION: Check polarity before     │  │  │ GND: Common  │  │  │
-│  │      connecting power!                   │  │  └──────────────┘  │  │
-│  └──────────────────────────────────────────┘  └────────────────────┘  │
-│                                                                         │
-│  COMMUNICATION (via Mini PC WiFi):                                      │
-│  ┌──────────────┐     WiFi      ┌──────────────┐    TCP/5002           │
-│  │   Mini PC    │◄────────────► │  RPi 3 B+    │◄─────────────         │
-│  │  Main Ctrl   │               │  Camera Ctrl │    Commands           │
-│  └──────────────┘               └──────────────┘                       │
-│                                                                         │
-└─────────────────────────────────────────────────────────────────────────┘`}
+{`┌───────────────────────────────────────────────────────────────────────┐
+│                   CAMERA PAN/TILT WIRING DIAGRAM                      │
+├───────────────────────────────────────────────────────────────────────┤
+│                                                                       │
+│  ┌──────────────────┐     40-Pin GPIO      ┌──────────────────────┐  │
+│  │  RASPBERRY PI 3B+│◄───────────────────► │   SLUSHENGINE X LT   │  │
+│  │                  │     (HAT Mount)      │                      │  │
+│  │  Power: 5V 2.5A  │                      │  Power: 12V DC       │  │
+│  │  via USB-C/GPIO  │                      │  (VPP Terminal)      │  │
+│  └──────────────────┘                      └──────────────────────┘  │
+│                                                                       │
+│  ┌────────────────────────────────────┐    ┌──────────────────────┐  │
+│  │         MOTOR CONNECTIONS          │    │      Motor 1         │  │
+│  ├────────────────────────────────────┤    │       (PAN)          │  │
+│  │                                    │    │                      │  │
+│  │  PAN MOTOR (Motor Port 1)          │    │  A+ ──► Coil A+      │  │
+│  │  ├─ A+ (Green)  ► Motor1 A+        │    │  A- ──► Coil A-      │  │
+│  │  ├─ A- (Black)  ► Motor1 A-        │    │  B+ ──► Coil B+      │  │
+│  │  ├─ B+ (Red)    ► Motor1 B+        │    │  B- ──► Coil B-      │  │
+│  │  └─ B- (Blue)   ► Motor1 B-        │    └──────────────────────┘  │
+│  │                                    │                              │
+│  │  TILT MOTOR (Motor Port 2)         │    ┌──────────────────────┐  │
+│  │  ├─ A+ (Green)  ► Motor2 A+        │    │      Motor 2         │  │
+│  │  ├─ A- (Black)  ► Motor2 A-        │    │       (TILT)         │  │
+│  │  ├─ B+ (Red)    ► Motor2 B+        │    │                      │  │
+│  │  └─ B- (Blue)   ► Motor2 B-        │    │  A+ ──► Coil A+      │  │
+│  │                                    │    │  A- ──► Coil A-      │  │
+│  └────────────────────────────────────┘    │  B+ ──► Coil B+      │  │
+│                                            │  B- ──► Coil B-      │  │
+│  ┌────────────────────────────────────┐    └──────────────────────┘  │
+│  │        POWER CONNECTIONS           │                              │
+│  ├────────────────────────────────────┤    ┌──────────────────────┐  │
+│  │  12V DC Power Supply ──► VPP (+)   │    │    Power Terminal    │  │
+│  │  GND ──────────────────► GND (-)   │    │                      │  │
+│  │                                    │    │  VPP: 9-36V DC       │  │
+│  │  ⚠ CAUTION: Check polarity before │    │  GND: Common Ground  │  │
+│  │    connecting power!               │    └──────────────────────┘  │
+│  └────────────────────────────────────┘                              │
+│                                                                       │
+│  COMMUNICATION (via Mini PC WiFi):                                   │
+│  ┌──────────────┐      WiFi       ┌──────────────┐                   │
+│  │   Mini PC    │◄──────────────► │  RPi 3 B+    │◄── TCP/5002       │
+│  │  Main Ctrl   │                 │  Camera Ctrl │    Commands       │
+│  └──────────────┘                 └──────────────┘                   │
+│                                                                       │
+└───────────────────────────────────────────────────────────────────────┘`}
                                 </pre>
                             </div>
 
