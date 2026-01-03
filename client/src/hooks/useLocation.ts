@@ -50,8 +50,8 @@ export function useLocation(watchPosition: boolean = false) {
 
       if (Capacitor.isNativePlatform()) {
         position = await Geolocation.getCurrentPosition({
-          enableHighAccuracy: true,
-          timeout: 10000,
+          enableHighAccuracy: false,
+          timeout: 5000,
         });
       } else {
         position = await new Promise<Position>((resolve, reject) => {
@@ -71,7 +71,7 @@ export function useLocation(watchPosition: boolean = false) {
               });
             },
             (err) => reject(err),
-            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+            { enableHighAccuracy: false, timeout: 5000, maximumAge: 60000 }
           );
         });
       }
@@ -116,7 +116,7 @@ export function useLocation(watchPosition: boolean = false) {
 
       if (watchPosition && Capacitor.isNativePlatform()) {
         watchId = await Geolocation.watchPosition(
-          { enableHighAccuracy: true },
+          { enableHighAccuracy: false },
           (position, err) => {
             if (err) {
               setLocation(prev => ({
@@ -163,7 +163,7 @@ export function useLocation(watchPosition: boolean = false) {
               error: err.message,
             }));
           },
-          { enableHighAccuracy: true }
+          { enableHighAccuracy: false, maximumAge: 30000 }
         );
         watchId = id.toString();
       } else {

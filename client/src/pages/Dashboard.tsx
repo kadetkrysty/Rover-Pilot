@@ -36,16 +36,16 @@ export default function Dashboard() {
         </div>
 
         {/* Center: Camera Feed + Map (6 cols) */}
-        <div className="col-span-6 flex flex-col h-full min-h-0">
+        <div className="col-span-6 flex flex-col gap-3 h-full min-h-0">
              {/* Camera with 16:9 aspect ratio */}
-             <div className="flex-shrink-0">
+             <div className="hud-panel flex-shrink-0 overflow-hidden">
                 <AspectRatio ratio={16 / 9}>
                   <CameraFeed className="h-full" />
                 </AspectRatio>
              </div>
              
              {/* Google Maps - Fill remaining height */}
-             <div className="flex-1 min-h-0">
+             <div className="hud-panel flex-1 min-h-0 overflow-hidden">
                 <RoverLocationMap 
                   height="100%"
                   showUserLocation
