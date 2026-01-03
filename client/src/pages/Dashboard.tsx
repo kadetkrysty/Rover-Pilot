@@ -6,9 +6,10 @@ import RadarScanner from '@/components/RadarScanner';
 import PowerPanel from '@/components/PowerPanel';
 import Joystick, { useJoystickData } from '@/components/Joystick';
 import RoverLocationMap from '@/components/RoverLocationMap';
+import CameraPanTilt from '@/components/CameraPanTilt';
 import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Gauge, Compass, Activity } from 'lucide-react';
+import { Gauge, Compass, Activity, Camera } from 'lucide-react';
 
 export default function Dashboard() {
   const data = useRoverData();
@@ -123,6 +124,11 @@ export default function Dashboard() {
                 <div className="text-[8px] text-muted-foreground">LNG</div>
               </div>
             </div>
+          </div>
+
+          {/* Camera Pan/Tilt Panel */}
+          <div className="hud-panel p-[10px] flex-shrink-0">
+            <CameraPanTilt compact />
           </div>
 
           {/* Nav Control Panel */}
