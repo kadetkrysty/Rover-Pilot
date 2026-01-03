@@ -207,7 +207,7 @@
 .navigation-control-panel .map-background {
   position: absolute;
   inset: 0;
-  background-image: url('/attached_assets/ireland_map_1767461656747.png');
+  background-image: url('/assets/ireland-map.png');
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
@@ -215,6 +215,7 @@
   opacity: 0.5;
   pointer-events: none;
   z-index: 0;
+  background-color: rgba(0, 20, 30, 0.5);
 }
 
 .navigation-control-panel .panel-content {
