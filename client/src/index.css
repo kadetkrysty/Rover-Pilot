@@ -193,3 +193,31 @@
   z-index: 10;
   pointer-events: none;
 }
+
+.navigation-control-panel {
+  position: relative;
+  overflow: hidden;
+}
+
+.navigation-control-panel::before,
+.navigation-control-panel::after {
+  z-index: 20;
+}
+
+.navigation-control-panel .map-background {
+  position: absolute;
+  inset: 0;
+  background-image: url('/attached_assets/ireland_map_1767461656747.png');
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+  filter: saturate(180%) hue-rotate(155deg) brightness(50%) contrast(140%);
+  opacity: 0.25;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.navigation-control-panel .panel-content {
+  position: relative;
+  z-index: 1;
+}
