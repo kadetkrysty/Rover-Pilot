@@ -298,78 +298,62 @@ export default function RadarScanner({ ultrasonicData, lidarDistance, className 
     if (isFullscreen) {
       return (
         <div className="flex flex-col h-full overflow-hidden w-full">
-          <h4 className="text-base font-display text-primary/80 mb-3">DETECTED OBSTACLES</h4>
+          <h4 className="text-base font-display text-primary/80 mb-4">DETECTED OBSTACLES</h4>
           <ScrollArea className="flex-1">
-            <h5 className="text-sm font-display text-green-400/80 mb-2 flex items-center gap-1">
-              <div className="w-2.5 h-2.5 rounded-full bg-green-400"></div>
+            <h5 className="text-sm font-display text-green-400/80 mb-2 flex items-center gap-1.5">
+              <div className="w-2 h-2 rounded-full bg-green-400"></div>
               ULTRASONIC ({ultrasonicObstacles.length})
             </h5>
             {ultrasonicObstacles.length > 0 ? (
-              <div className="grid grid-cols-1 gap-3 mb-6">
+              <div className="grid grid-cols-1 gap-1.5 mb-5">
                 {ultrasonicObstacles.map((obstacle) => (
                   <div 
                     key={obstacle.id}
-                    className="bg-card/60 border border-green-400/30 rounded-lg p-4 font-mono"
+                    className="flex items-center justify-between px-3 py-2 bg-card/50 border border-green-400/30 rounded text-sm font-mono"
                   >
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-green-400 font-bold text-lg">{obstacle.id}</span>
-                        <span className="text-foreground/70 text-base">{obstacle.label}</span>
-                      </div>
-                      <span className="text-primary/60 text-sm">{obstacle.cardinal}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-green-400 font-bold">{obstacle.id}</span>
+                      <span className="text-foreground/70">{obstacle.label}</span>
                     </div>
-                    <div className="grid grid-cols-2 gap-2 text-sm">
-                      <div className="flex flex-col">
-                        <span className="text-foreground/50 text-xs uppercase">Distance</span>
-                        <span className="text-foreground font-bold">{obstacle.distance.toFixed(0)} cm</span>
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="text-foreground/50 text-xs uppercase">Angle</span>
-                        <span className="text-foreground font-bold">{obstacle.angle}°</span>
-                      </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-foreground font-bold">{obstacle.distance.toFixed(0)}cm</span>
+                      <span className="text-foreground/60">{obstacle.angle}°</span>
+                      <span className="text-primary/70">{obstacle.cardinal}</span>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="text-center text-sm py-6 text-foreground/50 mb-6 border border-dashed border-green-400/20 rounded-lg">
+              <div className="text-center text-sm py-4 text-foreground/50 mb-5 border border-dashed border-green-400/20 rounded">
                 NO OBSTACLES
               </div>
             )}
 
-            <h5 className="text-sm font-display text-cyan-400/80 mb-2 flex items-center gap-1">
-              <div className="w-2.5 h-2.5 rounded-full bg-cyan-400"></div>
+            <h5 className="text-sm font-display text-cyan-400/80 mb-2 flex items-center gap-1.5">
+              <div className="w-2 h-2 rounded-full bg-cyan-400"></div>
               LIDAR ({lidarObstacles.length})
             </h5>
             {lidarObstacles.length > 0 ? (
-              <div className="grid grid-cols-1 gap-3">
+              <div className="grid grid-cols-1 gap-1.5">
                 {lidarObstacles.map((obstacle) => (
                   <div 
                     key={obstacle.id}
-                    className="bg-card/60 border border-cyan-400/30 rounded-lg p-4 font-mono"
+                    className="flex items-center justify-between px-3 py-2 bg-card/50 border border-cyan-400/30 rounded text-sm font-mono"
                   >
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-cyan-400 font-bold text-lg">{obstacle.id}</span>
-                        <span className="text-foreground/70 text-base">{obstacle.label}</span>
-                      </div>
-                      <span className="text-primary/60 text-sm">{obstacle.cardinal}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-cyan-400 font-bold">{obstacle.id}</span>
+                      <span className="text-foreground/70">{obstacle.label}</span>
                     </div>
-                    <div className="grid grid-cols-2 gap-2 text-sm">
-                      <div className="flex flex-col">
-                        <span className="text-foreground/50 text-xs uppercase">Distance</span>
-                        <span className="text-foreground font-bold">{obstacle.distance.toFixed(0)} cm</span>
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="text-foreground/50 text-xs uppercase">Angle</span>
-                        <span className="text-foreground font-bold">{obstacle.angle}°</span>
-                      </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-foreground font-bold">{obstacle.distance.toFixed(0)}cm</span>
+                      <span className="text-foreground/60">{obstacle.angle}°</span>
+                      <span className="text-primary/70">{obstacle.cardinal}</span>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="text-center text-sm py-6 text-foreground/50 border border-dashed border-cyan-400/20 rounded-lg">
+              <div className="text-center text-sm py-4 text-foreground/50 border border-dashed border-cyan-400/20 rounded">
                 NO OBSTACLES
               </div>
             )}
