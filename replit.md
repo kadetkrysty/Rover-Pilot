@@ -104,6 +104,14 @@ Python modules in `firmware/raspberry_pi_master/` (runs on Mini PC):
 |-----------|-------------|------------|
 | Mini PC (Intel Celeron) | Main controller, 8GB RAM, Ubuntu | USB to Arduino |
 | Arduino Mega 2560 | Sensor hub, iBUS receiver | USB Serial 115200 |
+| Raspberry Pi 3 B+ | Camera pan/tilt controller | WiFi to Mini PC (TCP 5002) |
+
+### Camera Pan/Tilt System
+| Component | Description | Connection |
+|-----------|-------------|------------|
+| SlushEngine Model X LT | 4-motor stepper driver HAT | GPIO 40-pin on RPi 3B+ |
+| NEMA 17 Pan Motor | Horizontal rotation ±180° | SlushEngine Motor Port 1 |
+| NEMA 17 Tilt Motor | Vertical rotation ±90° | SlushEngine Motor Port 2 |
 
 ### Sensors
 | Component | Interface | Arduino Pins |
@@ -212,6 +220,15 @@ Only 1 signal wire needed for all 10 channels!
 
 ## Recent Changes
 
+### v3.1.0 (2026-01-03)
+- Added Camera Pan/Tilt System with Raspberry Pi 3 B+ and SlushEngine Model X LT
+- Pan motor (Motor 1): ±180° horizontal rotation
+- Tilt motor (Motor 2): ±90° vertical rotation
+- TCP server on port 5002 for camera control commands
+- Integrated with PS4 controller left stick for camera control
+- Added Three.js 3D simulation with HuskyLens-style object detection overlay
+- Documentation tab with wiring diagrams and installation guides
+
 ### v3.0.0 (2025-01-02)
 - Migrated from Raspberry Pi 3B+ to Mini PC (Intel Celeron)
 - Changed FlySky receiver from GPIO PWM to Arduino iBUS protocol
@@ -226,6 +243,7 @@ Only 1 signal wire needed for all 10 channels!
 ├── client/                 # React frontend
 │   ├── src/
 │   │   ├── components/    # UI components
+│   │   │   └── ThreeRoverSimulation.tsx  # 3D rover simulation
 │   │   ├── pages/         # Route pages
 │   │   ├── hooks/         # Custom hooks
 │   │   └── lib/           # Utilities, API, sensor fusion
@@ -238,9 +256,13 @@ Only 1 signal wire needed for all 10 channels!
 ├── firmware/              # Hardware code
 │   ├── arduino_mega_sensor_controller/
 │   │   └── *.ino          # Arduino firmware
-│   └── raspberry_pi_master/  # Runs on Mini PC
-│       ├── rover_controller.py
-│       ├── flysky_receiver.py
-│       └── pathfinding.py
+│   ├── raspberry_pi_master/  # Runs on Mini PC
+│   │   ├── rover_controller.py
+│   │   ├── flysky_receiver.py
+│   │   └── pathfinding.py
+│   └── raspberry_pi_camera_controller/  # Runs on RPi 3B+
+│       ├── camera_pantilt_controller.py  # SlushEngine control
+│       ├── requirements.txt
+│       └── install.sh      # Installation script
 └── docs/                  # Documentation
 ```

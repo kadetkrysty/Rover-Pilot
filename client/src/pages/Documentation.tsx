@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button';
-import { Code, FileText, Cpu, Download, Wifi, Radio, Settings, Wrench, Zap, AlertTriangle, Power, Video, Cloud, Shield } from 'lucide-react';
+import { Code, FileText, Cpu, Download, Wifi, Radio, Settings, Wrench, Zap, AlertTriangle, Power, Video, Cloud, Shield, Camera } from 'lucide-react';
+import slushEngineImage from '@assets/slushengine_LT_-_Trans2_1024x1024_1767447433450.webp';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
@@ -18,6 +19,7 @@ export default function Documentation() {
                 <ul className="space-y-2 text-sm font-mono text-muted-foreground">
                     <li className="flex items-center gap-2 text-foreground"><Cpu className="w-4 h-4 text-primary" /> Mini PC (Intel Celeron)</li>
                     <li className="flex items-center gap-2 text-foreground"><Cpu className="w-4 h-4 text-secondary" /> Arduino Mega 2560</li>
+                    <li className="flex items-center gap-2 text-foreground"><Camera className="w-4 h-4 text-green-400" /> RPi 3B+ + SlushEngine</li>
                     <li className="flex items-center gap-2 text-foreground"><Radio className="w-4 h-4 text-accent" /> FlySky FS-I6x + FS-IA10B</li>
                     <li className="pl-6">• Hoverboard Mainboard (UART)</li>
                     <li className="pl-6">• HuskyLens AI (I2C)</li>
@@ -25,6 +27,7 @@ export default function Documentation() {
                     <li className="pl-6">• GPS Neo-6M (Serial3)</li>
                     <li className="pl-6">• IMU MPU6050 (I2C)</li>
                     <li className="pl-6">• 5x HC-SR04 Ultrasonic</li>
+                    <li className="pl-6">• Pan/Tilt NEMA17 Motors</li>
                 </ul>
              </div>
 
@@ -44,6 +47,7 @@ export default function Documentation() {
                 <div className="bg-card border-b border-border p-2 overflow-x-auto">
                     <TabsList className="bg-background/50 w-max">
                         <TabsTrigger value="overview" className="font-mono text-xs" data-testid="tab-overview">OVERVIEW</TabsTrigger>
+                        <TabsTrigger value="pantilt" className="font-mono text-xs" data-testid="tab-pantilt">PAN/TILT</TabsTrigger>
                         <TabsTrigger value="estop" className="font-mono text-xs" data-testid="tab-estop">E-STOP</TabsTrigger>
                         <TabsTrigger value="video" className="font-mono text-xs" data-testid="tab-video">VIDEO</TabsTrigger>
                         <TabsTrigger value="cloudsync" className="font-mono text-xs" data-testid="tab-cloudsync">CLOUD</TabsTrigger>
@@ -151,6 +155,264 @@ export default function Documentation() {
                                         </ul>
                                     </div>
                                 </div>
+                            </div>
+                        </div>
+                    </ScrollArea>
+                </TabsContent>
+
+                <TabsContent value="pantilt" className="flex-1 p-0 m-0 relative overflow-hidden">
+                    <ScrollArea className="h-full w-full">
+                        <div className="p-6 space-y-6 pr-4">
+                            <div>
+                                <h3 className="text-xl text-primary font-display mb-4 flex items-center gap-2">
+                                    <Camera className="w-6 h-6" /> CAMERA PAN/TILT SYSTEM
+                                </h3>
+                                <p className="text-sm text-muted-foreground mb-4">
+                                    The camera pan/tilt mechanism uses a dedicated Raspberry Pi 3 B+ with SlushEngine Model X LT 
+                                    stepper motor driver. This provides precise ±180° pan and ±90° tilt control via the left stick on the PS4 controller.
+                                </p>
+                            </div>
+
+                            <div className="bg-card border border-border p-4 rounded-lg">
+                                <h4 className="font-display text-accent mb-3">HARDWARE OVERVIEW</h4>
+                                <img 
+                                    src={slushEngineImage} 
+                                    alt="SlushEngine Model X LT with Raspberry Pi 3 B+" 
+                                    className="w-full max-w-2xl mx-auto rounded-lg border border-border mb-4"
+                                />
+                                <p className="text-xs text-muted-foreground text-center italic">
+                                    SlushEngine Model X LT mounted on Raspberry Pi 3 B+ - Controls up to 4 stepper motors
+                                </p>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="bg-primary/10 border border-primary/30 p-4 rounded">
+                                    <h4 className="font-display text-primary mb-2">SPECIFICATIONS</h4>
+                                    <ul className="text-xs font-mono space-y-1 text-muted-foreground">
+                                        <li>• <span className="text-accent">Controller:</span> Raspberry Pi 3 B+</li>
+                                        <li>• <span className="text-accent">Driver:</span> SlushEngine Model X LT</li>
+                                        <li>• <span className="text-accent">Motors:</span> NEMA 17 Bipolar Steppers</li>
+                                        <li>• <span className="text-accent">Power:</span> 9-36V DC (12V recommended)</li>
+                                        <li>• <span className="text-accent">Max Current:</span> 5A peak per motor</li>
+                                        <li>• <span className="text-accent">Microstepping:</span> Up to 128 microsteps</li>
+                                    </ul>
+                                </div>
+
+                                <div className="bg-secondary/10 border border-secondary/30 p-4 rounded">
+                                    <h4 className="font-display text-secondary mb-2">MOTOR ASSIGNMENT</h4>
+                                    <ul className="text-xs font-mono space-y-1 text-muted-foreground">
+                                        <li>• <span className="text-green-400">Motor 1:</span> PAN (horizontal)</li>
+                                        <li className="pl-4">Range: ±180° (360° total)</li>
+                                        <li className="pl-4">+ = Right, - = Left</li>
+                                        <li>• <span className="text-green-400">Motor 2:</span> TILT (vertical)</li>
+                                        <li className="pl-4">Range: ±90° (180° total)</li>
+                                        <li className="pl-4">+ = Up, - = Down</li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <div>
+                                <h4 className="font-display text-primary mb-3">WIRING DIAGRAM</h4>
+                                <pre className="bg-black/50 p-4 border border-border rounded-lg text-xs overflow-x-auto font-mono text-green-300">
+{`┌─────────────────────────────────────────────────────────────────────────┐
+│                    CAMERA PAN/TILT WIRING DIAGRAM                       │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  ┌────────────────────┐      40-Pin GPIO       ┌────────────────────┐  │
+│  │  RASPBERRY PI 3B+  │◄─────────────────────► │  SLUSHENGINE X LT  │  │
+│  │                    │      (HAT Mount)       │                    │  │
+│  │  Power: 5V 2.5A    │                        │  Power: 12V DC     │  │
+│  │  via USB-C or GPIO │                        │  (VPP Terminal)    │  │
+│  └────────────────────┘                        │                    │  │
+│                                                │  ┌──────────────┐  │  │
+│  ┌──────────────────────────────────────────┐  │  │   Motor 1    │  │  │
+│  │              MOTOR CONNECTIONS           │  │  │   (PAN)      │  │  │
+│  ├──────────────────────────────────────────┤  │  │              │  │  │
+│  │                                          │  │  │ A+ ─► Coil A+│  │  │
+│  │  PAN MOTOR (Motor Port 1)                │  │  │ A- ─► Coil A-│  │  │
+│  │  ├─ A+ (Green)  ─► SlushEngine Motor1 A+ │  │  │ B+ ─► Coil B+│  │  │
+│  │  ├─ A- (Black)  ─► SlushEngine Motor1 A- │  │  │ B- ─► Coil B-│  │  │
+│  │  ├─ B+ (Red)    ─► SlushEngine Motor1 B+ │  │  └──────────────┘  │  │
+│  │  └─ B- (Blue)   ─► SlushEngine Motor1 B- │  │                    │  │
+│  │                                          │  │  ┌──────────────┐  │  │
+│  │  TILT MOTOR (Motor Port 2)               │  │  │   Motor 2    │  │  │
+│  │  ├─ A+ (Green)  ─► SlushEngine Motor2 A+ │  │  │   (TILT)     │  │  │
+│  │  ├─ A- (Black)  ─► SlushEngine Motor2 A- │  │  │              │  │  │
+│  │  ├─ B+ (Red)    ─► SlushEngine Motor2 B+ │  │  │ A+ ─► Coil A+│  │  │
+│  │  └─ B- (Blue)   ─► SlushEngine Motor2 B- │  │  │ A- ─► Coil A-│  │  │
+│  │                                          │  │  │ B+ ─► Coil B+│  │  │
+│  └──────────────────────────────────────────┘  │  │ B- ─► Coil B-│  │  │
+│                                                │  └──────────────┘  │  │
+│  ┌──────────────────────────────────────────┐  │                    │  │
+│  │           POWER CONNECTIONS              │  │  ┌──────────────┐  │  │
+│  ├──────────────────────────────────────────┤  │  │    Power     │  │  │
+│  │  12V DC Power Supply ───► VPP (+)        │  │  │   Terminal   │  │  │
+│  │  GND ───────────────────► GND (-)        │  │  │              │  │  │
+│  │                                          │  │  │ VPP: 9-36V   │  │  │
+│  │  ⚠️  CAUTION: Check polarity before     │  │  │ GND: Common  │  │  │
+│  │      connecting power!                   │  │  └──────────────┘  │  │
+│  └──────────────────────────────────────────┘  └────────────────────┘  │
+│                                                                         │
+│  COMMUNICATION (via Mini PC WiFi):                                      │
+│  ┌──────────────┐     WiFi      ┌──────────────┐    TCP/5002           │
+│  │   Mini PC    │◄────────────► │  RPi 3 B+    │◄─────────────         │
+│  │  Main Ctrl   │               │  Camera Ctrl │    Commands           │
+│  └──────────────┘               └──────────────┘                       │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘`}
+                                </pre>
+                            </div>
+
+                            <div>
+                                <h4 className="font-display text-primary mb-3">SOFTWARE INSTALLATION</h4>
+                                <div className="space-y-4">
+                                    <div className="bg-card border border-border p-4 rounded">
+                                        <h5 className="text-sm font-bold text-secondary mb-2">Step 1: Enable SPI & I2C</h5>
+                                        <pre className="bg-black/50 p-3 rounded text-xs font-mono text-cyan-300 overflow-x-auto">
+{`sudo raspi-config
+# Navigate to: Interfacing Options
+# Enable: SPI → Yes
+# Enable: I2C → Yes
+# Reboot when prompted`}
+                                        </pre>
+                                    </div>
+
+                                    <div className="bg-card border border-border p-4 rounded">
+                                        <h5 className="text-sm font-bold text-secondary mb-2">Step 2: Install SlushEngine Library</h5>
+                                        <pre className="bg-black/50 p-3 rounded text-xs font-mono text-cyan-300 overflow-x-auto">
+{`# Update package manager
+sudo apt-get update
+sudo apt-get install -y python3 python3-pip python3-dev git
+
+# Install SPI and I2C libraries
+sudo pip3 install spidev smbus2
+
+# Clone and install SlushEngine
+git clone https://github.com/Roboteurs/slushengine.git
+cd slushengine
+sudo python3 setup.py install`}
+                                        </pre>
+                                    </div>
+
+                                    <div className="bg-card border border-border p-4 rounded">
+                                        <h5 className="text-sm font-bold text-secondary mb-2">Step 3: Install RoverOS Controller</h5>
+                                        <pre className="bg-black/50 p-3 rounded text-xs font-mono text-cyan-300 overflow-x-auto">
+{`# Copy the controller script to RPi
+# From: firmware/raspberry_pi_camera_controller/
+
+# Make install script executable
+chmod +x install.sh
+
+# Run installation
+./install.sh
+
+# Reboot to apply changes
+sudo reboot`}
+                                        </pre>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <h4 className="font-display text-primary mb-3">PYTHON CONTROLLER CODE</h4>
+                                <pre className="bg-black/50 p-4 border border-border rounded-lg text-xs overflow-x-auto font-mono text-cyan-300">
+{`#!/usr/bin/env python3
+"""Camera Pan/Tilt Controller - Basic Usage Example"""
+import Slush
+
+# Initialize the SlushEngine board
+board = Slush.sBoard()
+
+# Initialize motors (1 = Pan, 2 = Tilt)
+pan_motor = Slush.Motor(1)
+tilt_motor = Slush.Motor(2)
+
+# Configure motors
+for motor in [pan_motor, tilt_motor]:
+    motor.setCurrent(50, 70, 70, 70)  # hold, run, acc, dec
+    motor.setMaxSpeed(800)
+    motor.setMicroSteps(128)  # 128 microsteps per step
+
+# Constants
+STEPS_PER_DEGREE = (200 * 128) / 360  # 200 steps/rev * 128 microsteps
+
+def set_pan(degrees):
+    """Set pan angle: -180 to +180 degrees"""
+    degrees = max(-180, min(180, degrees))
+    steps = int(degrees * STEPS_PER_DEGREE)
+    pan_motor.goTo(steps)
+
+def set_tilt(degrees):
+    """Set tilt angle: -90 to +90 degrees"""
+    degrees = max(-90, min(90, degrees))
+    steps = int(degrees * STEPS_PER_DEGREE)
+    tilt_motor.goTo(steps)
+
+# Example usage
+set_pan(45)    # Pan 45° right
+set_tilt(-15)  # Tilt 15° down
+
+# Wait for moves to complete
+pan_motor.waitMove()
+tilt_motor.waitMove()
+
+# Center camera
+set_pan(0)
+set_tilt(0)`}
+                                </pre>
+                            </div>
+
+                            <div>
+                                <h4 className="font-display text-primary mb-3">TROUBLESHOOTING</h4>
+                                <div className="space-y-3">
+                                    <div className="bg-destructive/10 border border-destructive/30 p-3 rounded">
+                                        <h5 className="text-sm font-bold text-destructive mb-1">Motor not spinning</h5>
+                                        <ul className="text-xs font-mono text-muted-foreground space-y-1">
+                                            <li>• Check 12V power connection to VPP terminal</li>
+                                            <li>• Verify motor wire connections (A+, A-, B+, B-)</li>
+                                            <li>• Ensure SPI is enabled: <code className="text-cyan-300">ls /dev/spi*</code></li>
+                                            <li>• Check current settings match your motor specs</li>
+                                        </ul>
+                                    </div>
+
+                                    <div className="bg-destructive/10 border border-destructive/30 p-3 rounded">
+                                        <h5 className="text-sm font-bold text-destructive mb-1">ImportError: No module named 'Slush'</h5>
+                                        <ul className="text-xs font-mono text-muted-foreground space-y-1">
+                                            <li>• Reinstall: <code className="text-cyan-300">cd slushengine && sudo python3 setup.py install</code></li>
+                                            <li>• Don't run Python from inside the slushengine directory</li>
+                                        </ul>
+                                    </div>
+
+                                    <div className="bg-destructive/10 border border-destructive/30 p-3 rounded">
+                                        <h5 className="text-sm font-bold text-destructive mb-1">SMBus / I2C Error</h5>
+                                        <ul className="text-xs font-mono text-muted-foreground space-y-1">
+                                            <li>• Install smbus2: <code className="text-cyan-300">pip3 install smbus2</code></li>
+                                            <li>• Check I2C enabled: <code className="text-cyan-300">sudo raspi-config</code></li>
+                                            <li>• Verify I2C devices: <code className="text-cyan-300">i2cdetect -y 1</code></li>
+                                        </ul>
+                                    </div>
+
+                                    <div className="bg-destructive/10 border border-destructive/30 p-3 rounded">
+                                        <h5 className="text-sm font-bold text-destructive mb-1">Motor moves wrong direction</h5>
+                                        <ul className="text-xs font-mono text-muted-foreground space-y-1">
+                                            <li>• Swap A+ with A- wires, OR swap B+ with B- wires</li>
+                                            <li>• Or invert in software: <code className="text-cyan-300">motor.goTo(-steps)</code></li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="bg-accent/10 border border-accent/30 p-4 rounded">
+                                <h4 className="font-display text-accent mb-2">PS4 CONTROLLER MAPPING</h4>
+                                <p className="text-xs text-muted-foreground mb-2">
+                                    The left analog stick controls the camera pan/tilt:
+                                </p>
+                                <ul className="text-xs font-mono text-muted-foreground space-y-1">
+                                    <li>• <span className="text-green-400">Left Stick X-Axis:</span> Pan (left/right) → ±180°</li>
+                                    <li>• <span className="text-green-400">Left Stick Y-Axis:</span> Tilt (up/down) → ±90°</li>
+                                    <li>• <span className="text-green-400">D-Pad Up/Down:</span> Zoom (FOV adjustment)</li>
+                                    <li>• <span className="text-green-400">Share Button:</span> Center camera (0°, 0°)</li>
+                                </ul>
                             </div>
                         </div>
                     </ScrollArea>
