@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle, Camera, Video, Volume2, Lightbulb, ZoomIn, ZoomOut, Sun } from 'lucide-react';
+import { AlertTriangle, Camera, Video, Volume2, Lightbulb, ZoomIn, ZoomOut, Sun, HelpCircle, X } from 'lucide-react';
 import { useRoverData } from '@/lib/mockData';
 import { GamepadInput, useGamepad } from '@/hooks/useGamepad';
 import { useWebSocket } from '@/lib/useWebSocket';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 
 export default function GamepadControl() {
@@ -15,6 +15,7 @@ export default function GamepadControl() {
   const { sendCommand, isConnected: wsConnected } = useWebSocket();
   
   const [throttle, setThrottle] = useState(0);
+  const [direction, setDirection] = useState<'FORWARD' | 'REVERSE' | 'NEUTRAL'>('NEUTRAL');
   const [steering, setSteering] = useState(0);
   const [mode, setMode] = useState<'MANUAL' | 'AUTONOMOUS'>('MANUAL');
   const [emergencyStop, setEmergencyStop] = useState(false);
@@ -26,6 +27,7 @@ export default function GamepadControl() {
   const [isRecording, setIsRecording] = useState(false);
   const [hornActive, setHornActive] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
+  const [showHelpModal, setShowHelpModal] = useState(false);
   
   const prevInputRef = useRef<GamepadInput | null>(null);
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -58,18 +60,21 @@ export default function GamepadControl() {
     }
 
     if (!emergencyStop) {
-      // R2 = Forward throttle (analog), L2 pressed with R2 = Reverse
-      const forwardThrottle = gamepadInput.r2 * 100;
-      if (forwardThrottle > 5) {
-        setThrottle(forwardThrottle);
+      // Triangle = Select Forward direction, X = Select Reverse direction
+      if (isButtonJustPressed(gamepadInput.triangle, prev?.triangle)) {
+        setDirection('FORWARD');
         setMode('MANUAL');
-      } else if (gamepadInput.x) {
-        // X button = Reverse
-        setThrottle(-100);
-        setMode('MANUAL');
-      } else {
-        setThrottle(0);
+        toast.info('Direction: FORWARD');
       }
+      if (isButtonJustPressed(gamepadInput.x, prev?.x)) {
+        setDirection('REVERSE');
+        setMode('MANUAL');
+        toast.info('Direction: REVERSE');
+      }
+
+      // R2 = Throttle amount (0-100%), direction determines actual movement
+      const throttleAmount = gamepadInput.r2 * 100;
+      setThrottle(throttleAmount > 5 ? throttleAmount : 0);
 
       setSteering(gamepadInput.rightStickX * 100);
       setCameraPan(gamepadInput.leftStickX * 90);
@@ -161,8 +166,17 @@ export default function GamepadControl() {
             <h1 className="text-2xl font-display font-bold text-primary">GAMEPAD CONTROL</h1>
             <p className="text-muted-foreground font-mono text-sm mt-1">PS4 DualShock 4 Controller</p>
           </div>
-          <div className={`px-3 py-1 rounded font-mono text-xs ${isDemoMode ? 'bg-accent/20 text-accent border border-accent/50' : 'bg-secondary/20 text-secondary border border-secondary/50'}`}>
-            {isDemoMode ? 'DEMO MODE' : 'CONNECTED'}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowHelpModal(true)}
+              className="p-2 rounded border border-primary/30 bg-primary/10 hover:bg-primary/20 transition-colors"
+              data-testid="button-help"
+            >
+              <HelpCircle className="w-4 h-4 text-primary" />
+            </button>
+            <div className={`px-3 py-1 rounded font-mono text-xs ${isDemoMode ? 'bg-accent/20 text-accent border border-accent/50' : 'bg-secondary/20 text-secondary border border-secondary/50'}`}>
+              {isDemoMode ? 'DEMO MODE' : 'CONNECTED'}
+            </div>
           </div>
         </div>
       </div>
@@ -308,14 +322,37 @@ export default function GamepadControl() {
             
             <div>
               <div className="flex justify-between text-xs font-mono text-muted-foreground mb-1">
-                <span>THROTTLE</span>
-                <span className={throttle > 0 ? 'text-secondary' : throttle < 0 ? 'text-destructive' : ''}>{throttle.toFixed(0)}%</span>
+                <span>DIRECTION</span>
+                <span className={
+                  direction === 'FORWARD' ? 'text-secondary' : 
+                  direction === 'REVERSE' ? 'text-destructive' : 'text-muted-foreground'
+                }>
+                  {direction}
+                </span>
               </div>
-              <div className="h-3 bg-black/50 border border-border rounded overflow-hidden relative">
-                <div className="absolute inset-y-0 left-1/2 w-px bg-muted-foreground/30"></div>
+              <div className="flex gap-1">
+                <div className={`flex-1 h-6 rounded flex items-center justify-center text-xs font-mono transition-all ${
+                  direction === 'REVERSE' ? 'bg-destructive/20 border border-destructive text-destructive' : 'bg-black/30 border border-border text-muted-foreground/50'
+                }`}>
+                  ← REV
+                </div>
+                <div className={`flex-1 h-6 rounded flex items-center justify-center text-xs font-mono transition-all ${
+                  direction === 'FORWARD' ? 'bg-secondary/20 border border-secondary text-secondary' : 'bg-black/30 border border-border text-muted-foreground/50'
+                }`}>
+                  FWD →
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <div className="flex justify-between text-xs font-mono text-muted-foreground mb-1">
+                <span>THROTTLE</span>
+                <span className={throttle > 0 ? (direction === 'FORWARD' ? 'text-secondary' : 'text-destructive') : ''}>{throttle.toFixed(0)}%</span>
+              </div>
+              <div className="h-3 bg-black/50 border border-border rounded overflow-hidden">
                 <div
-                  className={`h-full transition-all absolute ${throttle >= 0 ? 'left-1/2 bg-secondary' : 'right-1/2 bg-destructive'}`}
-                  style={{ width: `${Math.abs(throttle) / 2}%` }}
+                  className={`h-full transition-all ${direction === 'FORWARD' ? 'bg-secondary' : direction === 'REVERSE' ? 'bg-destructive' : 'bg-muted-foreground'}`}
+                  style={{ width: `${throttle}%` }}
                 />
               </div>
             </div>
@@ -375,28 +412,121 @@ export default function GamepadControl() {
             </div>
           </div>
 
-          <div className="hud-panel p-3">
-            <h3 className="text-xs font-display text-primary/70 mb-2">QUICK REFERENCE</h3>
-            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[9px] font-mono text-muted-foreground/80">
-              <div><span className="text-secondary">R2</span> Throttle</div>
-              <div><span className="text-secondary">✕</span> Reverse</div>
-              <div><span className="text-accent">◯</span> Start Rec</div>
-              <div><span className="text-accent">□</span> Stop Rec</div>
-              <div><span className="text-primary">L-Stick</span> Camera</div>
-              <div><span className="text-primary">R-Stick</span> Steer</div>
-              <div><span className="text-primary">↑↓</span> Zoom</div>
-              <div><span className="text-primary">←→</span> Exposure</div>
-              <div><span className="text-accent">L1</span> Snapshot</div>
-              <div><span className="text-accent">L2</span> Horn</div>
-              <div><span className="text-accent">Share</span> Lights</div>
-              <div><span className="text-destructive">Options</span> E-STOP</div>
-              <div className="col-span-2 mt-1 pt-1 border-t border-border/50">
-                <span className="text-destructive">PS</span> Exit to Dashboard
-              </div>
-            </div>
-          </div>
         </div>
       </div>
+
+      <AnimatePresence>
+        {showHelpModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
+            onClick={() => setShowHelpModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="hud-panel p-6 max-w-md w-full"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-display text-primary font-bold">QUICK REFERENCE</h2>
+                <button
+                  onClick={() => setShowHelpModal(false)}
+                  className="p-1 rounded hover:bg-primary/20 transition-colors"
+                  data-testid="button-close-help"
+                >
+                  <X className="w-5 h-5 text-muted-foreground" />
+                </button>
+              </div>
+              
+              <div className="space-y-4">
+                <div>
+                  <h3 className="text-xs font-display text-primary/70 mb-2">MOVEMENT</h3>
+                  <div className="grid grid-cols-2 gap-2 text-xs font-mono">
+                    <div className="p-2 bg-black/30 rounded flex justify-between">
+                      <span className="text-secondary">△ Triangle</span>
+                      <span className="text-muted-foreground">Forward</span>
+                    </div>
+                    <div className="p-2 bg-black/30 rounded flex justify-between">
+                      <span className="text-destructive">✕ Cross</span>
+                      <span className="text-muted-foreground">Reverse</span>
+                    </div>
+                    <div className="p-2 bg-black/30 rounded flex justify-between">
+                      <span className="text-secondary">R2</span>
+                      <span className="text-muted-foreground">Throttle</span>
+                    </div>
+                    <div className="p-2 bg-black/30 rounded flex justify-between">
+                      <span className="text-primary">R-Stick</span>
+                      <span className="text-muted-foreground">Steering</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-xs font-display text-primary/70 mb-2">CAMERA</h3>
+                  <div className="grid grid-cols-2 gap-2 text-xs font-mono">
+                    <div className="p-2 bg-black/30 rounded flex justify-between">
+                      <span className="text-primary">L-Stick</span>
+                      <span className="text-muted-foreground">Pan/Tilt</span>
+                    </div>
+                    <div className="p-2 bg-black/30 rounded flex justify-between">
+                      <span className="text-primary">↑↓ D-Pad</span>
+                      <span className="text-muted-foreground">Zoom</span>
+                    </div>
+                    <div className="p-2 bg-black/30 rounded flex justify-between">
+                      <span className="text-primary">←→ D-Pad</span>
+                      <span className="text-muted-foreground">Exposure</span>
+                    </div>
+                    <div className="p-2 bg-black/30 rounded flex justify-between">
+                      <span className="text-accent">L1</span>
+                      <span className="text-muted-foreground">Snapshot</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-xs font-display text-primary/70 mb-2">RECORDING & CONTROLS</h3>
+                  <div className="grid grid-cols-2 gap-2 text-xs font-mono">
+                    <div className="p-2 bg-black/30 rounded flex justify-between">
+                      <span className="text-accent">◯ Circle</span>
+                      <span className="text-muted-foreground">Start Rec</span>
+                    </div>
+                    <div className="p-2 bg-black/30 rounded flex justify-between">
+                      <span className="text-accent">□ Square</span>
+                      <span className="text-muted-foreground">Stop Rec</span>
+                    </div>
+                    <div className="p-2 bg-black/30 rounded flex justify-between">
+                      <span className="text-accent">Share</span>
+                      <span className="text-muted-foreground">Lights</span>
+                    </div>
+                    <div className="p-2 bg-black/30 rounded flex justify-between">
+                      <span className="text-accent">L2</span>
+                      <span className="text-muted-foreground">Horn</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-xs font-display text-destructive/70 mb-2">SYSTEM</h3>
+                  <div className="grid grid-cols-2 gap-2 text-xs font-mono">
+                    <div className="p-2 bg-destructive/10 border border-destructive/30 rounded flex justify-between">
+                      <span className="text-destructive">Options</span>
+                      <span className="text-destructive">E-STOP</span>
+                    </div>
+                    <div className="p-2 bg-black/30 rounded flex justify-between">
+                      <span className="text-muted-foreground">PS</span>
+                      <span className="text-muted-foreground">Exit</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
