@@ -7,6 +7,7 @@ import { GamepadInput, useGamepad } from '@/hooks/useGamepad';
 import { useWebSocket } from '@/lib/useWebSocket';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
+import { usePerformanceSettings } from '@/lib/performanceSettings';
 
 const ThreeRoverSimulation = lazy(() => import('@/components/ThreeRoverSimulation'));
 
@@ -15,6 +16,7 @@ export default function GamepadControl() {
   const data = useRoverData();
   const gamepadInput = useGamepad();
   const { sendCommand, isConnected: wsConnected } = useWebSocket();
+  const performanceSettings = usePerformanceSettings();
   
   const [throttle, setThrottle] = useState(0);
   const [direction, setDirection] = useState<'FORWARD' | 'REVERSE' | 'NEUTRAL'>('NEUTRAL');
@@ -214,7 +216,7 @@ export default function GamepadControl() {
                   tilt={cameraTilt}
                   isRecording={isRecording}
                 />
-              ) : (
+              ) : performanceSettings.enable3DSimulation ? (
                 <Suspense fallback={
                   <div className="w-full h-full bg-black flex items-center justify-center">
                     <div className="w-16 h-16 border-4 border-primary/30 border-t-primary rounded-full animate-spin"></div>
@@ -229,6 +231,13 @@ export default function GamepadControl() {
                     zoom={cameraZoom}
                   />
                 </Suspense>
+              ) : (
+                <div className="w-full h-full bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
+                  <div className="text-center space-y-2">
+                    <div className="text-4xl font-mono text-primary/50">3D OFF</div>
+                    <div className="text-xs font-mono text-muted-foreground">Low power mode active</div>
+                  </div>
+                </div>
               )}
               
               <div className="absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-2 z-10">

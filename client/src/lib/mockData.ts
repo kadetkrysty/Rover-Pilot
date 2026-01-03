@@ -143,7 +143,7 @@ export const useRoverData = () => {
             : prev.log
         };
       });
-    }, 100);
+    }, 250);
 
     return () => clearInterval(interval);
   }, []);

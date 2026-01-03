@@ -3,6 +3,7 @@ import { useWebSocket } from '@/lib/useWebSocket';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Maximize2, X } from 'lucide-react';
+import { usePerformanceSettings } from '@/lib/performanceSettings';
 
 interface RadarScannerProps {
   ultrasonicData: [number, number, number, number, number];
@@ -189,6 +190,7 @@ export default function RadarScanner({ ultrasonicData, lidarDistance, className 
   const [containerWidth, setContainerWidth] = useState(200);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const { isConnected } = useWebSocket();
+  const performanceSettings = usePerformanceSettings();
 
   const [containerHeight, setContainerHeight] = useState(200);
   
@@ -257,9 +259,9 @@ export default function RadarScanner({ ultrasonicData, lidarDistance, className 
   useEffect(() => {
     const interval = setInterval(() => {
       setSweepAngle(prev => (prev + 3) % 360);
-    }, 50);
+    }, performanceSettings.radarUpdateInterval);
     return () => clearInterval(interval);
-  }, []);
+  }, [performanceSettings.radarUpdateInterval]);
 
   const fullscreenSize = useMemo(() => {
     if (typeof window === 'undefined') return 400;
