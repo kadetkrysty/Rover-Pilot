@@ -41,6 +41,123 @@ const FADE_DURATION = 2000;
 
 let obstacleIdCounter = 1;
 
+function renderRadar(
+  canvas: HTMLCanvasElement,
+  displaySize: number,
+  sweepAngle: number,
+  obstacles: ObstaclePoint[]
+) {
+  const ctx = canvas.getContext('2d');
+  if (!ctx || displaySize < 50) return;
+
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = displaySize * dpr;
+  canvas.height = displaySize * dpr;
+  
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  const centerX = displaySize / 2;
+  const centerY = displaySize / 2;
+  const maxRadius = displaySize / 2 - 15;
+
+  ctx.fillStyle = 'rgba(0, 20, 30, 0.95)';
+  ctx.fillRect(0, 0, displaySize, displaySize);
+
+  ctx.strokeStyle = 'rgba(0, 255, 200, 0.15)';
+  ctx.lineWidth = 1;
+  const rings = [0.25, 0.5, 0.75, 1];
+  rings.forEach(ratio => {
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, maxRadius * ratio, 0, Math.PI * 2);
+    ctx.stroke();
+  });
+
+  ctx.strokeStyle = 'rgba(0, 255, 200, 0.1)';
+  for (let angle = 0; angle < 360; angle += 45) {
+    const rad = (angle - 90) * (Math.PI / 180);
+    ctx.beginPath();
+    ctx.moveTo(centerX, centerY);
+    ctx.lineTo(
+      centerX + Math.cos(rad) * maxRadius,
+      centerY + Math.sin(rad) * maxRadius
+    );
+    ctx.stroke();
+  }
+
+  const sweepRad = (sweepAngle - 90) * (Math.PI / 180);
+  const gradient = ctx.createConicGradient(sweepRad, centerX, centerY);
+  gradient.addColorStop(0, 'rgba(0, 255, 200, 0.4)');
+  gradient.addColorStop(0.1, 'rgba(0, 255, 200, 0.1)');
+  gradient.addColorStop(0.2, 'rgba(0, 255, 200, 0)');
+  gradient.addColorStop(1, 'rgba(0, 255, 200, 0)');
+  
+  ctx.fillStyle = gradient;
+  ctx.beginPath();
+  ctx.moveTo(centerX, centerY);
+  ctx.arc(centerX, centerY, maxRadius, sweepRad - 0.5, sweepRad);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.strokeStyle = 'rgba(0, 255, 200, 0.8)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(centerX, centerY);
+  ctx.lineTo(
+    centerX + Math.cos(sweepRad) * maxRadius,
+    centerY + Math.sin(sweepRad) * maxRadius
+  );
+  ctx.stroke();
+
+  const now = Date.now();
+  const recentObstacles = obstacles.filter(o => now - o.timestamp < 500);
+  
+  recentObstacles.forEach(obstacle => {
+    const age = now - obstacle.timestamp;
+    const opacity = Math.max(0, 1 - age / FADE_DURATION);
+    
+    const angleRad = (obstacle.angle - 90) * (Math.PI / 180);
+    const distRatio = Math.min(obstacle.distance / MAX_RANGE, 1);
+    const pointX = centerX + Math.cos(angleRad) * (distRatio * maxRadius);
+    const pointY = centerY + Math.sin(angleRad) * (distRatio * maxRadius);
+
+    if (obstacle.type === 'ultrasonic') {
+      ctx.fillStyle = `rgba(0, 255, 100, ${opacity})`;
+      ctx.shadowColor = 'rgba(0, 255, 100, 0.8)';
+    } else {
+      ctx.fillStyle = `rgba(0, 200, 255, ${opacity})`;
+      ctx.shadowColor = 'rgba(0, 200, 255, 0.8)';
+    }
+    ctx.shadowBlur = 8;
+    
+    ctx.beginPath();
+    ctx.arc(pointX, pointY, 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.shadowColor = 'transparent';
+
+    const fontSize = Math.max(10, Math.floor(displaySize / 25));
+    ctx.font = `bold ${fontSize}px monospace`;
+    ctx.fillStyle = obstacle.type === 'ultrasonic' ? '#00ff64' : '#00c8ff';
+    ctx.textAlign = 'center';
+    ctx.fillText(obstacle.id, pointX, pointY - 10);
+  });
+
+  ctx.fillStyle = 'rgba(0, 255, 200, 0.8)';
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, 4, 0, Math.PI * 2);
+  ctx.fill();
+
+  const fontSize = Math.max(10, Math.floor(displaySize / 20));
+  ctx.font = `bold ${fontSize}px monospace`;
+  ctx.fillStyle = 'rgba(0, 255, 200, 0.8)';
+  ctx.textAlign = 'center';
+  
+  ctx.fillText('N', centerX, fontSize + 4);
+  ctx.fillText('S', centerX, displaySize - 6);
+  ctx.fillText('W', fontSize, centerY + 4);
+  ctx.fillText('E', displaySize - fontSize, centerY + 4);
+}
+
 function getCardinalDirection(angle: number): string {
   const normalizedAngle = ((angle % 360) + 360) % 360;
   if (normalizedAngle >= 337.5 || normalizedAngle < 22.5) return 'N';
@@ -138,121 +255,26 @@ export default function RadarScanner({ ultrasonicData, lidarDistance, className 
     return () => clearInterval(interval);
   }, []);
 
+  const fullscreenSize = useMemo(() => {
+    if (typeof window === 'undefined') return 400;
+    const maxHeight = window.innerHeight * 0.75;
+    const maxWidth = (window.innerWidth * 0.9 * 2) / 3 * 0.85;
+    return Math.min(maxWidth, maxHeight, 600);
+  }, [isFullscreen]);
+
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas || size < 50) return;
-    
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const dpr = window.devicePixelRatio || 1;
-    canvas.width = size * dpr;
-    canvas.height = size * dpr;
-    ctx.scale(dpr, dpr);
-
-    const centerX = size / 2;
-    const centerY = size / 2;
-    const maxRadius = size / 2 - 15;
-
-    ctx.fillStyle = 'rgba(0, 20, 30, 0.95)';
-    ctx.fillRect(0, 0, size, size);
-
-    ctx.strokeStyle = 'rgba(0, 255, 200, 0.15)';
-    ctx.lineWidth = 1;
-    const rings = [0.25, 0.5, 0.75, 1];
-    rings.forEach(ratio => {
-      ctx.beginPath();
-      ctx.arc(centerX, centerY, maxRadius * ratio, 0, Math.PI * 2);
-      ctx.stroke();
-    });
-
-    ctx.strokeStyle = 'rgba(0, 255, 200, 0.1)';
-    for (let angle = 0; angle < 360; angle += 45) {
-      const rad = (angle - 90) * (Math.PI / 180);
-      ctx.beginPath();
-      ctx.moveTo(centerX, centerY);
-      ctx.lineTo(
-        centerX + Math.cos(rad) * maxRadius,
-        centerY + Math.sin(rad) * maxRadius
-      );
-      ctx.stroke();
+    if (canvas && size >= 50) {
+      renderRadar(canvas, size, sweepAngle, obstacles);
     }
-
-    const sweepRad = (sweepAngle - 90) * (Math.PI / 180);
-    const gradient = ctx.createConicGradient(sweepRad, centerX, centerY);
-    gradient.addColorStop(0, 'rgba(0, 255, 200, 0.4)');
-    gradient.addColorStop(0.1, 'rgba(0, 255, 200, 0.1)');
-    gradient.addColorStop(0.2, 'rgba(0, 255, 200, 0)');
-    gradient.addColorStop(1, 'rgba(0, 255, 200, 0)');
-    
-    ctx.fillStyle = gradient;
-    ctx.beginPath();
-    ctx.moveTo(centerX, centerY);
-    ctx.arc(centerX, centerY, maxRadius, sweepRad - 0.5, sweepRad);
-    ctx.closePath();
-    ctx.fill();
-
-    ctx.strokeStyle = 'rgba(0, 255, 200, 0.8)';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(centerX, centerY);
-    ctx.lineTo(
-      centerX + Math.cos(sweepRad) * maxRadius,
-      centerY + Math.sin(sweepRad) * maxRadius
-    );
-    ctx.stroke();
-
-    const now = Date.now();
-    const recentObstacles = obstacles.filter(o => now - o.timestamp < 500);
-    
-    recentObstacles.forEach(obstacle => {
-      const age = now - obstacle.timestamp;
-      const opacity = Math.max(0, 1 - age / FADE_DURATION);
-      
-      const angleRad = (obstacle.angle - 90) * (Math.PI / 180);
-      const distRatio = Math.min(obstacle.distance / MAX_RANGE, 1);
-      const pointX = centerX + Math.cos(angleRad) * (distRatio * maxRadius);
-      const pointY = centerY + Math.sin(angleRad) * (distRatio * maxRadius);
-
-      if (obstacle.type === 'ultrasonic') {
-        ctx.fillStyle = `rgba(0, 255, 100, ${opacity})`;
-        ctx.shadowColor = 'rgba(0, 255, 100, 0.8)';
-      } else {
-        ctx.fillStyle = `rgba(0, 200, 255, ${opacity})`;
-        ctx.shadowColor = 'rgba(0, 200, 255, 0.8)';
-      }
-      ctx.shadowBlur = 8;
-      
-      ctx.beginPath();
-      ctx.arc(pointX, pointY, 5, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.shadowBlur = 0;
-
-      const fontSize = Math.max(7, Math.floor(size / 25));
-      ctx.font = `bold ${fontSize}px monospace`;
-      ctx.fillStyle = obstacle.type === 'ultrasonic' ? '#00ff64' : '#00c8ff';
-      ctx.textAlign = 'center';
-      ctx.shadowBlur = 0;
-      ctx.shadowColor = 'transparent';
-      ctx.fillText(obstacle.id, pointX, pointY - 8);
-    });
-
-    ctx.fillStyle = 'rgba(0, 255, 200, 0.8)';
-    ctx.beginPath();
-    ctx.arc(centerX, centerY, 4, 0, Math.PI * 2);
-    ctx.fill();
-
-    const fontSize = Math.max(8, Math.floor(size / 20));
-    ctx.font = `${fontSize}px monospace`;
-    ctx.fillStyle = 'rgba(0, 255, 200, 0.6)';
-    ctx.textAlign = 'center';
-    
-    ctx.fillText('N', centerX, fontSize + 2);
-    ctx.fillText('S', centerX, size - 4);
-    ctx.fillText('W', fontSize - 2, centerY + 3);
-    ctx.fillText('E', size - fontSize + 2, centerY + 3);
-
   }, [size, sweepAngle, obstacles]);
+
+  useEffect(() => {
+    const canvas = fullscreenCanvasRef.current;
+    if (canvas && isFullscreen && fullscreenSize >= 50) {
+      renderRadar(canvas, fullscreenSize, sweepAngle, obstacles);
+    }
+  }, [fullscreenSize, sweepAngle, obstacles, isFullscreen]);
 
   const { ultrasonicObstacles, lidarObstacles } = useMemo(() => {
     const now = Date.now();
@@ -271,13 +293,6 @@ export default function RadarScanner({ ultrasonicData, lidarDistance, className 
       lidarObstacles: all.filter(o => o.type === 'lidar'),
     };
   }, [obstacles]);
-
-  const fullscreenSize = useMemo(() => {
-    if (typeof window === 'undefined') return 400;
-    const maxHeight = window.innerHeight * 0.75;
-    const maxWidth = (window.innerWidth * 0.9 * 2) / 3 * 0.85;
-    return Math.min(maxWidth, maxHeight, 600);
-  }, [isFullscreen]);
 
   const ObstaclesList = ({ large = false }: { large?: boolean }) => (
     <div className="flex flex-col h-full overflow-hidden">
@@ -417,7 +432,7 @@ export default function RadarScanner({ ultrasonicData, lidarDistance, className 
               {/* Radar Column - 2/3 */}
               <div className="col-span-2 flex flex-col items-center justify-center">
                 <canvas
-                  ref={canvasRef}
+                  ref={fullscreenCanvasRef}
                   style={{ width: fullscreenSize, height: fullscreenSize }}
                   className="rounded-full border-2 border-primary/30"
                 />
