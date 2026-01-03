@@ -4,14 +4,15 @@ import { useRef, useState } from 'react';
 interface JoystickProps {
   onMove?: (x: number, y: number) => void;
   className?: string;
+  size?: number;
 }
 
-export default function Joystick({ onMove, className }: JoystickProps) {
+export default function Joystick({ onMove, className, size = 192 }: JoystickProps) {
   const constraintsRef = useRef(null);
   const [active, setActive] = useState(false);
 
   return (
-    <div className={`relative w-48 h-48 rounded-full border-2 border-primary/30 bg-black/40 backdrop-blur-md ${className}`}>
+    <div className={`relative rounded-full border-2 border-primary/30 bg-black/40 backdrop-blur-md ${className}`} style={{ width: size, height: size }}>
       {/* Grid Lines */}
       <div className="absolute inset-0 rounded-full overflow-hidden opacity-20 pointer-events-none">
         <div className="absolute top-1/2 left-0 w-full h-[1px] bg-primary"></div>

@@ -17,7 +17,8 @@
   "plugins": {
     "Geolocation": {
       "permissions": [
-        "location"
+        "location",
+        "coarseLocation"
       ]
     },
     "Camera": {

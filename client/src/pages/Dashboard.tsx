@@ -3,6 +3,7 @@ import CameraFeed from '@/components/CameraFeed';
 import TelemetryPanel from '@/components/TelemetryPanel';
 import SensorStatus from '@/components/SensorStatus';
 import Joystick from '@/components/Joystick';
+import RoverLocationMap from '@/components/RoverLocationMap';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 export default function Dashboard() {
@@ -13,15 +14,15 @@ export default function Dashboard() {
       <div className="scanline"></div>
 
       {/* Main Grid */}
-      <main className="grid grid-cols-12 gap-4 p-4 h-[calc(100vh-3.5rem)]">
+      <main className="grid grid-cols-12 gap-3 p-3 h-[calc(100vh-3.5rem)]">
         
-        {/* Left Column: Status & Map (3 cols) */}
-        <div className="col-span-3 flex flex-col gap-4">
-            <div className="hud-panel p-4 flex-1 overflow-hidden flex flex-col">
+        {/* Left Column: Status & Logs (3 cols) */}
+        <div className="col-span-3 flex flex-col gap-3">
+            <div className="hud-panel p-3 flex-1 overflow-hidden flex flex-col">
                 <SensorStatus sensors={data.sensors} />
             </div>
             
-            <div className="hud-panel p-4 h-1/3 flex flex-col">
+            <div className="hud-panel p-3 h-[30%] flex flex-col">
                 <h3 className="text-xs font-display text-primary/50 mb-2">SYSTEM LOGS</h3>
                 <ScrollArea className="flex-1 font-mono text-[10px] text-muted-foreground">
                     <div className="flex flex-col gap-1">
@@ -33,29 +34,54 @@ export default function Dashboard() {
             </div>
         </div>
 
-        {/* Center: Camera Feed (6 cols) */}
-        <div className="col-span-6 flex flex-col gap-4 relative">
-             <div className="flex-1 rounded-lg overflow-hidden relative group border border-border">
+        {/* Center: Camera Feed + Map (6 cols) */}
+        <div className="col-span-6 flex flex-col gap-3 relative">
+             <div className="flex-[2] rounded-lg overflow-hidden relative group border border-border min-h-0">
                 <CameraFeed />
-                
-                {/* Overlay Controls */}
-                <div className="absolute bottom-8 left-1/2 -translate-x-1/2 opacity-50 group-hover:opacity-100 transition-opacity duration-300">
-                     <Joystick onMove={(x, y) => console.log(x, y)} />
-                </div>
+             </div>
+             
+             {/* Google Maps - Rover Location */}
+             <div className="flex-1 min-h-[180px]">
+                <RoverLocationMap 
+                  roverLat={data.gps.lat} 
+                  roverLng={data.gps.lng}
+                  height="100%"
+                />
              </div>
         </div>
 
-        {/* Right Column: Telemetry (3 cols) */}
-        <div className="col-span-3 flex flex-col gap-4">
-            <div className="hud-panel p-2 flex-1">
-                <TelemetryPanel data={data} />
+        {/* Right Column: Telemetry + GPS + Joystick (3 cols) */}
+        <div className="col-span-3 flex flex-col gap-3">
+            {/* Stats Panels - Reduced height */}
+            <div className="hud-panel p-2 flex-shrink-0" style={{ height: 'auto', maxHeight: '45%' }}>
+                <TelemetryPanel data={data} compact />
             </div>
-             <div className="hud-panel p-4 h-1/4">
+            
+            {/* GPS Localization */}
+            <div className="hud-panel p-3 flex-shrink-0">
                 <h3 className="text-xs font-display text-primary/50 mb-2">GPS LOCALIZATION</h3>
-                <div className="text-2xl font-mono text-foreground font-bold">{data.gps.lat.toFixed(4)}</div>
-                <div className="text-xs text-muted-foreground mb-2">LATITUDE</div>
-                <div className="text-2xl font-mono text-foreground font-bold">{data.gps.lng.toFixed(4)}</div>
-                 <div className="text-xs text-muted-foreground">LONGITUDE</div>
+                <div className="grid grid-cols-2 gap-2">
+                    <div>
+                        <div className="text-xl font-mono text-foreground font-bold" data-testid="text-latitude">
+                            {data.gps.lat.toFixed(4)}
+                        </div>
+                        <div className="text-[10px] text-muted-foreground">LATITUDE</div>
+                    </div>
+                    <div>
+                        <div className="text-xl font-mono text-foreground font-bold" data-testid="text-longitude">
+                            {data.gps.lng.toFixed(4)}
+                        </div>
+                        <div className="text-[10px] text-muted-foreground">LONGITUDE</div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Joystick - Under GPS */}
+            <div className="hud-panel p-3 flex-1 flex flex-col items-center justify-center min-h-0">
+                <h3 className="text-xs font-display text-primary/50 mb-2">NAVIGATION CONTROL</h3>
+                <div className="flex-1 flex items-center justify-center w-full">
+                    <Joystick onMove={(x, y) => console.log('Move:', x, y)} size={120} />
+                </div>
             </div>
         </div>
 
