@@ -15,11 +15,11 @@ export default function Dashboard() {
   const { data: joystickData, handleHeadingChange, reset } = useJoystickData();
 
   return (
-    <div className="min-h-screen bg-background text-foreground font-sans selection:bg-primary/30 overflow-hidden relative" data-testid="page-dashboard">
+    <div className="h-screen bg-background text-foreground font-sans selection:bg-primary/30 overflow-auto relative" data-testid="page-dashboard">
       <div className="scanline"></div>
 
       {/* Main Grid */}
-      <main className="grid grid-cols-12 gap-3 p-3 h-[calc(100vh-3.5rem)]">
+      <main className="grid grid-cols-12 gap-3 p-3 min-h-[calc(100vh-1rem)]">
         
         {/* Left Column: Status + Radar + Logs (3 cols) */}
         <div className="col-span-3 flex flex-col gap-3">

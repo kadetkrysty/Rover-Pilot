@@ -208,11 +208,11 @@
   position: absolute;
   inset: 0;
   background-image: url('/attached_assets/ireland_map_1767461656747.png');
-  background-size: contain;
+  background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
-  filter: saturate(180%) hue-rotate(155deg) brightness(50%) contrast(140%);
-  opacity: 0.25;
+  filter: saturate(180%) hue-rotate(155deg) brightness(40%) contrast(120%);
+  opacity: 0.5;
   pointer-events: none;
   z-index: 0;
 }
