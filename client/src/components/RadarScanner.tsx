@@ -363,7 +363,7 @@ export default function RadarScanner({ ultrasonicData, lidarDistance, className 
     }
 
     return (
-      <div className="flex flex-col min-h-0 overflow-hidden">
+      <div className="flex flex-col min-h-0 overflow-hidden h-full justify-center">
         <h4 className="text-[9px] font-display text-primary/80 mb-2">DETECTED OBSTACLES</h4>
         <ScrollArea className="flex-1">
           <h5 className="text-[8px] font-display text-green-400/80 mb-1 flex items-center gap-1">
@@ -381,8 +381,9 @@ export default function RadarScanner({ ultrasonicData, lidarDistance, className 
                     <span className="text-green-400 font-bold">{obstacle.id}</span>
                     <span className="text-foreground/70">{obstacle.label}</span>
                   </div>
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-2">
                     <span className="text-foreground font-bold">{obstacle.distance.toFixed(0)}cm</span>
+                    <span className="text-foreground/60 text-[8px]">{obstacle.angle}°</span>
                     <span className="text-primary/60 text-[8px]">{obstacle.cardinal}</span>
                   </div>
                 </div>
@@ -409,8 +410,9 @@ export default function RadarScanner({ ultrasonicData, lidarDistance, className 
                     <span className="text-cyan-400 font-bold">{obstacle.id}</span>
                     <span className="text-foreground/70">{obstacle.label}</span>
                   </div>
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-2">
                     <span className="text-foreground font-bold">{obstacle.distance.toFixed(0)}cm</span>
+                    <span className="text-foreground/60 text-[8px]">{obstacle.angle}°</span>
                     <span className="text-primary/60 text-[8px]">{obstacle.cardinal}</span>
                   </div>
                 </div>
@@ -449,7 +451,7 @@ export default function RadarScanner({ ultrasonicData, lidarDistance, className 
         </div>
         
         {/* Two column layout: Radar | Obstacles List */}
-        <div className="flex-1 grid grid-cols-2 gap-3 min-h-0">
+        <div className="flex-1 grid grid-cols-2 gap-3 min-h-0 items-center">
           {/* Left Column - Radar Display */}
           <div className="flex flex-col items-center justify-center">
             <canvas
@@ -471,7 +473,9 @@ export default function RadarScanner({ ultrasonicData, lidarDistance, className 
           </div>
 
           {/* Right Column - Obstacles List */}
-          <ObstaclesList />
+          <div className="flex items-center justify-center h-full">
+            <ObstaclesList />
+          </div>
         </div>
       </div>
 
