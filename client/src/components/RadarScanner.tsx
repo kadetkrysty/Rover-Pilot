@@ -230,8 +230,10 @@ export default function RadarScanner({ ultrasonicData, lidarDistance, className 
 
       const fontSize = Math.max(7, Math.floor(size / 25));
       ctx.font = `bold ${fontSize}px monospace`;
-      ctx.fillStyle = obstacle.type === 'ultrasonic' ? 'rgba(0, 255, 100, 0.9)' : 'rgba(0, 200, 255, 0.9)';
+      ctx.fillStyle = obstacle.type === 'ultrasonic' ? '#00ff64' : '#00c8ff';
       ctx.textAlign = 'center';
+      ctx.shadowBlur = 0;
+      ctx.shadowColor = 'transparent';
       ctx.fillText(obstacle.id, pointX, pointY - 8);
     });
 
@@ -391,12 +393,12 @@ export default function RadarScanner({ ultrasonicData, lidarDistance, className 
 
       {/* Fullscreen Modal */}
       <Dialog open={isFullscreen} onOpenChange={setIsFullscreen}>
-        <DialogContent className="max-w-[95vw] w-[95vw] h-[90vh] bg-background/95 backdrop-blur-md border-primary/30 p-0">
+        <DialogContent className="max-w-[95vw] w-[95vw] h-[90vh] bg-background/95 backdrop-blur-md border-primary/30 p-0 [&>button]:hidden">
           <div className="flex flex-col h-full p-6">
             {/* Header */}
             <div className="flex justify-between items-center pb-4 border-b border-primary/20">
               <h2 className="text-lg font-display text-primary flex items-center gap-2">
-                PROXIMITY RADAR - FULLSCREEN
+                PROXIMITY RADAR
                 {!isConnected && (
                   <span className="bg-accent/80 px-2 py-0.5 rounded text-xs font-mono">DEMO</span>
                 )}
