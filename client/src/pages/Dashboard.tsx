@@ -51,8 +51,8 @@ export default function Dashboard() {
 
         {/* Right Column: Telemetry + GPS + Joystick (3 cols) */}
         <div className="col-span-3 flex flex-col gap-3">
-            {/* Stats Panels - Reduced height */}
-            <div className="hud-panel p-2 flex-shrink-0" style={{ height: 'auto', maxHeight: '45%' }}>
+            {/* Stats Panels */}
+            <div className="hud-panel p-3 flex-shrink-0" style={{ minHeight: '180px' }}>
                 <TelemetryPanel data={data} compact />
             </div>
             

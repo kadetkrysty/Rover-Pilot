@@ -40,7 +40,7 @@ export default function Joystick({ onMove, className, size = 192 }: JoystickProp
     }
   }, [size]);
 
-  const knobSize = Math.max(computedSize * 0.2, 30);
+  const knobSize = Math.max(computedSize * 0.15, 24);
   const maxDistance = (computedSize - knobSize) / 2;
 
   const handleDrag = () => {
