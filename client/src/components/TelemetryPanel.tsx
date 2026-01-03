@@ -1,4 +1,4 @@
-import { Activity, Battery, Compass, MapPin, Gauge } from "lucide-react";
+import { Activity, Battery, Compass, Gauge } from "lucide-react";
 import { RoverData } from "@/lib/mockData";
 import { Progress } from "@/components/ui/progress";
 
@@ -12,7 +12,10 @@ export default function TelemetryPanel({ data, compact = false }: TelemetryPanel
     <div className={`grid grid-cols-2 h-full ${compact ? 'gap-2' : 'gap-4'}`}>
       {/* Speed */}
       <div className={`hud-panel flex flex-col justify-between group hover:border-primary/60 transition-colors ${compact ? 'p-2' : 'p-4'}`}>
-        <div className={`flex items-center gap-1 text-primary/70 uppercase tracking-wider font-display ${compact ? 'text-xs' : 'text-sm'}`}>
+        <div 
+          className={`flex items-center gap-1 text-primary/70 uppercase tracking-wider font-display ${compact ? 'text-xs' : 'text-sm'}`}
+          style={{ paddingBottom: '27px' }}
+        >
           <Gauge className={compact ? 'w-3 h-3' : 'w-4 h-4'} /> Speed
         </div>
         <div className="flex items-end gap-1">
@@ -24,7 +27,10 @@ export default function TelemetryPanel({ data, compact = false }: TelemetryPanel
 
       {/* Battery */}
       <div className={`hud-panel flex flex-col justify-between group hover:border-primary/60 transition-colors ${compact ? 'p-2' : 'p-4'}`}>
-        <div className={`flex items-center gap-1 text-primary/70 uppercase tracking-wider font-display ${compact ? 'text-xs' : 'text-sm'}`}>
+        <div 
+          className={`flex items-center gap-1 text-primary/70 uppercase tracking-wider font-display ${compact ? 'text-xs' : 'text-sm'}`}
+          style={{ paddingBottom: '27px' }}
+        >
           <Battery className={compact ? 'w-3 h-3' : 'w-4 h-4'} /> Power
         </div>
         <div className="flex items-end gap-1">
@@ -41,7 +47,10 @@ export default function TelemetryPanel({ data, compact = false }: TelemetryPanel
 
       {/* Heading */}
       <div className={`hud-panel flex flex-col justify-between group hover:border-primary/60 transition-colors ${compact ? 'p-2' : 'p-4'}`}>
-        <div className={`flex items-center gap-1 text-primary/70 uppercase tracking-wider font-display ${compact ? 'text-xs' : 'text-sm'}`}>
+        <div 
+          className={`flex items-center gap-1 text-primary/70 uppercase tracking-wider font-display ${compact ? 'text-xs' : 'text-sm'}`}
+          style={{ paddingBottom: '27px' }}
+        >
           <Compass className={compact ? 'w-3 h-3' : 'w-4 h-4'} /> Heading
         </div>
         <div className="flex items-end gap-1">
@@ -55,7 +64,10 @@ export default function TelemetryPanel({ data, compact = false }: TelemetryPanel
 
       {/* Pitch/Roll */}
       <div className={`hud-panel flex flex-col justify-between group hover:border-primary/60 transition-colors ${compact ? 'p-2' : 'p-4'}`}>
-        <div className={`flex items-center gap-1 text-primary/70 uppercase tracking-wider font-display ${compact ? 'text-xs' : 'text-sm'}`}>
+        <div 
+          className={`flex items-center gap-1 text-primary/70 uppercase tracking-wider font-display ${compact ? 'text-xs' : 'text-sm'}`}
+          style={{ paddingBottom: '27px' }}
+        >
           <Activity className={compact ? 'w-3 h-3' : 'w-4 h-4'} /> Stability
         </div>
         <div className={`flex flex-col ${compact ? 'gap-0.5' : 'gap-1 mt-1'}`}>

@@ -1,4 +1,4 @@
-import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
+import { motion, useMotionValue, animate } from 'framer-motion';
 import { useRef, useState, useEffect } from 'react';
 
 interface JoystickProps {
@@ -18,23 +18,30 @@ export default function Joystick({ onMove, className, size = 192 }: JoystickProp
   const y = useMotionValue(0);
 
   useEffect(() => {
-    if (typeof size === 'string' && size.endsWith('%') && containerRef.current) {
+    if (typeof size === 'string' && size.endsWith('%')) {
       const updateSize = () => {
-        const parent = containerRef.current?.parentElement;
-        if (parent) {
-          const parentWidth = parent.clientWidth;
+        const panel = containerRef.current?.closest('[data-joystick-panel]') as HTMLElement;
+        if (panel) {
+          const panelWidth = panel.clientWidth - 24;
           const percentage = parseFloat(size) / 100;
-          const newSize = parentWidth * percentage;
+          const newSize = panelWidth * percentage;
           setComputedSize(newSize);
         }
       };
       
       updateSize();
+      window.addEventListener('resize', updateSize);
+      
       const observer = new ResizeObserver(updateSize);
-      if (containerRef.current?.parentElement) {
-        observer.observe(containerRef.current.parentElement);
+      const panel = containerRef.current?.closest('[data-joystick-panel]') as HTMLElement;
+      if (panel) {
+        observer.observe(panel);
       }
-      return () => observer.disconnect();
+      
+      return () => {
+        window.removeEventListener('resize', updateSize);
+        observer.disconnect();
+      };
     } else if (typeof size === 'number') {
       setComputedSize(size);
     }
@@ -65,13 +72,12 @@ export default function Joystick({ onMove, className, size = 192 }: JoystickProp
   };
 
   return (
-    <div className={`flex flex-col items-center gap-2 ${className}`}>
+    <div ref={containerRef} className={`flex flex-col items-center gap-2 w-full ${className}`}>
       <div className="font-mono text-xs text-primary/80 bg-black/40 px-3 py-1 rounded border border-primary/20">
         X: {coordinates.x.toFixed(2)} | Y: {coordinates.y.toFixed(2)}
       </div>
       
       <div 
-        ref={containerRef}
         className="relative rounded-full border-2 border-primary/30 bg-black/40 backdrop-blur-md"
         style={{ width: computedSize, height: computedSize }}
       >

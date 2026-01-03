@@ -5,6 +5,7 @@ import SensorStatus from '@/components/SensorStatus';
 import Joystick from '@/components/Joystick';
 import RoverLocationMap from '@/components/RoverLocationMap';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { AspectRatio } from '@/components/ui/aspect-ratio';
 
 export default function Dashboard() {
   const data = useRoverData();
@@ -35,13 +36,16 @@ export default function Dashboard() {
         </div>
 
         {/* Center: Camera Feed + Map (6 cols) */}
-        <div className="col-span-6 flex flex-col relative">
-             <div className="flex-[3] rounded-t-lg overflow-hidden relative group border border-border border-b-0 min-h-0">
-                <CameraFeed />
+        <div className="col-span-6 flex flex-col h-full min-h-0">
+             {/* Camera with 16:9 aspect ratio */}
+             <div className="flex-shrink-0">
+                <AspectRatio ratio={16 / 9}>
+                  <CameraFeed className="h-full" />
+                </AspectRatio>
              </div>
              
-             {/* Google Maps - User Location */}
-             <div className="flex-[2]">
+             {/* Google Maps - Fill remaining height */}
+             <div className="flex-1 min-h-0">
                 <RoverLocationMap 
                   height="100%"
                   showUserLocation
@@ -76,7 +80,7 @@ export default function Dashboard() {
             </div>
 
             {/* Joystick - Under GPS */}
-            <div className="hud-panel p-3 flex-1 flex flex-col items-center justify-center min-h-0">
+            <div className="hud-panel p-3 flex-1 flex flex-col min-h-0" data-joystick-panel>
                 <h3 className="text-xs font-display text-primary/50" style={{ paddingBottom: '27px' }}>NAVIGATION CONTROL</h3>
                 <div className="flex-1 flex items-center justify-center w-full">
                     <Joystick onMove={(x, y) => console.log('Move:', x, y)} size="80%" />
