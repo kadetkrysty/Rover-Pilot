@@ -86,9 +86,17 @@ export const useGamepad = () => {
         const rightStickX = applyDeadzone(axes[2]);
         const rightStickY = applyDeadzone(axes[3]);
 
-        // L2 and R2 are typically axes 4 and 5, range -1 to 1, convert to 0 to 1
-        const l2 = Math.max(0, (axes[4] + 1) / 2);
-        const r2 = Math.max(0, (axes[5] + 1) / 2);
+        // L2 and R2 can be either axes (4/5) or buttons (6/7) depending on browser/OS
+        // Some browsers use axes with range -1 to 1, others use button.value with range 0 to 1
+        // Check both sources and use the one with a higher value for maximum compatibility
+        const l2FromAxis = axes.length > 4 ? Math.max(0, (axes[4] + 1) / 2) : 0;
+        const r2FromAxis = axes.length > 5 ? Math.max(0, (axes[5] + 1) / 2) : 0;
+        const l2FromButton = buttons[6]?.value || 0;
+        const r2FromButton = buttons[7]?.value || 0;
+        
+        // Use whichever source has a higher value (handles browser differences)
+        const l2 = Math.max(l2FromAxis, l2FromButton);
+        const r2 = Math.max(r2FromAxis, r2FromButton);
 
         // PS4 DualShock 4 Standard Button Mapping:
         // 0 = Cross (X), 1 = Circle, 2 = Square, 3 = Triangle

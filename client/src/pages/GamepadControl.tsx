@@ -204,26 +204,16 @@ export default function GamepadControl() {
 
           <div className="hud-panel p-0 overflow-hidden">
             <div className="aspect-video relative bg-black">
-              {isDemoMode ? (
-                <DemoCameraFeed 
-                  zoom={cameraZoom} 
-                  exposure={cameraExposure}
-                  isRecording={isRecording}
-                  recordingTime={recordingTime}
-                  pan={cameraPan}
-                  tilt={cameraTilt}
-                />
-              ) : (
-                <LiveCameraFeed 
-                  zoom={cameraZoom}
-                  pan={cameraPan}
-                  tilt={cameraTilt}
-                />
-              )}
+              <DeviceCameraFeed 
+                zoom={cameraZoom}
+                pan={cameraPan}
+                tilt={cameraTilt}
+                isRecording={isRecording}
+              />
               
               {isDemoMode && (
                 <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-accent/90 px-3 py-1 rounded text-xs font-mono font-bold">
-                  DEMO MODE - SIMULATED FEED
+                  DEMO MODE - DEVICE CAMERA
                 </div>
               )}
               
@@ -644,43 +634,177 @@ function DemoCameraFeed({ zoom, exposure, isRecording, recordingTime, pan, tilt 
   );
 }
 
-function LiveCameraFeed({ zoom, pan, tilt }: {
+function DeviceCameraFeed({ zoom, pan, tilt, isRecording }: {
   zoom: number;
   pan: number;
   tilt: number;
+  isRecording: boolean;
 }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const streamRef = useRef<MediaStream | null>(null);
+  const [cameraStatus, setCameraStatus] = useState<'loading' | 'active' | 'denied' | 'error'>('loading');
+  const [errorMessage, setErrorMessage] = useState('');
+
+  useEffect(() => {
+    const startCamera = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            width: { ideal: 1920 },
+            height: { ideal: 1080 },
+            facingMode: 'environment'
+          },
+          audio: true
+        });
+
+        streamRef.current = stream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          setCameraStatus('active');
+        }
+      } catch (err: any) {
+        console.error('Camera access error:', err);
+        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+          setCameraStatus('denied');
+          setErrorMessage('Camera permission denied. Please allow camera access.');
+        } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+          setCameraStatus('error');
+          setErrorMessage('No camera found on this device.');
+        } else {
+          setCameraStatus('error');
+          setErrorMessage(err.message || 'Failed to access camera.');
+        }
+      }
+    };
+
+    startCamera();
+
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        mediaRecorderRef.current.stop();
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!streamRef.current || cameraStatus !== 'active') return;
+
+    if (isRecording) {
+      chunksRef.current = [];
+      try {
+        const mediaRecorder = new MediaRecorder(streamRef.current, {
+          mimeType: 'video/webm;codecs=vp9,opus'
+        });
+        
+        mediaRecorder.ondataavailable = (e) => {
+          if (e.data.size > 0) {
+            chunksRef.current.push(e.data);
+          }
+        };
+        
+        mediaRecorder.onstop = () => {
+          const blob = new Blob(chunksRef.current, { type: 'video/webm' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `rover-recording-${Date.now()}.webm`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        };
+        
+        mediaRecorder.start(1000);
+        mediaRecorderRef.current = mediaRecorder;
+      } catch (err) {
+        console.error('MediaRecorder error:', err);
+      }
+    } else {
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        mediaRecorderRef.current.stop();
+        mediaRecorderRef.current = null;
+      }
+    }
+  }, [isRecording, cameraStatus]);
+
+  const requestPermission = async () => {
+    setCameraStatus('loading');
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment' },
+        audio: true
+      });
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        setCameraStatus('active');
+      }
+    } catch (err: any) {
+      setCameraStatus('denied');
+      setErrorMessage(err.message || 'Permission denied');
+    }
+  };
+
   return (
     <div className="w-full h-full bg-black flex items-center justify-center relative overflow-hidden">
-      <div 
-        className="w-full h-full bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center transition-transform duration-100"
-        style={{ 
-          transform: `scale(${zoom}) translate(${-pan * 0.5}px, ${tilt * 0.5}px)`,
-          transformOrigin: 'center center'
-        }}
-      >
+      {cameraStatus === 'active' && (
+        <video
+          ref={videoRef}
+          autoPlay
+          playsInline
+          muted
+          className="w-full h-full object-cover transition-transform duration-100"
+          style={{ 
+            transform: `scale(${zoom}) translate(${-pan * 0.5}px, ${tilt * 0.5}px)`,
+            transformOrigin: 'center center'
+          }}
+        />
+      )}
+
+      {cameraStatus === 'loading' && (
         <div className="text-center">
-          <div className="text-primary font-mono text-sm mb-2">LIVE CAMERA FEED</div>
-          <div className="text-muted-foreground font-mono text-xs">Connected to Rover</div>
-          <div className="mt-4 w-32 h-32 border-2 border-primary/50 rounded-full mx-auto flex items-center justify-center">
-            <div className="w-4 h-4 bg-primary rounded-full animate-pulse"></div>
-          </div>
-          <div className="mt-4 text-xs font-mono text-muted-foreground">
-            <div>CAM: HUSKY_LENS_AI_01</div>
-            <div>RES: 1080p 60FPS</div>
-          </div>
+          <div className="w-16 h-16 border-4 border-primary/30 border-t-primary rounded-full animate-spin mx-auto mb-4"></div>
+          <div className="text-primary font-mono text-sm">REQUESTING CAMERA ACCESS...</div>
+          <div className="text-muted-foreground font-mono text-xs mt-2">Please allow camera and microphone permissions</div>
         </div>
-      </div>
+      )}
+
+      {(cameraStatus === 'denied' || cameraStatus === 'error') && (
+        <div className="text-center p-4">
+          <div className="w-16 h-16 border-2 border-destructive/50 rounded-full mx-auto mb-4 flex items-center justify-center">
+            <Camera className="w-8 h-8 text-destructive/70" />
+          </div>
+          <div className="text-destructive font-mono text-sm mb-2">CAMERA UNAVAILABLE</div>
+          <div className="text-muted-foreground font-mono text-xs mb-4 max-w-xs">{errorMessage}</div>
+          <button
+            onClick={requestPermission}
+            className="px-4 py-2 bg-primary/20 border border-primary/50 rounded text-primary font-mono text-xs hover:bg-primary/30 transition-colors"
+          >
+            REQUEST PERMISSION
+          </button>
+        </div>
+      )}
       
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute inset-0 flex items-center justify-center opacity-40">
-          <div className="w-[120px] h-[120px] border border-primary/40 rounded-full">
-            <div className="w-1 h-3 bg-primary absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-[60px]"></div>
-            <div className="w-1 h-3 bg-primary absolute top-1/2 left-1/2 -translate-x-1/2 translate-y-[48px]"></div>
-            <div className="w-3 h-1 bg-primary absolute top-1/2 left-1/2 -translate-y-1/2 -translate-x-[60px]"></div>
-            <div className="w-3 h-1 bg-primary absolute top-1/2 left-1/2 -translate-y-1/2 translate-x-[48px]"></div>
+      {cameraStatus === 'active' && (
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute inset-0 flex items-center justify-center opacity-40">
+            <div className="w-[120px] h-[120px] border border-primary/40 rounded-full relative">
+              <div className="w-1 h-3 bg-primary absolute top-0 left-1/2 -translate-x-1/2"></div>
+              <div className="w-1 h-3 bg-primary absolute bottom-0 left-1/2 -translate-x-1/2"></div>
+              <div className="w-3 h-1 bg-primary absolute top-1/2 left-0 -translate-y-1/2"></div>
+              <div className="w-3 h-1 bg-primary absolute top-1/2 right-0 -translate-y-1/2"></div>
+            </div>
+          </div>
+          <div className="absolute top-4 left-4 text-xs font-mono text-primary/70">
+            <div>DEVICE CAMERA</div>
+            <div>DEMO MODE ACTIVE</div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
