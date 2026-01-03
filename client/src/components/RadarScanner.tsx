@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, useMemo } from 'react';
 import { useWebSocket } from '@/lib/useWebSocket';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Maximize2, X } from 'lucide-react';
 
 interface RadarScannerProps {
   ultrasonicData: [number, number, number, number, number];
@@ -54,10 +56,12 @@ function getCardinalDirection(angle: number): string {
 
 export default function RadarScanner({ ultrasonicData, lidarDistance, className }: RadarScannerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const fullscreenCanvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [sweepAngle, setSweepAngle] = useState(0);
   const [obstacles, setObstacles] = useState<ObstaclePoint[]>([]);
   const [containerWidth, setContainerWidth] = useState(200);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const { isConnected } = useWebSocket();
 
   const [containerHeight, setContainerHeight] = useState(200);
@@ -266,105 +270,176 @@ export default function RadarScanner({ ultrasonicData, lidarDistance, className 
     };
   }, [obstacles]);
 
-  return (
-    <div ref={containerRef} className={`flex flex-col h-full ${className}`}>
-      <div className="flex justify-between items-center pb-2">
-        <h3 className="text-[10px] font-display text-primary/80">PROXIMITY RADAR</h3>
-        {!isConnected && (
-          <div className="bg-accent/80 px-1.5 py-0.5 rounded text-[9px] font-mono">
-            DEMO
+  const fullscreenSize = useMemo(() => {
+    if (typeof window === 'undefined') return 400;
+    const maxHeight = window.innerHeight * 0.75;
+    const maxWidth = (window.innerWidth * 0.9 * 2) / 3 * 0.85;
+    return Math.min(maxWidth, maxHeight, 600);
+  }, [isFullscreen]);
+
+  const ObstaclesList = ({ large = false }: { large?: boolean }) => (
+    <div className="flex flex-col h-full overflow-hidden">
+      <h4 className={`${large ? 'text-sm' : 'text-[9px]'} font-display text-primary/80 mb-2`}>DETECTED OBSTACLES</h4>
+      <ScrollArea className="flex-1">
+        <h5 className={`${large ? 'text-xs' : 'text-[8px]'} font-display text-green-400/80 mb-1 flex items-center gap-1`}>
+          <div className={`${large ? 'w-2 h-2' : 'w-1.5 h-1.5'} rounded-full bg-green-400`}></div>
+          ULTRASONIC ({ultrasonicObstacles.length})
+        </h5>
+        {ultrasonicObstacles.length > 0 ? (
+          <div className="grid grid-cols-1 gap-1 mb-4">
+            {ultrasonicObstacles.map((obstacle) => (
+              <div 
+                key={obstacle.id}
+                className={`flex items-center justify-between px-3 py-2 bg-card/50 border border-green-400/30 rounded ${large ? 'text-sm' : 'text-[9px]'} font-mono`}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-green-400 font-bold">{obstacle.id}</span>
+                  <span className="text-foreground/70">{obstacle.label}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-foreground font-bold">{obstacle.distance.toFixed(0)}cm</span>
+                  <span className="text-primary/60">{obstacle.cardinal}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className={`text-center ${large ? 'text-sm py-4' : 'text-[9px] py-2'} text-foreground/50 mb-4 border border-dashed border-green-400/20 rounded`}>
+            NO OBSTACLES
           </div>
         )}
-      </div>
-      
-      {/* Two column layout: Radar | Obstacles List */}
-      <div className="flex-1 grid grid-cols-2 gap-3 min-h-0">
-        {/* Left Column - Radar Display */}
-        <div className="flex flex-col items-center justify-center">
-          <canvas
-            ref={canvasRef}
-            style={{ width: size, height: size }}
-            className="rounded-full border border-primary/30"
-          />
-          
-          <div className="flex justify-center gap-4 mt-2 text-[9px] font-mono">
-            <div className="flex items-center gap-1">
-              <div className="w-2 h-2 rounded-full bg-green-400"></div>
-              <span className="text-foreground/70">ULTRASONIC</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <div className="w-2 h-2 rounded-full bg-cyan-400"></div>
-              <span className="text-foreground/70">LIDAR</span>
-            </div>
+
+        <h5 className={`${large ? 'text-xs' : 'text-[8px]'} font-display text-cyan-400/80 mb-1 flex items-center gap-1`}>
+          <div className={`${large ? 'w-2 h-2' : 'w-1.5 h-1.5'} rounded-full bg-cyan-400`}></div>
+          LIDAR ({lidarObstacles.length})
+        </h5>
+        {lidarObstacles.length > 0 ? (
+          <div className="grid grid-cols-1 gap-1">
+            {lidarObstacles.map((obstacle) => (
+              <div 
+                key={obstacle.id}
+                className={`flex items-center justify-between px-3 py-2 bg-card/50 border border-cyan-400/30 rounded ${large ? 'text-sm' : 'text-[9px]'} font-mono`}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-cyan-400 font-bold">{obstacle.id}</span>
+                  <span className="text-foreground/70">{obstacle.label}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-foreground font-bold">{obstacle.distance.toFixed(0)}cm</span>
+                  <span className="text-primary/60">{obstacle.cardinal}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className={`text-center ${large ? 'text-sm py-4' : 'text-[9px] py-2'} text-foreground/50 border border-dashed border-cyan-400/20 rounded`}>
+            NO OBSTACLES
+          </div>
+        )}
+      </ScrollArea>
+    </div>
+  );
+
+  return (
+    <>
+      <div ref={containerRef} className={`flex flex-col h-full ${className}`}>
+        <div className="flex justify-between items-center pb-2">
+          <h3 className="text-[10px] font-display text-primary/80">PROXIMITY RADAR</h3>
+          <div className="flex items-center gap-2">
+            {!isConnected && (
+              <div className="bg-accent/80 px-1.5 py-0.5 rounded text-[9px] font-mono">
+                DEMO
+              </div>
+            )}
+            <button
+              onClick={() => setIsFullscreen(true)}
+              className="p-1 rounded hover:bg-primary/20 text-primary/60 hover:text-primary transition-colors"
+              title="Fullscreen"
+              data-testid="button-radar-fullscreen"
+            >
+              <Maximize2 className="w-3.5 h-3.5" />
+            </button>
           </div>
         </div>
+        
+        {/* Two column layout: Radar | Obstacles List */}
+        <div className="flex-1 grid grid-cols-2 gap-3 min-h-0">
+          {/* Left Column - Radar Display */}
+          <div className="flex flex-col items-center justify-center">
+            <canvas
+              ref={canvasRef}
+              style={{ width: size, height: size }}
+              className="rounded-full border border-primary/30"
+            />
+            
+            <div className="flex justify-center gap-4 mt-2 text-[9px] font-mono">
+              <div className="flex items-center gap-1">
+                <div className="w-2 h-2 rounded-full bg-green-400"></div>
+                <span className="text-foreground/70">ULTRASONIC</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <div className="w-2 h-2 rounded-full bg-cyan-400"></div>
+                <span className="text-foreground/70">LIDAR</span>
+              </div>
+            </div>
+          </div>
 
-        {/* Right Column - Obstacles List */}
-        <div className="flex flex-col min-h-0 overflow-hidden">
-          <h4 className="text-[9px] font-display text-primary/80 mb-2">DETECTED OBSTACLES</h4>
-          <ScrollArea className="flex-1">
-            {/* Ultrasonic Obstacles Section */}
-            <h5 className="text-[8px] font-display text-green-400/80 mb-1 flex items-center gap-1">
-              <div className="w-1.5 h-1.5 rounded-full bg-green-400"></div>
-              ULTRASONIC ({ultrasonicObstacles.length})
-            </h5>
-            {ultrasonicObstacles.length > 0 ? (
-              <div className="grid grid-cols-1 gap-0.5 mb-3">
-                {ultrasonicObstacles.map((obstacle) => (
-                  <div 
-                    key={obstacle.id}
-                    className="flex items-center justify-between px-2 py-1 bg-card/50 border border-green-400/30 rounded text-[9px] font-mono"
-                    data-testid={`obstacle-ultrasonic-${obstacle.id}`}
-                  >
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-green-400 font-bold">{obstacle.id}</span>
-                      <span className="text-foreground/70">{obstacle.label}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-foreground font-bold">{obstacle.distance.toFixed(0)}cm</span>
-                      <span className="text-primary/60 text-[8px]">{obstacle.cardinal}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center text-[9px] text-foreground/50 py-2 mb-3 border border-dashed border-green-400/20 rounded">
-                NO OBSTACLES
-              </div>
-            )}
-
-            {/* LIDAR Obstacles Section */}
-            <h5 className="text-[8px] font-display text-cyan-400/80 mb-1 flex items-center gap-1">
-              <div className="w-1.5 h-1.5 rounded-full bg-cyan-400"></div>
-              LIDAR ({lidarObstacles.length})
-            </h5>
-            {lidarObstacles.length > 0 ? (
-              <div className="grid grid-cols-1 gap-0.5">
-                {lidarObstacles.map((obstacle) => (
-                  <div 
-                    key={obstacle.id}
-                    className="flex items-center justify-between px-2 py-1 bg-card/50 border border-cyan-400/30 rounded text-[9px] font-mono"
-                    data-testid={`obstacle-lidar-${obstacle.id}`}
-                  >
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-cyan-400 font-bold">{obstacle.id}</span>
-                      <span className="text-foreground/70">{obstacle.label}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-foreground font-bold">{obstacle.distance.toFixed(0)}cm</span>
-                      <span className="text-primary/60 text-[8px]">{obstacle.cardinal}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center text-[9px] text-foreground/50 py-2 border border-dashed border-cyan-400/20 rounded">
-                NO OBSTACLES
-              </div>
-            )}
-          </ScrollArea>
+          {/* Right Column - Obstacles List */}
+          <ObstaclesList />
         </div>
       </div>
-    </div>
+
+      {/* Fullscreen Modal */}
+      <Dialog open={isFullscreen} onOpenChange={setIsFullscreen}>
+        <DialogContent className="max-w-[95vw] w-[95vw] h-[90vh] bg-background/95 backdrop-blur-md border-primary/30 p-0">
+          <div className="flex flex-col h-full p-6">
+            {/* Header */}
+            <div className="flex justify-between items-center pb-4 border-b border-primary/20">
+              <h2 className="text-lg font-display text-primary flex items-center gap-2">
+                PROXIMITY RADAR - FULLSCREEN
+                {!isConnected && (
+                  <span className="bg-accent/80 px-2 py-0.5 rounded text-xs font-mono">DEMO</span>
+                )}
+              </h2>
+              <button
+                onClick={() => setIsFullscreen(false)}
+                className="p-2 rounded hover:bg-destructive/20 text-muted-foreground hover:text-destructive transition-colors"
+                data-testid="button-radar-close-fullscreen"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Two column layout: 2/3 Radar | 1/3 Obstacles */}
+            <div className="flex-1 grid grid-cols-3 gap-6 mt-4 min-h-0">
+              {/* Radar Column - 2/3 */}
+              <div className="col-span-2 flex flex-col items-center justify-center">
+                <canvas
+                  ref={canvasRef}
+                  style={{ width: fullscreenSize, height: fullscreenSize }}
+                  className="rounded-full border-2 border-primary/30"
+                />
+                
+                <div className="flex justify-center gap-8 mt-4 text-sm font-mono">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-green-400"></div>
+                    <span className="text-foreground/70">ULTRASONIC</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-cyan-400"></div>
+                    <span className="text-foreground/70">LIDAR</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Obstacles Column - 1/3 */}
+              <div className="col-span-1 min-h-0">
+                <ObstaclesList large />
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
