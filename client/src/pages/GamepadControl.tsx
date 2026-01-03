@@ -28,6 +28,7 @@ export default function GamepadControl() {
   const [hornActive, setHornActive] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const [showHelpModal, setShowHelpModal] = useState(false);
+  const [useDeviceCamera, setUseDeviceCamera] = useState(false);
   
   const prevInputRef = useRef<GamepadInput | null>(null);
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -204,18 +205,38 @@ export default function GamepadControl() {
 
           <div className="hud-panel p-0 overflow-hidden">
             <div className="aspect-video relative bg-black">
-              <DeviceCameraFeed 
-                zoom={cameraZoom}
-                pan={cameraPan}
-                tilt={cameraTilt}
-                isRecording={isRecording}
-              />
-              
-              {isDemoMode && (
-                <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-accent/90 px-3 py-1 rounded text-xs font-mono font-bold">
-                  DEMO MODE - DEVICE CAMERA
-                </div>
+              {useDeviceCamera ? (
+                <DeviceCameraFeed 
+                  zoom={cameraZoom}
+                  pan={cameraPan}
+                  tilt={cameraTilt}
+                  isRecording={isRecording}
+                />
+              ) : (
+                <DemoCameraFeed 
+                  zoom={cameraZoom} 
+                  exposure={cameraExposure}
+                  isRecording={isRecording}
+                  recordingTime={recordingTime}
+                  pan={cameraPan}
+                  tilt={cameraTilt}
+                />
               )}
+              
+              <div className="absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-2">
+                <button
+                  onClick={() => setUseDeviceCamera(false)}
+                  className={`px-2 py-1 rounded text-xs font-mono transition-colors ${!useDeviceCamera ? 'bg-accent text-black' : 'bg-black/50 text-muted-foreground hover:bg-black/70'}`}
+                >
+                  SIMULATED
+                </button>
+                <button
+                  onClick={() => setUseDeviceCamera(true)}
+                  className={`px-2 py-1 rounded text-xs font-mono transition-colors ${useDeviceCamera ? 'bg-accent text-black' : 'bg-black/50 text-muted-foreground hover:bg-black/70'}`}
+                >
+                  DEVICE CAM
+                </button>
+              </div>
               
               {isRecording && (
                 <div className="absolute top-4 left-4 flex items-center gap-2 bg-black/70 px-3 py-2 rounded">
