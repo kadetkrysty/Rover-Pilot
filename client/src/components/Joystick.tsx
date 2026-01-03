@@ -92,19 +92,8 @@ export default function Joystick({ onMove, onHeadingChange, className, size = 19
     if (onMove) onMove(0, 0);
   };
 
-  const getCardinalDirection = (deg: number): string => {
-    if (deg >= 337.5 || deg < 22.5) return 'N';
-    if (deg >= 22.5 && deg < 67.5) return 'NE';
-    if (deg >= 67.5 && deg < 112.5) return 'E';
-    if (deg >= 112.5 && deg < 157.5) return 'SE';
-    if (deg >= 157.5 && deg < 202.5) return 'S';
-    if (deg >= 202.5 && deg < 247.5) return 'SW';
-    if (deg >= 247.5 && deg < 292.5) return 'W';
-    if (deg >= 292.5 && deg < 337.5) return 'NW';
-    return 'N';
-  };
-
-  const labelOffset = 16;
+  const labelOffset = 20;
+  const diagonalOffset = Math.cos(Math.PI / 4);
 
   return (
     <div ref={containerRef} className={`flex flex-col items-center w-full ${className}`}>
@@ -113,11 +102,42 @@ export default function Joystick({ onMove, onHeadingChange, className, size = 19
         style={{ width: computedSize + labelOffset * 2, height: computedSize + labelOffset * 2 }}
       >
         {/* Cardinal point labels - OUTSIDE the circle */}
-        <div className="absolute inset-0 pointer-events-none" style={{ fontSize: '14px', fontWeight: 'bold' }}>
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 text-primary">N</div>
-          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 text-primary/60">S</div>
-          <div className="absolute left-0 top-1/2 -translate-y-1/2 text-primary/60">W</div>
-          <div className="absolute right-0 top-1/2 -translate-y-1/2 text-primary/60">E</div>
+        <div className="absolute inset-0 pointer-events-none font-bold text-sm">
+          {/* Primary cardinals */}
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1 text-primary">N</div>
+          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1 text-primary/60">S</div>
+          <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1 text-primary/60">W</div>
+          <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1 text-primary/60">E</div>
+          
+          {/* Intercardinals */}
+          <div 
+            className="absolute text-[10px] text-primary/40"
+            style={{ 
+              top: `${labelOffset + (computedSize / 2) * (1 - diagonalOffset) - 8}px`,
+              right: `${labelOffset + (computedSize / 2) * (1 - diagonalOffset) - 8}px`,
+            }}
+          >NE</div>
+          <div 
+            className="absolute text-[10px] text-primary/40"
+            style={{ 
+              bottom: `${labelOffset + (computedSize / 2) * (1 - diagonalOffset) - 8}px`,
+              right: `${labelOffset + (computedSize / 2) * (1 - diagonalOffset) - 8}px`,
+            }}
+          >SE</div>
+          <div 
+            className="absolute text-[10px] text-primary/40"
+            style={{ 
+              bottom: `${labelOffset + (computedSize / 2) * (1 - diagonalOffset) - 8}px`,
+              left: `${labelOffset + (computedSize / 2) * (1 - diagonalOffset) - 8}px`,
+            }}
+          >SW</div>
+          <div 
+            className="absolute text-[10px] text-primary/40"
+            style={{ 
+              top: `${labelOffset + (computedSize / 2) * (1 - diagonalOffset) - 8}px`,
+              left: `${labelOffset + (computedSize / 2) * (1 - diagonalOffset) - 8}px`,
+            }}
+          >NW</div>
         </div>
 
         {/* Joystick circle container */}
@@ -139,12 +159,68 @@ export default function Joystick({ onMove, onHeadingChange, className, size = 19
             <div className="absolute right-0 top-1/2 -translate-y-1/2 h-0.5 w-3 bg-primary/50"></div>
           </div>
 
-          {/* Compass tick marks - minor (NE, SE, SW, NW) */}
+          {/* Compass tick marks - intercardinal (NE, SE, SW, NW) at 45 degree angles */}
           <div className="absolute inset-0 pointer-events-none">
-            <div className="absolute w-0.5 h-2 bg-primary/30" style={{ top: '14.6%', left: '50%', transform: 'translateX(-50%) rotate(45deg)', transformOrigin: 'center bottom' }}></div>
-            <div className="absolute w-0.5 h-2 bg-primary/30" style={{ top: '14.6%', right: '14.6%', transform: 'rotate(45deg)' }}></div>
-            <div className="absolute w-0.5 h-2 bg-primary/30" style={{ bottom: '14.6%', right: '14.6%', transform: 'rotate(-45deg)' }}></div>
-            <div className="absolute w-0.5 h-2 bg-primary/30" style={{ bottom: '14.6%', left: '14.6%', transform: 'rotate(45deg)' }}></div>
+            {/* NE tick - 45 degrees */}
+            <div 
+              className="absolute w-0.5 h-2 bg-primary/30 origin-bottom"
+              style={{ 
+                top: `${(computedSize / 2) * (1 - diagonalOffset) - 1}px`,
+                left: `${(computedSize / 2) + (computedSize / 2) * diagonalOffset - 1}px`,
+                transform: 'rotate(45deg)',
+              }}
+            />
+            {/* SE tick - 135 degrees */}
+            <div 
+              className="absolute w-0.5 h-2 bg-primary/30 origin-top"
+              style={{ 
+                bottom: `${(computedSize / 2) * (1 - diagonalOffset) - 1}px`,
+                left: `${(computedSize / 2) + (computedSize / 2) * diagonalOffset - 1}px`,
+                transform: 'rotate(-45deg)',
+              }}
+            />
+            {/* SW tick - 225 degrees */}
+            <div 
+              className="absolute w-0.5 h-2 bg-primary/30 origin-top"
+              style={{ 
+                bottom: `${(computedSize / 2) * (1 - diagonalOffset) - 1}px`,
+                right: `${(computedSize / 2) + (computedSize / 2) * diagonalOffset - 1}px`,
+                transform: 'rotate(45deg)',
+              }}
+            />
+            {/* NW tick - 315 degrees */}
+            <div 
+              className="absolute w-0.5 h-2 bg-primary/30 origin-bottom"
+              style={{ 
+                top: `${(computedSize / 2) * (1 - diagonalOffset) - 1}px`,
+                right: `${(computedSize / 2) + (computedSize / 2) * diagonalOffset - 1}px`,
+                transform: 'rotate(-45deg)',
+              }}
+            />
+          </div>
+
+          {/* Diagonal lines */}
+          <div className="absolute inset-0 rounded-full overflow-hidden opacity-15 pointer-events-none">
+            <div 
+              className="absolute bg-primary"
+              style={{
+                width: '1px',
+                height: '141.4%',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%) rotate(45deg)',
+              }}
+            />
+            <div 
+              className="absolute bg-primary"
+              style={{
+                width: '1px',
+                height: '141.4%',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%) rotate(-45deg)',
+              }}
+            />
           </div>
 
           {/* Grid lines - cross */}
