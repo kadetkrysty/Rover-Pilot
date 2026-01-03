@@ -90,28 +90,33 @@ export const useGamepad = () => {
         const l2 = Math.max(0, (axes[4] + 1) / 2);
         const r2 = Math.max(0, (axes[5] + 1) / 2);
 
+        // PS4 DualShock 4 Standard Button Mapping:
+        // 0 = Cross (X), 1 = Circle, 2 = Square, 3 = Triangle
+        // 4 = L1, 5 = R1, 6 = L2 (button), 7 = R2 (button)
+        // 8 = Share, 9 = Options, 10 = L3, 11 = R3
+        // 12 = D-Up, 13 = D-Down, 14 = D-Left, 15 = D-Right, 16 = PS
         setGamepadInput({
           leftStickX,
           leftStickY,
           rightStickX,
           rightStickY,
-          l1: buttons[4]?.pressed || false,                    // LB / L1
-          l2: l2,
-          l3: buttons[10]?.pressed || false,                   // Left stick click
-          r1: buttons[5]?.pressed || false,                    // RB / R1
-          r2: r2,
-          r3: buttons[11]?.pressed || false,                   // Right stick click
-          triangle: buttons[2]?.pressed || false,              // Y / Triangle
-          circle: buttons[1]?.pressed || false,                // B / Circle
-          x: buttons[0]?.pressed || false,                     // A / X
-          square: buttons[3]?.pressed || false,                // X / Square
+          l1: buttons[4]?.pressed || false,                    // L1
+          l2: l2,                                               // L2 (analog from axis)
+          l3: buttons[10]?.pressed || false,                   // L3 (left stick click)
+          r1: buttons[5]?.pressed || false,                    // R1
+          r2: r2,                                               // R2 (analog from axis)
+          r3: buttons[11]?.pressed || false,                   // R3 (right stick click)
+          triangle: buttons[3]?.pressed || false,              // Triangle (top)
+          circle: buttons[1]?.pressed || false,                // Circle (right)
+          x: buttons[0]?.pressed || false,                     // Cross/X (bottom)
+          square: buttons[2]?.pressed || false,                // Square (left)
           dPadUp: buttons[12]?.pressed || false,
           dPadDown: buttons[13]?.pressed || false,
           dPadLeft: buttons[14]?.pressed || false,
           dPadRight: buttons[15]?.pressed || false,
-          options: buttons[9]?.pressed || false,               // Start / Options
-          share: buttons[8]?.pressed || false,                 // Back / Share
-          psButton: buttons[16]?.pressed || false,             // PS button (if available)
+          options: buttons[9]?.pressed || false,               // Options (right of touchpad)
+          share: buttons[8]?.pressed || false,                 // Share (left of touchpad)
+          psButton: buttons[16]?.pressed || false,             // PS button (center)
           isConnected: gamepad.connected,
           gamepadIndex: i,
         });
