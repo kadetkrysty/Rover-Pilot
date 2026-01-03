@@ -63,7 +63,7 @@ export default function Documentation() {
                         <div className="p-6 space-y-6 pr-4">
                             <div>
                                 <h3 className="text-xl text-primary font-display mb-4">SYSTEM ARCHITECTURE v3.0</h3>
-                                <pre className="bg-black/50 p-4 border border-border rounded-lg text-xs overflow-x-auto font-mono text-green-300">
+                                <pre className="bg-black/50 p-4 border border-border rounded-lg text-xs overflow-x-auto text-green-300" style={{ fontFamily: "'Courier New', Courier, monospace", letterSpacing: '0' }}>
 {`+---------------------------------------------------------------------+
 |                         ROVER SYSTEM v3.0                           |
 +---------------------------------------------------------------------+
@@ -213,7 +213,7 @@ export default function Documentation() {
 
                             <div>
                                 <h4 className="font-display text-primary mb-3">WIRING DIAGRAM</h4>
-                                <pre className="bg-black/50 p-4 border border-border rounded-lg text-xs overflow-x-auto font-mono text-green-300">
+                                <pre className="bg-black/50 p-4 border border-border rounded-lg text-xs overflow-x-auto text-green-300" style={{ fontFamily: "'Courier New', Courier, monospace", letterSpacing: '0' }}>
 {`+-------------------------------------------------------------------------+
 |                    CAMERA PAN/TILT WIRING DIAGRAM                       |
 +-------------------------------------------------------------------------+
@@ -641,7 +641,7 @@ set_tilt(0)`}
                     <ScrollArea className="h-full w-full">
                         <div className="p-6 space-y-6 pr-4">
                             <h3 className="text-xl text-primary font-display">ARDUINO MEGA PIN ASSIGNMENT</h3>
-                            <pre className="bg-black/50 p-4 border border-border rounded-lg text-xs overflow-x-auto font-mono text-cyan-300">
+                            <pre className="bg-black/50 p-4 border border-border rounded-lg text-xs overflow-x-auto text-cyan-300" style={{ fontFamily: "'Courier New', Courier, monospace", letterSpacing: '0' }}>
 {`Arduino Mega 2560 Pin Assignment v3.0
 =====================================
 
@@ -682,7 +682,7 @@ Power:
                             </pre>
 
                             <h3 className="text-xl text-primary font-display mt-8">POWER DISTRIBUTION</h3>
-                            <pre className="bg-black/50 p-4 border border-border rounded-lg text-xs overflow-x-auto font-mono text-yellow-300">
+                            <pre className="bg-black/50 p-4 border border-border rounded-lg text-xs overflow-x-auto text-yellow-300" style={{ fontFamily: "'Courier New', Courier, monospace", letterSpacing: '0' }}>
 {`Power Wiring Diagram
 ====================
 
@@ -907,7 +907,7 @@ sudo systemctl start rover`}
                             </div>
 
                             <h4 className="text-lg text-primary font-display mt-4">WIRING DIAGRAM</h4>
-                            <pre className="bg-black/50 p-4 border border-border rounded-lg text-xs overflow-x-auto font-mono text-cyan-300">
+                            <pre className="bg-black/50 p-4 border border-border rounded-lg text-xs overflow-x-auto text-cyan-300" style={{ fontFamily: "'Courier New', Courier, monospace", letterSpacing: '0' }}>
 {`FlySky FS-IA10B to Arduino Mega (iBUS Protocol)
 ================================================
 
