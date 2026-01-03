@@ -58,10 +58,13 @@ export default function GamepadControl() {
     }
 
     if (!emergencyStop) {
-      if (gamepadInput.triangle) {
-        setThrottle(100);
+      // R2 = Forward throttle (analog), L2 pressed with R2 = Reverse
+      const forwardThrottle = gamepadInput.r2 * 100;
+      if (forwardThrottle > 5) {
+        setThrottle(forwardThrottle);
         setMode('MANUAL');
       } else if (gamepadInput.x) {
+        // X button = Reverse
         setThrottle(-100);
         setMode('MANUAL');
       } else {
@@ -375,7 +378,7 @@ export default function GamepadControl() {
           <div className="hud-panel p-3">
             <h3 className="text-xs font-display text-primary/70 mb-2">QUICK REFERENCE</h3>
             <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[9px] font-mono text-muted-foreground/80">
-              <div><span className="text-secondary">△</span> Forward</div>
+              <div><span className="text-secondary">R2</span> Throttle</div>
               <div><span className="text-secondary">✕</span> Reverse</div>
               <div><span className="text-accent">◯</span> Start Rec</div>
               <div><span className="text-accent">□</span> Stop Rec</div>
