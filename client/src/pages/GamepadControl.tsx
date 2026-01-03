@@ -169,13 +169,13 @@ export default function GamepadControl() {
           <div className="flex items-center gap-2">
             <button
               onClick={() => setShowHelpModal(true)}
-              className="p-2 rounded border border-primary/30 bg-primary/10 hover:bg-primary/20 transition-colors"
+              className="px-2 h-7 rounded border border-primary/30 bg-primary/10 hover:bg-primary/20 transition-colors flex items-center justify-center"
               data-testid="button-help"
             >
               <HelpCircle className="w-4 h-4 text-primary" />
             </button>
-            <div className={`px-3 py-1 rounded font-mono text-xs ${isDemoMode ? 'bg-accent/20 text-accent border border-accent/50' : 'bg-secondary/20 text-secondary border border-secondary/50'}`}>
-              {isDemoMode ? 'DEMO MODE' : 'CONNECTED'}
+            <div className={`px-3 h-7 rounded font-mono text-xs flex items-center ${gamepadInput.isConnected ? 'bg-secondary/20 text-secondary border border-secondary/50' : 'bg-destructive/20 text-destructive border border-destructive/50'}`}>
+              {gamepadInput.isConnected ? 'CONTROLLER CONNECTED' : 'NO CONTROLLER'}
             </div>
           </div>
         </div>
