@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, Camera, Video, Volume2, Lightbulb, ZoomIn, ZoomOut, Sun, HelpCircle, X } from 'lucide-react';
@@ -7,6 +7,8 @@ import { GamepadInput, useGamepad } from '@/hooks/useGamepad';
 import { useWebSocket } from '@/lib/useWebSocket';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
+
+const ThreeRoverSimulation = lazy(() => import('@/components/ThreeRoverSimulation'));
 
 export default function GamepadControl() {
   const [, setLocation] = useLocation();
@@ -213,22 +215,28 @@ export default function GamepadControl() {
                   isRecording={isRecording}
                 />
               ) : (
-                <DemoCameraFeed 
-                  zoom={cameraZoom} 
-                  exposure={cameraExposure}
-                  isRecording={isRecording}
-                  recordingTime={recordingTime}
-                  pan={cameraPan}
-                  tilt={cameraTilt}
-                />
+                <Suspense fallback={
+                  <div className="w-full h-full bg-black flex items-center justify-center">
+                    <div className="w-16 h-16 border-4 border-primary/30 border-t-primary rounded-full animate-spin"></div>
+                  </div>
+                }>
+                  <ThreeRoverSimulation 
+                    throttle={throttle}
+                    direction={direction}
+                    steering={steering}
+                    cameraPan={cameraPan}
+                    cameraTilt={cameraTilt}
+                    zoom={cameraZoom}
+                  />
+                </Suspense>
               )}
               
-              <div className="absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-2">
+              <div className="absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-2 z-10">
                 <button
                   onClick={() => setUseDeviceCamera(false)}
                   className={`px-2 py-1 rounded text-xs font-mono transition-colors ${!useDeviceCamera ? 'bg-accent text-black' : 'bg-black/50 text-muted-foreground hover:bg-black/70'}`}
                 >
-                  SIMULATED
+                  3D SIMULATION
                 </button>
                 <button
                   onClick={() => setUseDeviceCamera(true)}
