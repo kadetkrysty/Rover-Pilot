@@ -23,8 +23,8 @@ export default function Dashboard() {
       {/* Desktop Layout (≥1024px): 3 columns - strict viewport fit, NO scrolling */}
       <main className="hidden lg:grid grid-cols-12 gap-1.5 p-1.5 h-full">
         
-        {/* Left Column - Core Systems, Camera Pan/Tilt, Camera Feed, Google Maps */}
-        <div className="col-span-3 grid grid-rows-[auto_auto_auto_1fr] gap-1.5 min-h-0">
+        {/* Left Column - Core Systems, Camera Pan/Tilt, Google Maps */}
+        <div className="col-span-3 grid grid-rows-[auto_auto_1fr] gap-1.5 min-h-0">
           {/* Core Systems */}
           <div className="hud-panel p-[10px] min-h-0 overflow-hidden max-h-[25vh]">
             <ScrollArea className="h-full w-full">
@@ -37,14 +37,7 @@ export default function Dashboard() {
             <CameraPanTilt compact />
           </div>
           
-          {/* Camera Feed */}
-          <div className="hud-panel overflow-hidden">
-            <AspectRatio ratio={16 / 9}>
-              <CameraFeed className="h-full" />
-            </AspectRatio>
-          </div>
-          
-          {/* Google Maps - Swapped from center */}
+          {/* Google Maps */}
           <div className="hud-panel min-h-0 overflow-hidden">
             <RoverLocationMap 
               height="100%"
@@ -53,10 +46,17 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Center Column - Proximity Radar */}
-        <div className="col-span-6 min-h-0">
+        {/* Center Column - Camera Feed on top, Proximity Radar below */}
+        <div className="col-span-6 grid grid-rows-[auto_1fr] gap-1.5 min-h-0">
+          {/* Camera Feed - Moved to center column */}
+          <div className="hud-panel overflow-hidden">
+            <AspectRatio ratio={16 / 9}>
+              <CameraFeed className="h-full" />
+            </AspectRatio>
+          </div>
+          
           {/* Proximity Radar */}
-          <div className="hud-panel p-[10px] h-full overflow-hidden">
+          <div className="hud-panel p-[10px] min-h-0 overflow-hidden">
             <RadarScanner 
               ultrasonicData={data.sensors.ultrasonic}
               lidarDistance={data.lidarDistance}
