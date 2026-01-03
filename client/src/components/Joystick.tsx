@@ -92,7 +92,8 @@ export default function Joystick({ onMove, onHeadingChange, className, size = 19
     if (onMove) onMove(0, 0);
   };
 
-  const labelOffset = 24;
+  const labelOffset = 20;
+  const diagonalPos = labelOffset + (computedSize / 2) * (1 - 0.707) - 6;
 
   return (
     <div ref={containerRef} className={`flex flex-col items-center w-full ${className}`}>
@@ -108,11 +109,11 @@ export default function Joystick({ onMove, onHeadingChange, className, size = 19
           <div className="absolute left-0 top-1/2 -translate-y-1/2 text-primary/60">W</div>
           <div className="absolute right-0 top-1/2 -translate-y-1/2 text-primary/60">E</div>
           
-          {/* Intercardinals - outside the circle at 45 degree positions */}
-          <div className="absolute top-[3px] right-[3px] text-xs text-primary/50">NE</div>
-          <div className="absolute bottom-[3px] right-[3px] text-xs text-primary/50">SE</div>
-          <div className="absolute bottom-[3px] left-[3px] text-xs text-primary/50">SW</div>
-          <div className="absolute top-[3px] left-[3px] text-xs text-primary/50">NW</div>
+          {/* Intercardinals - positioned at 45 degrees, same distance from circle as main cardinals */}
+          <div className="absolute text-xs text-primary/50" style={{ top: diagonalPos, right: diagonalPos }}>NE</div>
+          <div className="absolute text-xs text-primary/50" style={{ bottom: diagonalPos, right: diagonalPos }}>SE</div>
+          <div className="absolute text-xs text-primary/50" style={{ bottom: diagonalPos, left: diagonalPos }}>SW</div>
+          <div className="absolute text-xs text-primary/50" style={{ top: diagonalPos, left: diagonalPos }}>NW</div>
         </div>
 
         {/* Joystick circle container */}
