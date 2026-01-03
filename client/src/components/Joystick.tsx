@@ -3,9 +3,15 @@ import { useRef, useState, useEffect } from 'react';
 
 interface JoystickProps {
   onMove?: (x: number, y: number) => void;
-  onHeadingChange?: (heading: number) => void;
+  onHeadingChange?: (heading: number, magnitude: number) => void;
   className?: string;
   size?: number | string;
+}
+
+export interface JoystickData {
+  heading: number | null;
+  magnitude: number;
+  cardinalDirection: string;
 }
 
 export default function Joystick({ onMove, onHeadingChange, className, size = 192 }: JoystickProps) {
@@ -24,7 +30,7 @@ export default function Joystick({ onMove, onHeadingChange, className, size = 19
       const updateSize = () => {
         const panel = containerRef.current?.closest('[data-joystick-panel]') as HTMLElement;
         if (panel) {
-          const panelWidth = panel.clientWidth - 24;
+          const panelWidth = panel.clientWidth - 48;
           const percentage = parseFloat(size) / 100;
           const newSize = panelWidth * percentage;
           setComputedSize(newSize);
@@ -60,7 +66,7 @@ export default function Joystick({ onMove, onHeadingChange, className, size = 19
     const clampedDistance = Math.min(distance, maxDistance);
     const normalizedMag = clampedDistance / maxDistance;
     
-    let angle = Math.atan2(-currentX, currentY) * (180 / Math.PI);
+    let angle = Math.atan2(currentX, -currentY) * (180 / Math.PI);
     angle = (angle + 360) % 360;
     
     setHeading(distance > 5 ? angle : null);
@@ -73,7 +79,7 @@ export default function Joystick({ onMove, onHeadingChange, className, size = 19
       onMove(normalizedX, normalizedY);
     }
     if (onHeadingChange && distance > 5) {
-      onHeadingChange(angle);
+      onHeadingChange(angle, normalizedMag);
     }
   };
 
@@ -98,98 +104,151 @@ export default function Joystick({ onMove, onHeadingChange, className, size = 19
     return 'N';
   };
 
+  const labelOffset = 16;
+
   return (
-    <div ref={containerRef} className={`flex flex-col items-center gap-2 w-full ${className}`}>
-      <div className="font-mono text-xs text-primary/80 bg-black/40 px-3 py-1 rounded border border-primary/20">
-        {heading !== null ? (
-          <>HDG: {heading.toFixed(0)}° {getCardinalDirection(heading)} | MAG: {(magnitude * 100).toFixed(0)}%</>
-        ) : (
-          <>HDG: ---° | MAG: 0%</>
-        )}
-      </div>
-      
+    <div ref={containerRef} className={`flex flex-col items-center w-full ${className}`}>
       <div 
-        ref={joystickRef}
-        className="relative rounded-full border-2 border-primary/30 bg-black/40 backdrop-blur-md"
-        style={{ width: computedSize, height: computedSize }}
+        className="relative"
+        style={{ width: computedSize + labelOffset * 2, height: computedSize + labelOffset * 2 }}
       >
-        {/* Compass cardinal points */}
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-1 left-1/2 -translate-x-1/2 text-xs font-bold text-primary">N</div>
-          <div className="absolute bottom-1 left-1/2 -translate-x-1/2 text-xs font-bold text-primary/60">S</div>
-          <div className="absolute left-1 top-1/2 -translate-y-1/2 text-xs font-bold text-primary/60">W</div>
-          <div className="absolute right-1 top-1/2 -translate-y-1/2 text-xs font-bold text-primary/60">E</div>
-          
-          {/* Compass tick marks */}
-          <div className="absolute top-2 left-1/2 -translate-x-1/2 w-0.5 h-2 bg-primary"></div>
-          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-0.5 h-2 bg-primary/50"></div>
-          <div className="absolute left-2 top-1/2 -translate-y-1/2 h-0.5 w-2 bg-primary/50"></div>
-          <div className="absolute right-2 top-1/2 -translate-y-1/2 h-0.5 w-2 bg-primary/50"></div>
+        {/* Cardinal point labels - OUTSIDE the circle */}
+        <div className="absolute inset-0 pointer-events-none" style={{ fontSize: '14px', fontWeight: 'bold' }}>
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 text-primary">N</div>
+          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 text-primary/60">S</div>
+          <div className="absolute left-0 top-1/2 -translate-y-1/2 text-primary/60">W</div>
+          <div className="absolute right-0 top-1/2 -translate-y-1/2 text-primary/60">E</div>
         </div>
 
-        {/* Grid lines */}
-        <div className="absolute inset-0 rounded-full overflow-hidden opacity-20 pointer-events-none">
-          <div className="absolute top-1/2 left-0 w-full h-[1px] bg-primary"></div>
-          <div className="absolute left-1/2 top-0 h-full w-[1px] bg-primary"></div>
-        </div>
-        
-        {/* Concentric circles */}
+        {/* Joystick circle container */}
         <div 
-          className="absolute rounded-full border border-primary/20 pointer-events-none"
-          style={{
-            top: '25%',
-            left: '25%',
-            right: '25%',
-            bottom: '25%',
+          ref={joystickRef}
+          className="absolute rounded-full border-2 border-primary/30 bg-black/40 backdrop-blur-md"
+          style={{ 
+            width: computedSize, 
+            height: computedSize,
+            top: labelOffset,
+            left: labelOffset,
           }}
-        />
-        <div 
-          className="absolute rounded-full border border-primary/10 pointer-events-none"
-          style={{
-            top: '12.5%',
-            left: '12.5%',
-            right: '12.5%',
-            bottom: '12.5%',
-          }}
-        />
-
-        <motion.div
-          drag
-          dragConstraints={{ 
-            top: -maxDistance, 
-            left: -maxDistance, 
-            right: maxDistance, 
-            bottom: maxDistance 
-          }}
-          dragElastic={0}
-          dragMomentum={false}
-          onDragStart={() => setActive(true)}
-          onDrag={handleDrag}
-          onDragEnd={handleDragEnd}
-          style={{ x, y }}
-          className={`absolute rounded-full 
-            bg-primary/20 border-2 border-primary shadow-[0_0_15px_rgba(var(--primary),0.5)] cursor-pointer
-            flex items-center justify-center transition-colors duration-200
-            ${active ? 'bg-primary/40 shadow-[0_0_30px_rgba(var(--primary),0.8)]' : ''}
-          `}
-          initial={{
-            top: `calc(50% - ${knobSize / 2}px)`,
-            left: `calc(50% - ${knobSize / 2}px)`,
-            width: knobSize,
-            height: knobSize,
-          }}
-          animate={{
-            width: knobSize,
-            height: knobSize,
-            top: `calc(50% - ${knobSize / 2}px)`,
-            left: `calc(50% - ${knobSize / 2}px)`,
-          }}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
         >
-          <div className="w-1.5 h-1.5 bg-primary rounded-full"></div>
-        </motion.div>
+          {/* Compass tick marks - major (N, S, E, W) */}
+          <div className="absolute inset-0 pointer-events-none">
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-0.5 h-3 bg-primary"></div>
+            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-0.5 h-3 bg-primary/50"></div>
+            <div className="absolute left-0 top-1/2 -translate-y-1/2 h-0.5 w-3 bg-primary/50"></div>
+            <div className="absolute right-0 top-1/2 -translate-y-1/2 h-0.5 w-3 bg-primary/50"></div>
+          </div>
+
+          {/* Compass tick marks - minor (NE, SE, SW, NW) */}
+          <div className="absolute inset-0 pointer-events-none">
+            <div className="absolute w-0.5 h-2 bg-primary/30" style={{ top: '14.6%', left: '50%', transform: 'translateX(-50%) rotate(45deg)', transformOrigin: 'center bottom' }}></div>
+            <div className="absolute w-0.5 h-2 bg-primary/30" style={{ top: '14.6%', right: '14.6%', transform: 'rotate(45deg)' }}></div>
+            <div className="absolute w-0.5 h-2 bg-primary/30" style={{ bottom: '14.6%', right: '14.6%', transform: 'rotate(-45deg)' }}></div>
+            <div className="absolute w-0.5 h-2 bg-primary/30" style={{ bottom: '14.6%', left: '14.6%', transform: 'rotate(45deg)' }}></div>
+          </div>
+
+          {/* Grid lines - cross */}
+          <div className="absolute inset-0 rounded-full overflow-hidden opacity-30 pointer-events-none">
+            <div className="absolute top-1/2 left-0 w-full h-[1px] bg-primary"></div>
+            <div className="absolute left-1/2 top-0 h-full w-[1px] bg-primary"></div>
+          </div>
+          
+          {/* Concentric circles */}
+          <div 
+            className="absolute rounded-full border border-primary/20 pointer-events-none"
+            style={{
+              top: '25%',
+              left: '25%',
+              right: '25%',
+              bottom: '25%',
+            }}
+          />
+          <div 
+            className="absolute rounded-full border border-primary/15 pointer-events-none"
+            style={{
+              top: '12.5%',
+              left: '12.5%',
+              right: '12.5%',
+              bottom: '12.5%',
+            }}
+          />
+
+          <motion.div
+            drag
+            dragConstraints={{ 
+              top: -maxDistance, 
+              left: -maxDistance, 
+              right: maxDistance, 
+              bottom: maxDistance 
+            }}
+            dragElastic={0}
+            dragMomentum={false}
+            onDragStart={() => setActive(true)}
+            onDrag={handleDrag}
+            onDragEnd={handleDragEnd}
+            style={{ x, y }}
+            className={`absolute rounded-full 
+              bg-primary/20 border-2 border-primary shadow-[0_0_15px_rgba(var(--primary),0.5)] cursor-pointer
+              flex items-center justify-center transition-colors duration-200
+              ${active ? 'bg-primary/40 shadow-[0_0_30px_rgba(var(--primary),0.8)]' : ''}
+            `}
+            initial={{
+              top: `calc(50% - ${knobSize / 2}px)`,
+              left: `calc(50% - ${knobSize / 2}px)`,
+              width: knobSize,
+              height: knobSize,
+            }}
+            animate={{
+              width: knobSize,
+              height: knobSize,
+              top: `calc(50% - ${knobSize / 2}px)`,
+              left: `calc(50% - ${knobSize / 2}px)`,
+            }}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            <div className="w-1.5 h-1.5 bg-primary rounded-full"></div>
+          </motion.div>
+        </div>
       </div>
     </div>
   );
+}
+
+export function useJoystickData() {
+  const [data, setData] = useState<JoystickData>({
+    heading: null,
+    magnitude: 0,
+    cardinalDirection: '---',
+  });
+
+  const handleHeadingChange = (heading: number, magnitude: number) => {
+    const getCardinal = (deg: number): string => {
+      if (deg >= 337.5 || deg < 22.5) return 'N';
+      if (deg >= 22.5 && deg < 67.5) return 'NE';
+      if (deg >= 67.5 && deg < 112.5) return 'E';
+      if (deg >= 112.5 && deg < 157.5) return 'SE';
+      if (deg >= 157.5 && deg < 202.5) return 'S';
+      if (deg >= 202.5 && deg < 247.5) return 'SW';
+      if (deg >= 247.5 && deg < 292.5) return 'W';
+      if (deg >= 292.5 && deg < 337.5) return 'NW';
+      return 'N';
+    };
+    
+    setData({
+      heading,
+      magnitude,
+      cardinalDirection: getCardinal(heading),
+    });
+  };
+
+  const reset = () => {
+    setData({
+      heading: null,
+      magnitude: 0,
+      cardinalDirection: '---',
+    });
+  };
+
+  return { data, handleHeadingChange, reset };
 }

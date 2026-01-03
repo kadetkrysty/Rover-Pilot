@@ -3,7 +3,7 @@ import { useLocation } from '@/hooks/useLocation';
 import CameraFeed from '@/components/CameraFeed';
 import TelemetryPanel from '@/components/TelemetryPanel';
 import SensorStatus from '@/components/SensorStatus';
-import Joystick from '@/components/Joystick';
+import Joystick, { useJoystickData } from '@/components/Joystick';
 import RoverLocationMap from '@/components/RoverLocationMap';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { AspectRatio } from '@/components/ui/aspect-ratio';
@@ -11,6 +11,7 @@ import { AspectRatio } from '@/components/ui/aspect-ratio';
 export default function Dashboard() {
   const data = useRoverData();
   const location = useLocation();
+  const { data: joystickData, handleHeadingChange, reset } = useJoystickData();
 
   return (
     <div className="min-h-screen bg-background text-foreground font-sans selection:bg-primary/30 overflow-hidden relative" data-testid="page-dashboard">
@@ -83,9 +84,25 @@ export default function Dashboard() {
 
             {/* Joystick - Under GPS */}
             <div className="hud-panel p-3 flex-1 flex flex-col min-h-0" data-joystick-panel>
-                <h3 className="text-xs font-display text-primary/50" style={{ paddingBottom: '27px' }}>NAVIGATION CONTROL</h3>
+                <div className="flex justify-between items-center" style={{ paddingBottom: '27px' }}>
+                    <h3 className="text-xs font-display text-primary/50">NAVIGATION CONTROL</h3>
+                    <div className="font-mono text-xs text-primary/80">
+                        {joystickData.heading !== null ? (
+                            <>{joystickData.heading.toFixed(0)}° {joystickData.cardinalDirection} | {(joystickData.magnitude * 100).toFixed(0)}%</>
+                        ) : (
+                            <>---° | 0%</>
+                        )}
+                    </div>
+                </div>
                 <div className="flex-1 flex items-center justify-center w-full">
-                    <Joystick onMove={(x, y) => console.log('Move:', x, y)} size="80%" />
+                    <Joystick 
+                      onMove={(x, y) => {
+                        if (x === 0 && y === 0) reset();
+                        console.log('Move:', x, y);
+                      }} 
+                      onHeadingChange={handleHeadingChange}
+                      size="80%" 
+                    />
                 </div>
             </div>
         </div>
