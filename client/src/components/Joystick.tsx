@@ -24,7 +24,7 @@ export default function Joystick({ onMove, className, size = 192 }: JoystickProp
         if (parent) {
           const parentWidth = parent.clientWidth;
           const percentage = parseFloat(size) / 100;
-          const newSize = Math.min(parentWidth * percentage, parent.clientHeight * 0.9);
+          const newSize = parentWidth * percentage;
           setComputedSize(newSize);
         }
       };

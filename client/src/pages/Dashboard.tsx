@@ -23,7 +23,7 @@ export default function Dashboard() {
             </div>
             
             <div className="hud-panel p-3 h-[30%] flex flex-col">
-                <h3 className="text-xs font-display text-primary/50 mb-2">SYSTEM LOGS</h3>
+                <h3 className="text-xs font-display text-primary/50" style={{ paddingBottom: '27px' }}>SYSTEM LOGS</h3>
                 <ScrollArea className="flex-1 font-mono text-[10px] text-muted-foreground">
                     <div className="flex flex-col gap-1">
                         {data.log.map((entry, i) => (
@@ -58,7 +58,7 @@ export default function Dashboard() {
             
             {/* GPS Localization */}
             <div className="hud-panel p-3 flex-shrink-0">
-                <h3 className="text-xs font-display text-primary/50 mb-2">GPS LOCALIZATION</h3>
+                <h3 className="text-xs font-display text-primary/50" style={{ paddingBottom: '27px' }}>GPS LOCALIZATION</h3>
                 <div className="grid grid-cols-2 gap-2">
                     <div>
                         <div className="text-xl font-mono text-foreground font-bold" data-testid="text-latitude">
@@ -77,7 +77,7 @@ export default function Dashboard() {
 
             {/* Joystick - Under GPS */}
             <div className="hud-panel p-3 flex-1 flex flex-col items-center justify-center min-h-0">
-                <h3 className="text-xs font-display text-primary/50 mb-2">NAVIGATION CONTROL</h3>
+                <h3 className="text-xs font-display text-primary/50" style={{ paddingBottom: '27px' }}>NAVIGATION CONTROL</h3>
                 <div className="flex-1 flex items-center justify-center w-full">
                     <Joystick onMove={(x, y) => console.log('Move:', x, y)} size="80%" />
                 </div>
