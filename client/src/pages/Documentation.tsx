@@ -64,37 +64,37 @@ export default function Documentation() {
                             <div>
                                 <h3 className="text-xl text-primary font-display mb-4">SYSTEM ARCHITECTURE v3.0</h3>
                                 <pre className="bg-black/50 p-4 border border-border rounded-lg text-xs overflow-x-auto font-mono text-green-300">
-{`+-------------------------------------------------------------------+
-|                        ROVER SYSTEM v3.0                          |
-+-------------------------------------------------------------------+
-|                                                                   |
-|  +-------------------+     USB Serial     +-------------------+   |
-|  |    MINI PC        |<----------------->|   ARDUINO MEGA    |   |
-|  |   Intel Celeron   |    115200 baud    |       2560        |   |
-|  |   8GB RAM         |                   |                   |   |
-|  |   Ubuntu OS       |                   |  Sensors:         |   |
-|  |                   |                   |  - TF Mini Pro    |   |
-|  |  Runs:            |                   |  - MPU6050 IMU    |   |
-|  |  - Web Server     |                   |  - Neo-6M GPS     |   |
-|  |  - WebSocket      |                   |  - 5x Ultrasonic  |   |
-|  |  - SLAM/EKF       |                   |  - HuskyLens      |   |
-|  |                   |                   |                   |   |
-|  +---------+---------+                   |  RC Control:      |   |
-|            |                             |  - iBUS (Serial1) |   |
-|            | WiFi                        +---------+---------+   |
-|            v                                       |             |
-|  +-------------------+                   +---------v---------+   |
-|  |  WEB DASHBOARD    |                   |  FLYSKY FS-IA10B  |   |
-|  |  React + Vite     |                   |  (iBUS Protocol)  |   |
-|  |  Mobile/Desktop   |                   +-------------------+   |
-|  +-------------------+                             ^             |
-|                                                    | 2.4GHz      |
-|  +-------------------+                   +---------+---------+   |
-|  |  HOVERBOARD       |<-- UART - Arduino |  FLYSKY FS-I6x   |   |
-|  |  FOC Controller   |                   |   Transmitter     |   |
-|  +-------------------+                   +-------------------+   |
-|                                                                   |
-+-------------------------------------------------------------------+`}
+{`+---------------------------------------------------------------------+
+|                         ROVER SYSTEM v3.0                           |
++---------------------------------------------------------------------+
+|                                                                     |
+|  +---------------------+    USB Serial    +---------------------+   |
+|  |  MINI PC            |<--------------->|  ARDUINO MEGA       |   |
+|  |  Intel Celeron      |   115200 baud   |  2560               |   |
+|  |  8GB RAM            |                 |                     |   |
+|  |  Ubuntu OS          |                 |  Sensors:           |   |
+|  |                     |                 |  - TF Mini Pro      |   |
+|  |  Runs:              |                 |  - MPU6050 IMU      |   |
+|  |  - Web Server       |                 |  - Neo-6M GPS       |   |
+|  |  - WebSocket        |                 |  - 5x Ultrasonic    |   |
+|  |  - SLAM/EKF         |                 |  - HuskyLens        |   |
+|  |                     |                 |                     |   |
+|  +---------+-----------+                 |  RC Control:        |   |
+|            |                             |  - iBUS (Serial1)   |   |
+|            | WiFi                        +---------+-----------+   |
+|            v                                       |               |
+|  +---------------------+                 +---------v-----------+   |
+|  |  WEB DASHBOARD      |                 |  FLYSKY FS-IA10B    |   |
+|  |  React + Vite       |                 |  (iBUS Protocol)    |   |
+|  |  Mobile/Desktop     |                 +---------------------+   |
+|  +---------------------+                           ^               |
+|                                                    | 2.4GHz        |
+|  +---------------------+                 +---------+-----------+   |
+|  |  HOVERBOARD         |<-- UART --------|  FLYSKY FS-I6x     |   |
+|  |  FOC Controller     |     Arduino     |  Transmitter        |   |
+|  +---------------------+                 +---------------------+   |
+|                                                                     |
++---------------------------------------------------------------------+`}
                                 </pre>
                             </div>
 
@@ -218,46 +218,46 @@ export default function Documentation() {
 |                    CAMERA PAN/TILT WIRING DIAGRAM                       |
 +-------------------------------------------------------------------------+
 |                                                                         |
-|  +--------------------+      40-Pin GPIO      +--------------------+    |
-|  |  RASPBERRY PI 3B+  |<-------------------->|  SLUSHENGINE X LT  |    |
-|  |                    |      (HAT Mount)      |                    |    |
-|  |  Power: 5V 2.5A    |                       |  Power: 12V DC     |    |
-|  |  via USB-C or GPIO |                       |  (VPP Terminal)    |    |
-|  +--------------------+                       +--------------------+    |
+|  +----------------------+   40-Pin GPIO   +----------------------+      |
+|  |  RASPBERRY PI 3B+    |<--------------->|  SLUSHENGINE X LT    |      |
+|  |                      |   (HAT Mount)   |                      |      |
+|  |  Power: 5V 2.5A      |                 |  Power: 12V DC       |      |
+|  |  via USB-C or GPIO   |                 |  (VPP Terminal)      |      |
+|  +----------------------+                 +----------------------+      |
 |                                                                         |
-|  +----------------------------------------+   +--------------------+    |
-|  |           MOTOR CONNECTIONS            |   |     Motor 1        |    |
-|  +----------------------------------------+   |      (PAN)         |    |
-|  |                                        |   |                    |    |
-|  |  PAN MOTOR (Motor Port 1)              |   |  A+ --> Coil A+    |    |
-|  |   A+ (Green)  --> SlushEngine Motor1 A+|   |  A- --> Coil A-    |    |
-|  |   A- (Black)  --> SlushEngine Motor1 A-|   |  B+ --> Coil B+    |    |
-|  |   B+ (Red)    --> SlushEngine Motor1 B+|   |  B- --> Coil B-    |    |
-|  |   B- (Blue)   --> SlushEngine Motor1 B-|   +--------------------+    |
-|  |                                        |                             |
-|  |  TILT MOTOR (Motor Port 2)             |   +--------------------+    |
-|  |   A+ (Green)  --> SlushEngine Motor2 A+|   |     Motor 2        |    |
-|  |   A- (Black)  --> SlushEngine Motor2 A-|   |      (TILT)        |    |
-|  |   B+ (Red)    --> SlushEngine Motor2 B+|   |                    |    |
-|  |   B- (Blue)   --> SlushEngine Motor2 B-|   |  A+ --> Coil A+    |    |
-|  |                                        |   |  A- --> Coil A-    |    |
-|  +----------------------------------------+   |  B+ --> Coil B+    |    |
-|                                               |  B- --> Coil B-    |    |
-|  +----------------------------------------+   +--------------------+    |
-|  |           POWER CONNECTIONS            |                             |
-|  +----------------------------------------+   +--------------------+    |
-|  |  12V DC Power Supply --> VPP (+)       |   |   Power Terminal   |    |
-|  |  GND ------------------> GND (-)       |   |                    |    |
-|  |                                        |   |  VPP: 9-36V        |    |
-|  |  WARNING: Check polarity before        |   |  GND: Common       |    |
-|  |  connecting power!                     |   +--------------------+    |
-|  +----------------------------------------+                             |
+|  +------------------------------------------+  +--------------------+   |
+|  |           MOTOR CONNECTIONS              |  |     Motor 1        |   |
+|  +------------------------------------------+  |      (PAN)         |   |
+|  |                                          |  |                    |   |
+|  |  PAN MOTOR (Motor Port 1)                |  |  A+ --> Coil A+    |   |
+|  |   A+ (Green)  --> SlushEngine Motor1 A+  |  |  A- --> Coil A-    |   |
+|  |   A- (Black)  --> SlushEngine Motor1 A-  |  |  B+ --> Coil B+    |   |
+|  |   B+ (Red)    --> SlushEngine Motor1 B+  |  |  B- --> Coil B-    |   |
+|  |   B- (Blue)   --> SlushEngine Motor1 B-  |  +--------------------+   |
+|  |                                          |                           |
+|  |  TILT MOTOR (Motor Port 2)               |  +--------------------+   |
+|  |   A+ (Green)  --> SlushEngine Motor2 A+  |  |     Motor 2        |   |
+|  |   A- (Black)  --> SlushEngine Motor2 A-  |  |      (TILT)        |   |
+|  |   B+ (Red)    --> SlushEngine Motor2 B+  |  |                    |   |
+|  |   B- (Blue)   --> SlushEngine Motor2 B-  |  |  A+ --> Coil A+    |   |
+|  |                                          |  |  A- --> Coil A-    |   |
+|  +------------------------------------------+  |  B+ --> Coil B+    |   |
+|                                                |  B- --> Coil B-    |   |
+|  +------------------------------------------+  +--------------------+   |
+|  |           POWER CONNECTIONS              |                           |
+|  +------------------------------------------+  +--------------------+   |
+|  |  12V DC Power Supply --> VPP (+)         |  |   Power Terminal   |   |
+|  |  GND ------------------> GND (-)         |  |                    |   |
+|  |                                          |  |  VPP: 9-36V        |   |
+|  |  WARNING: Check polarity before          |  |  GND: Common       |   |
+|  |  connecting power!                       |  +--------------------+   |
+|  +------------------------------------------+                           |
 |                                                                         |
 |  COMMUNICATION (via Mini PC WiFi):                                      |
-|  +----------------+      WiFi       +----------------+                  |
-|  |    Mini PC     |<--------------->|   RPi 3 B+    |<--- TCP/5002     |
-|  |   Main Ctrl    |                 |  Camera Ctrl  |     Commands     |
-|  +----------------+                 +----------------+                  |
+|  +------------------+     WiFi      +------------------+                |
+|  |  Mini PC         |<------------->|  RPi 3 B+        |<-- TCP/5002    |
+|  |  Main Ctrl       |               |  Camera Ctrl     |    Commands    |
+|  +------------------+               +------------------+                |
 |                                                                         |
 +-------------------------------------------------------------------------+`}
                                 </pre>
