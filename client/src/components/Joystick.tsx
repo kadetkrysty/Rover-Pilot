@@ -1,19 +1,49 @@
 import { motion } from 'framer-motion';
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 
 interface JoystickProps {
   onMove?: (x: number, y: number) => void;
   className?: string;
-  size?: number;
+  size?: number | string;
 }
 
 export default function Joystick({ onMove, className, size = 192 }: JoystickProps) {
   const constraintsRef = useRef(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState(false);
+  const [computedSize, setComputedSize] = useState<number>(typeof size === 'number' ? size : 192);
+
+  useEffect(() => {
+    if (typeof size === 'string' && size.endsWith('%') && containerRef.current) {
+      const updateSize = () => {
+        const parent = containerRef.current?.parentElement;
+        if (parent) {
+          const parentWidth = parent.clientWidth;
+          const percentage = parseFloat(size) / 100;
+          const newSize = Math.min(parentWidth * percentage, parent.clientHeight * 0.9);
+          setComputedSize(newSize);
+        }
+      };
+      
+      updateSize();
+      const observer = new ResizeObserver(updateSize);
+      if (containerRef.current?.parentElement) {
+        observer.observe(containerRef.current.parentElement);
+      }
+      return () => observer.disconnect();
+    } else if (typeof size === 'number') {
+      setComputedSize(size);
+    }
+  }, [size]);
+
+  const knobSize = Math.max(computedSize * 0.35, 40);
 
   return (
-    <div className={`relative rounded-full border-2 border-primary/30 bg-black/40 backdrop-blur-md ${className}`} style={{ width: size, height: size }}>
-      {/* Grid Lines */}
+    <div 
+      ref={containerRef}
+      className={`relative rounded-full border-2 border-primary/30 bg-black/40 backdrop-blur-md ${className}`} 
+      style={{ width: computedSize, height: computedSize }}
+    >
       <div className="absolute inset-0 rounded-full overflow-hidden opacity-20 pointer-events-none">
         <div className="absolute top-1/2 left-0 w-full h-[1px] bg-primary"></div>
         <div className="absolute left-1/2 top-0 h-full w-[1px] bg-primary"></div>
@@ -39,28 +69,27 @@ export default function Joystick({ onMove, className, size = 192 }: JoystickProp
           }}
           onDrag={(event, info) => {
             if (onMove) {
-              // Normalize coordinates to -1 to 1
               const rect = (event.target as HTMLElement).parentElement?.getBoundingClientRect();
               if (rect) {
-                const maxDist = rect.width / 2;
-                 // Approximation logic for demo
-                const x = info.point.x;
-                const y = info.point.y; 
-                // In a real implementation we'd calculate relative to center accurately
-                // For this mockup, we'll just simulate the callback
                 onMove(info.offset.x / 100, info.offset.y / 100);
               }
             }
           }}
-          className={`absolute top-[calc(50%-2rem)] left-[calc(50%-2rem)] w-16 h-16 rounded-full 
+          className={`absolute rounded-full 
             bg-primary/20 border-2 border-primary shadow-[0_0_15px_rgba(var(--primary),0.5)] cursor-pointer
             flex items-center justify-center transition-colors duration-200
             ${active ? 'bg-primary/40 shadow-[0_0_30px_rgba(var(--primary),0.8)]' : ''}
           `}
+          style={{
+            width: knobSize,
+            height: knobSize,
+            top: `calc(50% - ${knobSize / 2}px)`,
+            left: `calc(50% - ${knobSize / 2}px)`,
+          }}
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.95 }}
         >
-            <div className="w-2 h-2 bg-primary rounded-full"></div>
+          <div className="w-2 h-2 bg-primary rounded-full"></div>
         </motion.div>
       </motion.div>
     </div>

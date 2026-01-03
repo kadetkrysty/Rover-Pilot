@@ -40,12 +40,11 @@ export default function Dashboard() {
                 <CameraFeed />
              </div>
              
-             {/* Google Maps - Rover Location */}
+             {/* Google Maps - User Location */}
              <div className="flex-1 min-h-[180px]">
                 <RoverLocationMap 
-                  roverLat={data.gps.lat} 
-                  roverLng={data.gps.lng}
                   height="100%"
+                  showUserLocation
                 />
              </div>
         </div>
@@ -80,7 +79,7 @@ export default function Dashboard() {
             <div className="hud-panel p-3 flex-1 flex flex-col items-center justify-center min-h-0">
                 <h3 className="text-xs font-display text-primary/50 mb-2">NAVIGATION CONTROL</h3>
                 <div className="flex-1 flex items-center justify-center w-full">
-                    <Joystick onMove={(x, y) => console.log('Move:', x, y)} size={120} />
+                    <Joystick onMove={(x, y) => console.log('Move:', x, y)} size="80%" />
                 </div>
             </div>
         </div>
