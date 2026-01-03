@@ -43,12 +43,19 @@ export default function RadarScanner({ ultrasonicData, lidarDistance, className 
   const [containerWidth, setContainerWidth] = useState(200);
   const { isConnected } = useWebSocket();
 
-  const size = useMemo(() => Math.floor(containerWidth * 0.8), [containerWidth]);
+  const [containerHeight, setContainerHeight] = useState(200);
+  
+  const size = useMemo(() => {
+    const maxByWidth = Math.floor(containerWidth * 0.8);
+    const maxByHeight = Math.floor(containerHeight * 0.5);
+    return Math.min(maxByWidth, maxByHeight, 280);
+  }, [containerWidth, containerHeight]);
 
   useEffect(() => {
     const updateSize = () => {
       if (containerRef.current) {
         setContainerWidth(containerRef.current.clientWidth);
+        setContainerHeight(containerRef.current.clientHeight);
       }
     };
     
@@ -253,33 +260,33 @@ export default function RadarScanner({ ultrasonicData, lidarDistance, className 
         </div>
       </div>
 
-      <div className="mt-3 flex-1 min-h-0">
-        <h4 className="text-[10px] font-display text-primary/40 mb-2">DETECTED OBSTACLES</h4>
-        <ScrollArea className="h-full max-h-[120px]">
+      <div className="mt-2 flex-1 min-h-0 overflow-hidden">
+        <h4 className="text-[9px] font-display text-primary/40 mb-1">DETECTED OBSTACLES</h4>
+        <ScrollArea className="h-full max-h-[100px]">
           {latestObstacles.length > 0 ? (
-            <div className="grid grid-cols-2 gap-x-2 gap-y-1">
+            <div className="grid grid-cols-2 gap-1">
               {latestObstacles.map((obstacle, i) => (
                 <div 
                   key={`${obstacle.label}-${i}`}
-                  className="flex items-center justify-between px-2 py-1 bg-card/50 border border-border rounded text-[10px] font-mono"
+                  className="flex items-center justify-between px-1.5 py-0.5 bg-card/50 border border-border rounded text-[9px] font-mono"
                 >
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1">
                     <div 
-                      className={`w-1.5 h-1.5 rounded-full ${
+                      className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
                         obstacle.type === 'ultrasonic' ? 'bg-green-400' : 'bg-cyan-400'
                       }`}
                     />
-                    <span className="text-muted-foreground">{obstacle.label}</span>
+                    <span className="text-muted-foreground truncate">{obstacle.label}</span>
                   </div>
-                  <span className="text-foreground">
-                    {obstacle.distance.toFixed(0)}cm {obstacle.angle >= 0 ? '+' : ''}{obstacle.angle}°
+                  <span className="text-foreground flex-shrink-0 ml-1">
+                    {obstacle.distance.toFixed(0)}cm
                   </span>
                 </div>
               ))}
             </div>
           ) : (
-            <div className="text-center text-[10px] text-muted-foreground py-2">
-              NO OBSTACLES DETECTED
+            <div className="text-center text-[9px] text-muted-foreground py-1">
+              CLEAR
             </div>
           )}
         </ScrollArea>

@@ -22,7 +22,7 @@ export default function Dashboard() {
         
         {/* Left Column: Status + Radar */}
         <div className="col-span-3 flex flex-col gap-2 min-h-0">
-            <div className="hud-panel p-2 flex-shrink-0 overflow-auto max-h-[40%]">
+            <div className="hud-panel p-2 flex-shrink-0 overflow-auto max-h-[35%]">
                 <SensorStatus sensors={data.sensors} />
             </div>
             
@@ -101,9 +101,89 @@ export default function Dashboard() {
         </div>
       </main>
 
-      {/* Tablet/Mobile Layout (<1024px): Scrollable single column */}
-      <main className="lg:hidden flex flex-col gap-2 p-2 h-full overflow-y-auto">
-        {/* Camera - Priority 1 */}
+      {/* Tablet Layout (640px - 1023px): 2 columns */}
+      <main className="hidden sm:grid lg:hidden grid-cols-2 gap-2 p-2 h-full overflow-y-auto">
+        {/* Left Column */}
+        <div className="flex flex-col gap-2 min-h-0">
+            <div className="hud-panel flex-shrink-0 overflow-hidden">
+                <AspectRatio ratio={16 / 9}>
+                  <CameraFeed className="h-full" />
+                </AspectRatio>
+            </div>
+            
+            <div className="hud-panel p-2 flex-shrink-0">
+                <TelemetryPanel data={data} compact />
+            </div>
+            
+            <div className="hud-panel navigation-control-panel p-2 aspect-square max-h-[40vh]" data-joystick-panel>
+                <div className="map-background" aria-hidden="true"></div>
+                <div className="panel-content flex flex-col h-full">
+                    <div className="flex justify-between items-center pb-1">
+                        <h3 className="text-[10px] font-display text-primary/50">NAV</h3>
+                        <div className="font-mono text-[9px] text-primary/80">
+                            {joystickData.heading !== null ? (
+                                <>{joystickData.heading.toFixed(0)}°</>
+                            ) : (
+                                <>---°</>
+                            )}
+                        </div>
+                    </div>
+                    <div className="flex-1 flex items-center justify-center">
+                        <Joystick 
+                          onMove={(x, y) => {
+                            if (x === 0 && y === 0) reset();
+                          }} 
+                          onHeadingChange={handleHeadingChange}
+                          size="90%" 
+                        />
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        {/* Right Column */}
+        <div className="flex flex-col gap-2 min-h-0">
+            <div className="hud-panel h-[30vh] overflow-hidden">
+                <RoverLocationMap 
+                  height="100%"
+                  showUserLocation
+                />
+            </div>
+            
+            <div className="hud-panel p-2 flex-shrink-0">
+                <h3 className="text-[9px] font-display text-primary/50 pb-1">GPS</h3>
+                <div className="grid grid-cols-2 gap-2">
+                    <div>
+                        <div className="text-base font-mono text-foreground font-bold">
+                            {location.loading ? '---' : location.latitude?.toFixed(3) ?? '---'}
+                        </div>
+                        <div className="text-[8px] text-muted-foreground">LAT</div>
+                    </div>
+                    <div>
+                        <div className="text-base font-mono text-foreground font-bold">
+                            {location.loading ? '---' : location.longitude?.toFixed(3) ?? '---'}
+                        </div>
+                        <div className="text-[8px] text-muted-foreground">LNG</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div className="hud-panel p-2 flex-1 min-h-[25vh] overflow-hidden">
+                <RadarScanner 
+                  ultrasonicData={data.sensors.ultrasonic}
+                  lidarDistance={data.lidarDistance}
+                />
+            </div>
+            
+            <div className="hud-panel p-2 flex-shrink-0">
+                <SensorStatus sensors={data.sensors} />
+            </div>
+        </div>
+      </main>
+
+      {/* Mobile Layout (<640px): Single column stacked */}
+      <main className="sm:hidden flex flex-col gap-2 p-2 h-full overflow-y-auto">
+        {/* Camera */}
         <div className="hud-panel flex-shrink-0 overflow-hidden">
             <AspectRatio ratio={16 / 9}>
               <CameraFeed className="h-full" />
@@ -114,37 +194,37 @@ export default function Dashboard() {
         <div className="grid grid-cols-2 gap-2 flex-shrink-0">
             <div className="hud-panel p-2">
                 <div className="text-center">
-                    <div className="text-2xl font-mono text-foreground font-bold">{data.speed.toFixed(1)}</div>
-                    <div className="text-[9px] text-muted-foreground">KM/H</div>
+                    <div className="text-xl font-mono text-foreground font-bold">{data.speed.toFixed(1)}</div>
+                    <div className="text-[8px] text-muted-foreground">KM/H</div>
                 </div>
-                <div className="text-center mt-2">
-                    <div className="text-xl font-mono text-secondary font-bold">{data.battery.toFixed(0)}%</div>
-                    <div className="text-[9px] text-muted-foreground">BATTERY</div>
+                <div className="text-center mt-1">
+                    <div className="text-lg font-mono text-secondary font-bold">{data.battery.toFixed(0)}%</div>
+                    <div className="text-[8px] text-muted-foreground">BAT</div>
                 </div>
             </div>
             <div className="hud-panel p-2">
                 <div className="text-center">
-                    <div className="text-base font-mono text-foreground font-bold">
+                    <div className="text-sm font-mono text-foreground font-bold">
                         {location.loading ? '---' : location.latitude?.toFixed(3) ?? '---'}
                     </div>
-                    <div className="text-[9px] text-muted-foreground">LAT</div>
+                    <div className="text-[8px] text-muted-foreground">LAT</div>
                 </div>
-                <div className="text-center mt-2">
-                    <div className="text-base font-mono text-foreground font-bold">
+                <div className="text-center mt-1">
+                    <div className="text-sm font-mono text-foreground font-bold">
                         {location.loading ? '---' : location.longitude?.toFixed(3) ?? '---'}
                     </div>
-                    <div className="text-[9px] text-muted-foreground">LNG</div>
+                    <div className="text-[8px] text-muted-foreground">LNG</div>
                 </div>
             </div>
         </div>
         
-        {/* Joystick - Responsive size */}
-        <div className="hud-panel navigation-control-panel p-3 flex-shrink-0" data-joystick-panel>
+        {/* Joystick */}
+        <div className="hud-panel navigation-control-panel p-2 flex-shrink-0 aspect-square" data-joystick-panel>
             <div className="map-background" aria-hidden="true"></div>
-            <div className="panel-content">
-                <div className="flex justify-between items-center pb-2">
-                    <h3 className="text-xs font-display text-primary/50">NAVIGATION</h3>
-                    <div className="font-mono text-xs text-primary/80">
+            <div className="panel-content flex flex-col h-full">
+                <div className="flex justify-between items-center pb-1">
+                    <h3 className="text-[10px] font-display text-primary/50">NAVIGATION</h3>
+                    <div className="font-mono text-[10px] text-primary/80">
                         {joystickData.heading !== null ? (
                             <>{joystickData.heading.toFixed(0)}° {joystickData.cardinalDirection}</>
                         ) : (
@@ -152,20 +232,20 @@ export default function Dashboard() {
                         )}
                     </div>
                 </div>
-                <div className="flex items-center justify-center aspect-square max-h-[40vh]">
+                <div className="flex-1 flex items-center justify-center">
                     <Joystick 
                       onMove={(x, y) => {
                         if (x === 0 && y === 0) reset();
                       }} 
                       onHeadingChange={handleHeadingChange}
-                      size="90%" 
+                      size="95%" 
                     />
                 </div>
             </div>
         </div>
         
         {/* Map */}
-        <div className="hud-panel flex-shrink-0 overflow-hidden h-[35vh]">
+        <div className="hud-panel flex-shrink-0 overflow-hidden h-[30vh]">
             <RoverLocationMap 
               height="100%"
               showUserLocation
@@ -173,7 +253,7 @@ export default function Dashboard() {
         </div>
         
         {/* Radar */}
-        <div className="hud-panel p-2 flex-shrink-0 h-[45vh]">
+        <div className="hud-panel p-2 flex-shrink-0 h-[40vh]">
             <RadarScanner 
               ultrasonicData={data.sensors.ultrasonic}
               lidarDistance={data.lidarDistance}
