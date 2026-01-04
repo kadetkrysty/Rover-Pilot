@@ -32,11 +32,6 @@ export default function Dashboard() {
             </ScrollArea>
           </div>
           
-          {/* Camera Pan/Tilt Panel - Moved under Core Systems */}
-          <div className="hud-panel p-[10px]">
-            <CameraPanTilt compact />
-          </div>
-          
           {/* Google Maps */}
           <div className="hud-panel min-h-0 overflow-hidden">
             <RoverLocationMap 
@@ -48,11 +43,14 @@ export default function Dashboard() {
 
         {/* Center Column - Camera Feed on top, Proximity Radar below */}
         <div className="col-span-6 grid grid-rows-[auto_1fr] gap-1.5 min-h-0">
-          {/* Camera Feed - Moved to center column */}
-          <div className="hud-panel overflow-hidden">
+          {/* Camera Feed with Pan/Tilt Overlay */}
+          <div className="hud-panel overflow-hidden relative">
             <AspectRatio ratio={16 / 9}>
               <CameraFeed className="h-full" />
             </AspectRatio>
+            <div className="absolute bottom-3 left-3 bg-black/70 backdrop-blur-sm border border-primary/30 rounded-lg p-2 z-10">
+              <CameraPanTilt compact />
+            </div>
           </div>
           
           {/* Proximity Radar */}
