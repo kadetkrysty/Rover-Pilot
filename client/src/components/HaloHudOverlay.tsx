@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { RotateCcw } from 'lucide-react';
 import { useWebSocket } from '@/lib/useWebSocket';
+import haloHudImage from '@assets/halo-3-hud-transparent-v2_1767569975623.png';
 
 interface HaloHudOverlayProps {
   recordingTime: number;
@@ -27,186 +28,33 @@ export function HaloHudOverlay({ recordingTime, detectedObjects, isDemoMode }: H
 
   return (
     <div className="absolute inset-0 pointer-events-none overflow-hidden">
-      <svg 
-        className="absolute inset-0 w-full h-full" 
-        viewBox="0 0 1920 1080" 
-        preserveAspectRatio="xMidYMid slice"
-      >
-        <defs>
-          <filter id="hudGlow">
-            <feGaussianBlur stdDeviation="2" result="blur"/>
-            <feMerge>
-              <feMergeNode in="blur"/>
-              <feMergeNode in="SourceGraphic"/>
-            </feMerge>
-          </filter>
-          <filter id="hudGlowStrong">
-            <feGaussianBlur stdDeviation="4" result="blur"/>
-            <feMerge>
-              <feMergeNode in="blur"/>
-              <feMergeNode in="SourceGraphic"/>
-            </feMerge>
-          </filter>
-          <linearGradient id="lineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="#25A8FF" stopOpacity="0.3" />
-            <stop offset="50%" stopColor="#25A8FF" stopOpacity="1" />
-            <stop offset="100%" stopColor="#25A8FF" stopOpacity="0.3" />
-          </linearGradient>
-        </defs>
+      <img 
+        src={haloHudImage} 
+        alt="" 
+        className="absolute inset-0 w-full h-full object-cover"
+        style={{ 
+          objectFit: 'fill',
+          imageRendering: 'crisp-edges'
+        }}
+      />
 
-        <rect x="0" y="0" width="1920" height="100" fill="rgba(10, 25, 47, 0.7)" />
-        
-        <path
-          d="M 0 80 L 150 80 L 200 40 L 350 40 L 400 80 L 600 80"
-          fill="none"
-          stroke="#25A8FF"
-          strokeWidth="2"
-          filter="url(#hudGlow)"
-        />
-        <path
-          d="M 1920 80 L 1770 80 L 1720 40 L 1570 40 L 1520 80 L 1320 80"
-          fill="none"
-          stroke="#25A8FF"
-          strokeWidth="2"
-          filter="url(#hudGlow)"
-        />
-        
-        <path
-          d="M 600 80 L 650 50 L 750 50 L 780 25"
-          fill="none"
-          stroke="#25A8FF"
-          strokeWidth="1.5"
-          strokeOpacity="0.7"
-        />
-        <path
-          d="M 1320 80 L 1270 50 L 1170 50 L 1140 25"
-          fill="none"
-          stroke="#25A8FF"
-          strokeWidth="1.5"
-          strokeOpacity="0.7"
-        />
-        
-        <path
-          d="M 780 25 L 850 25 L 880 10 L 960 10"
-          fill="none"
-          stroke="#25A8FF"
-          strokeWidth="1"
-          strokeOpacity="0.5"
-        />
-        <path
-          d="M 1140 25 L 1070 25 L 1040 10 L 960 10"
-          fill="none"
-          stroke="#25A8FF"
-          strokeWidth="1"
-          strokeOpacity="0.5"
-        />
-        
-        <polygon
-          points="0,0 0,120 30,120 50,90 50,0"
-          fill="rgba(37, 168, 255, 0.1)"
-          stroke="#25A8FF"
-          strokeWidth="1"
-          strokeOpacity="0.5"
-        />
-        <polygon
-          points="1920,0 1920,120 1890,120 1870,90 1870,0"
-          fill="rgba(37, 168, 255, 0.1)"
-          stroke="#25A8FF"
-          strokeWidth="1"
-          strokeOpacity="0.5"
-        />
-
-        <rect x="0" y="980" width="1920" height="100" fill="rgba(10, 25, 47, 0.7)" />
-        
-        <path
-          d="M 0 1000 L 200 1000 L 280 1040 L 500 1040"
-          fill="none"
-          stroke="#25A8FF"
-          strokeWidth="2"
-          filter="url(#hudGlow)"
-        />
-        <path
-          d="M 1920 1000 L 1720 1000 L 1640 1040 L 1420 1040"
-          fill="none"
-          stroke="#25A8FF"
-          strokeWidth="2"
-          filter="url(#hudGlow)"
-        />
-        
-        <path
-          d="M 500 1040 L 600 1020 L 750 1020 L 850 1050 L 960 1050"
-          fill="none"
-          stroke="#25A8FF"
-          strokeWidth="1.5"
-          strokeOpacity="0.8"
-        />
-        <path
-          d="M 1420 1040 L 1320 1020 L 1170 1020 L 1070 1050 L 960 1050"
-          fill="none"
-          stroke="#25A8FF"
-          strokeWidth="1.5"
-          strokeOpacity="0.8"
-        />
-        
-        <polygon
-          points="0,1080 0,960 30,960 50,990 50,1080"
-          fill="rgba(37, 168, 255, 0.1)"
-          stroke="#25A8FF"
-          strokeWidth="1"
-          strokeOpacity="0.5"
-        />
-        <polygon
-          points="1920,1080 1920,960 1890,960 1870,990 1870,1080"
-          fill="rgba(37, 168, 255, 0.1)"
-          stroke="#25A8FF"
-          strokeWidth="1"
-          strokeOpacity="0.5"
-        />
-
-        <line x1="860" y1="1000" x2="900" y2="1000" stroke="#25A8FF" strokeWidth="1" strokeOpacity="0.6" />
-        <text x="910" y="1005" fill="#25A8FF" fontSize="14" fontFamily="monospace" opacity="0.8">5 MTS</text>
-        
-        <line x1="820" y1="980" x2="870" y2="980" stroke="#25A8FF" strokeWidth="1" strokeOpacity="0.5" />
-        <text x="880" y="985" fill="#25A8FF" fontSize="12" fontFamily="monospace" opacity="0.6">10 MTS</text>
-        
-        <line x1="780" y1="960" x2="840" y2="960" stroke="#25A8FF" strokeWidth="1" strokeOpacity="0.4" />
-        <text x="850" y="965" fill="#25A8FF" fontSize="10" fontFamily="monospace" opacity="0.5">15 MTS</text>
-        
-        <line x1="1060" y1="1000" x2="1020" y2="1000" stroke="#25A8FF" strokeWidth="1" strokeOpacity="0.6" />
-        <line x1="1100" y1="980" x2="1050" y2="980" stroke="#25A8FF" strokeWidth="1" strokeOpacity="0.5" />
-        <line x1="1140" y1="960" x2="1080" y2="960" stroke="#25A8FF" strokeWidth="1" strokeOpacity="0.4" />
-
-        <g filter="url(#hudGlow)">
-          <line x1="930" y1="520" x2="950" y2="540" stroke="#25A8FF" strokeWidth="1.5" />
-          <line x1="990" y1="520" x2="970" y2="540" stroke="#25A8FF" strokeWidth="1.5" />
-          <line x1="930" y1="560" x2="950" y2="540" stroke="#25A8FF" strokeWidth="1.5" />
-          <line x1="990" y1="560" x2="970" y2="540" stroke="#25A8FF" strokeWidth="1.5" />
-          <circle cx="960" cy="540" r="3" fill="none" stroke="#25A8FF" strokeWidth="1" />
-        </g>
-
-        <line x1="0" y1="200" x2="0" y2="400" stroke="#25A8FF" strokeWidth="3" strokeOpacity="0.3" />
-        <line x1="0" y1="680" x2="0" y2="880" stroke="#25A8FF" strokeWidth="3" strokeOpacity="0.3" />
-        <line x1="1920" y1="200" x2="1920" y2="400" stroke="#25A8FF" strokeWidth="3" strokeOpacity="0.3" />
-        <line x1="1920" y1="680" x2="1920" y2="880" stroke="#25A8FF" strokeWidth="3" strokeOpacity="0.3" />
-      </svg>
-
-      <div className="absolute top-2 left-1/2 -translate-x-1/2 pointer-events-auto z-10">
-        <div className="flex items-center gap-4 text-xs font-mono px-4 py-1.5 rounded bg-slate-900/60 backdrop-blur-sm border border-cyan-500/20">
-          <div className="flex items-center gap-2">
-            <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.8)]" />
-            <span className="text-red-400 font-bold tracking-wide">REC</span>
-            <span className="text-cyan-300 font-medium">{formatTime(recordingTime)}</span>
+      <div className="absolute top-[1.5%] left-1/2 -translate-x-1/2 pointer-events-auto z-10">
+        <div className="flex items-center gap-3 text-[10px] font-mono">
+          <div className="flex items-center gap-1.5">
+            <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse shadow-[0_0_6px_rgba(239,68,68,0.8)]" />
+            <span className="text-red-400 font-bold">REC</span>
+            <span className="text-cyan-300">{formatTime(recordingTime)}</span>
           </div>
-          <div className="w-px h-4 bg-cyan-500/30" />
-          <span className="text-cyan-300/90 tracking-wide">CAM: HUSKY_LENS</span>
-          <div className="w-px h-4 bg-cyan-500/30" />
+          <span className="text-cyan-400/40">|</span>
+          <span className="text-cyan-300/90">CAM: HUSKY_LENS</span>
+          <span className="text-cyan-400/40">|</span>
           <span className="text-cyan-300/90">1080p</span>
         </div>
       </div>
 
       {isDemoMode && (
-        <div className="absolute top-2 right-4 bg-cyan-500/20 border border-cyan-400/40 px-3 py-1 rounded text-xs font-mono text-cyan-300 pointer-events-auto backdrop-blur-sm">
-          DEMO MODE
+        <div className="absolute top-[10%] right-[15%] bg-cyan-500/20 border border-cyan-400/40 px-2 py-0.5 rounded text-[9px] font-mono text-cyan-300 pointer-events-auto">
+          DEMO
         </div>
       )}
 
