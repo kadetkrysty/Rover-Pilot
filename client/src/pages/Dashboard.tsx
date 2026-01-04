@@ -43,14 +43,11 @@ export default function Dashboard() {
 
         {/* Center Column - Camera Feed on top, Proximity Radar below */}
         <div className="col-span-6 grid grid-rows-[auto_1fr] gap-1.5 min-h-0">
-          {/* Camera Feed with Pan/Tilt Overlay */}
-          <div className="hud-panel overflow-hidden relative">
+          {/* Camera Feed with Halo-style HUD and Circular Camera Control */}
+          <div className="hud-panel overflow-hidden">
             <AspectRatio ratio={16 / 9}>
-              <CameraFeed className="h-full" />
+              <CameraFeed className="h-full" showCameraControl={true} />
             </AspectRatio>
-            <div className="absolute bottom-3 left-3 bg-black/70 backdrop-blur-sm border border-primary/30 rounded-lg p-2 z-10">
-              <CameraPanTilt compact />
-            </div>
           </div>
           
           {/* Proximity Radar */}
