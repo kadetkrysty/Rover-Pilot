@@ -23,16 +23,16 @@ export default function Dashboard() {
       {/* Desktop Layout (≥1024px): 3 columns - strict viewport fit, NO scrolling */}
       <main className="hidden lg:grid grid-cols-12 gap-1.5 p-1.5 h-full">
         
-        {/* Left Column - Core Systems, Camera Pan/Tilt, Google Maps */}
-        <div className="col-span-3 grid grid-rows-[auto_auto_1fr] gap-1.5 min-h-0">
-          {/* Core Systems */}
-          <div className="hud-panel p-[10px] min-h-0 overflow-hidden max-h-[25vh]">
+        {/* Left Column - Core Systems (50%), Google Maps (50%) */}
+        <div className="col-span-3 grid grid-rows-2 gap-1.5 min-h-0">
+          {/* Core Systems - 50% height */}
+          <div className="hud-panel p-[10px] min-h-0 overflow-hidden">
             <ScrollArea className="h-full w-full">
               <SensorStatus sensors={data.sensors} systems={data.systems} />
             </ScrollArea>
           </div>
           
-          {/* Google Maps */}
+          {/* Google Maps - 50% height */}
           <div className="hud-panel min-h-0 overflow-hidden">
             <RoverLocationMap 
               height="100%"
