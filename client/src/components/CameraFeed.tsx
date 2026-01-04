@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useWebSocket } from '@/lib/useWebSocket';
 import { HaloHudOverlay, CircularCameraControl } from './HaloHudOverlay';
-import generatedImage from '@assets/generated_images/fpv_rover_camera_view_of_a_mars-like_rocky_terrain_with_hud_overlay_elements.png';
+import marsTerrainImage from '@assets/mars_terrain_1767567282694.jpg';
 
 interface CameraFeedProps {
   showOverlay?: boolean;
@@ -60,9 +60,9 @@ export default function CameraFeed({
           <DemoSimulatedFeed />
         ) : (
           <img 
-            src={generatedImage} 
-            alt="Rover Live Feed" 
-            className="w-full h-full object-cover opacity-80"
+            src={marsTerrainImage} 
+            alt="Rover Live Feed - No Signal" 
+            className="w-full h-full object-cover"
           />
         )}
         
