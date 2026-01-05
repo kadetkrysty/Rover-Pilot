@@ -28,6 +28,58 @@ export function HaloHudOverlay({ recordingTime, detectedObjects, isDemoMode }: H
   return (
     <div className="absolute inset-0 pointer-events-none overflow-hidden">
       <svg 
+        className="absolute top-0 left-0 w-full" 
+        viewBox="0 0 1925.5 121.58"
+        preserveAspectRatio="xMidYMin slice"
+        style={{ height: 'auto', maxHeight: '15%' }}
+      >
+        <defs>
+          <filter id="headerGlow">
+            <feGaussianBlur stdDeviation="3" result="blur"/>
+            <feMerge>
+              <feMergeNode in="blur"/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+        </defs>
+        <polygon 
+          points="2.5 19.83 249.62 50.07 290.33 83.93 707.97 119 775.3 60.15 1171.17 60.55 1241.71 119 1659.36 82.32 1693.62 52.09 1923 23.46 1923 2.5 2.5 2.5 2.5 19.83"
+          fill="#2cd7ff"
+          fillOpacity="0.6"
+          stroke="aqua"
+          strokeWidth="5"
+          strokeMiterlimit="10"
+          filter="url(#headerGlow)"
+        />
+      </svg>
+
+      <svg 
+        className="absolute bottom-0 left-0 w-full" 
+        viewBox="0 0 1925.5 121.58"
+        preserveAspectRatio="xMidYMax slice"
+        style={{ height: 'auto', maxHeight: '15%', transform: 'scaleY(-1)' }}
+      >
+        <defs>
+          <filter id="footerGlow">
+            <feGaussianBlur stdDeviation="3" result="blur"/>
+            <feMerge>
+              <feMergeNode in="blur"/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+        </defs>
+        <polygon 
+          points="2.5 19.83 249.62 50.07 290.33 83.93 707.97 119 775.3 60.15 1171.17 60.55 1241.71 119 1659.36 82.32 1693.62 52.09 1923 23.46 1923 2.5 2.5 2.5 2.5 19.83"
+          fill="#2cd7ff"
+          fillOpacity="0.6"
+          stroke="aqua"
+          strokeWidth="5"
+          strokeMiterlimit="10"
+          filter="url(#footerGlow)"
+        />
+      </svg>
+
+      <svg 
         className="absolute inset-0 w-full h-full" 
         viewBox="0 0 1024 576" 
         preserveAspectRatio="xMidYMid slice"
@@ -47,136 +99,7 @@ export function HaloHudOverlay({ recordingTime, detectedObjects, isDemoMode }: H
               <feMergeNode in="SourceGraphic"/>
             </feMerge>
           </filter>
-          <filter id="glowStrong">
-            <feGaussianBlur stdDeviation="5" result="blur"/>
-            <feMerge>
-              <feMergeNode in="blur"/>
-              <feMergeNode in="SourceGraphic"/>
-            </feMerge>
-          </filter>
         </defs>
-
-        <path
-          d="M 0 0 
-             L 0 136 
-             L 122 176 
-             L 246 158 
-             L 346 126 
-             L 420 96 
-             L 476 64 
-             L 506 44 
-             L 528 22 
-             L 528 0 
-             Z"
-          fill="#1a3a5c"
-          fillOpacity="0.85"
-        />
-        <path
-          d="M 0 136 
-             L 122 176 
-             L 246 158 
-             L 346 126 
-             L 420 96 
-             L 476 64 
-             L 506 44 
-             L 528 22"
-          fill="none"
-          stroke="#25A8FF"
-          strokeWidth="2.4"
-          filter="url(#glowMedium)"
-        />
-        <path
-          d="M 3 133 
-             L 122 172 
-             L 244 155 
-             L 343 124 
-             L 417 94 
-             L 473 63 
-             L 503 43 
-             L 525 22"
-          fill="none"
-          stroke="#67C7FF"
-          strokeWidth="1"
-          strokeOpacity="0.7"
-        />
-
-        <path
-          d="M 1024 0 
-             L 1024 136 
-             L 902 176 
-             L 778 158 
-             L 678 126 
-             L 604 96 
-             L 548 64 
-             L 518 44 
-             L 496 22 
-             L 496 0 
-             Z"
-          fill="#1a3a5c"
-          fillOpacity="0.85"
-        />
-        <path
-          d="M 1024 136 
-             L 902 176 
-             L 778 158 
-             L 678 126 
-             L 604 96 
-             L 548 64 
-             L 518 44 
-             L 496 22"
-          fill="none"
-          stroke="#25A8FF"
-          strokeWidth="2.4"
-          filter="url(#glowMedium)"
-        />
-        <path
-          d="M 1021 133 
-             L 902 172 
-             L 780 155 
-             L 681 124 
-             L 607 94 
-             L 551 63 
-             L 521 43 
-             L 499 22"
-          fill="none"
-          stroke="#67C7FF"
-          strokeWidth="1"
-          strokeOpacity="0.7"
-        />
-
-        <path
-          d="M 402 18 
-             Q 402 8, 412 4
-             L 438 0 
-             L 586 0 
-             Q 612 0, 622 18
-             L 622 44 
-             Q 622 54, 612 58
-             L 586 62 
-             L 438 62 
-             Q 412 62, 402 44
-             Z"
-          fill="rgba(37, 168, 255, 0.08)"
-          stroke="#25A8FF"
-          strokeWidth="2"
-          filter="url(#glowMedium)"
-        />
-        <path
-          d="M 428 18 
-             L 596 18 
-             Q 612 18, 614 28
-             L 614 38 
-             Q 612 48, 596 48
-             L 428 48 
-             Q 412 48, 410 38
-             L 410 28 
-             Q 412 18, 428 18
-             Z"
-          fill="rgba(103, 199, 255, 0.1)"
-          stroke="#67C7FF"
-          strokeWidth="0.8"
-          strokeOpacity="0.6"
-        />
 
         <g filter="url(#glowSoft)">
           <path d="M 486 86 L 504 78 L 520 78 L 538 86 L 520 94 L 504 94 Z" 
@@ -194,176 +117,34 @@ export function HaloHudOverlay({ recordingTime, detectedObjects, isDemoMode }: H
           <text x="512" y="139" fill="#67C7FF" fontSize="8" fontFamily="monospace" textAnchor="middle" letterSpacing="1">5 MTS</text>
         </g>
 
-        <line x1="60" y1="150" x2="100" y2="150" stroke="#25A8FF" strokeWidth="1.5" strokeOpacity="0.6" filter="url(#glowSoft)" />
-        <line x1="110" y1="140" x2="140" y2="140" stroke="#25A8FF" strokeWidth="1.2" strokeOpacity="0.5" filter="url(#glowSoft)" />
-        <rect x="40" y="160" width="8" height="2" fill="#25A8FF" fillOpacity="0.7" />
-        <rect x="54" y="160" width="8" height="2" fill="#25A8FF" fillOpacity="0.7" />
-        
-        <line x1="964" y1="150" x2="924" y2="150" stroke="#25A8FF" strokeWidth="1.5" strokeOpacity="0.6" filter="url(#glowSoft)" />
-        <line x1="914" y1="140" x2="884" y2="140" stroke="#25A8FF" strokeWidth="1.2" strokeOpacity="0.5" filter="url(#glowSoft)" />
-        <rect x="976" y="160" width="8" height="2" fill="#25A8FF" fillOpacity="0.7" />
-        <rect x="962" y="160" width="8" height="2" fill="#25A8FF" fillOpacity="0.7" />
-
-        <path
-          d="M 0 576 
-             L 0 444 
-             L 42 444 
-             L 66 460 
-             L 106 460 
-             L 130 438 
-             L 170 416 
-             L 222 404 
-             L 302 408 
-             L 352 432 
-             L 394 462 
-             L 430 492 
-             L 460 512 
-             L 486 540 
-             L 512 576 
-             Z"
-          fill="#1a3a5c"
-          fillOpacity="0.85"
-        />
-        <path
-          d="M 0 444 
-             L 42 444 
-             L 66 460 
-             L 106 460 
-             L 130 438 
-             L 170 416 
-             L 222 404 
-             L 302 408 
-             L 352 432 
-             L 394 462 
-             L 430 492 
-             L 460 512 
-             L 486 540 
-             L 512 576"
-          fill="none"
-          stroke="#25A8FF"
-          strokeWidth="2.4"
-          filter="url(#glowMedium)"
-        />
-        <path
-          d="M 3 447 
-             L 42 447 
-             L 64 462 
-             L 104 462 
-             L 128 441 
-             L 168 419 
-             L 220 407 
-             L 300 411 
-             L 350 434 
-             L 392 464 
-             L 428 494 
-             L 458 514 
-             L 484 541"
-          fill="none"
-          stroke="#67C7FF"
-          strokeWidth="1"
-          strokeOpacity="0.7"
-        />
-
-        <path
-          d="M 1024 576 
-             L 1024 444 
-             L 982 444 
-             L 958 460 
-             L 918 460 
-             L 894 438 
-             L 854 416 
-             L 802 404 
-             L 722 408 
-             L 672 432 
-             L 630 462 
-             L 594 492 
-             L 564 512 
-             L 538 540 
-             L 512 576 
-             Z"
-          fill="#1a3a5c"
-          fillOpacity="0.85"
-        />
-        <path
-          d="M 1024 444 
-             L 982 444 
-             L 958 460 
-             L 918 460 
-             L 894 438 
-             L 854 416 
-             L 802 404 
-             L 722 408 
-             L 672 432 
-             L 630 462 
-             L 594 492 
-             L 564 512 
-             L 538 540 
-             L 512 576"
-          fill="none"
-          stroke="#25A8FF"
-          strokeWidth="2.4"
-          filter="url(#glowMedium)"
-        />
-        <path
-          d="M 1021 447 
-             L 982 447 
-             L 960 462 
-             L 920 462 
-             L 896 441 
-             L 856 419 
-             L 804 407 
-             L 724 411 
-             L 674 434 
-             L 632 464 
-             L 596 494 
-             L 566 514 
-             L 540 541"
-          fill="none"
-          stroke="#67C7FF"
-          strokeWidth="1"
-          strokeOpacity="0.7"
-        />
-
         <g filter="url(#glowSoft)">
-          <path d="M 466 486 L 492 478 L 532 478 L 558 486 L 532 494 L 492 494 Z" 
+          <path d="M 466 446 L 492 438 L 532 438 L 558 446 L 532 454 L 492 454 Z" 
             fill="rgba(37, 168, 255, 0.15)" stroke="#25A8FF" strokeWidth="1" />
-          <text x="512" y="503" fill="#67C7FF" fontSize="8" fontFamily="monospace" textAnchor="middle" letterSpacing="1">5 MTS</text>
+          <text x="512" y="463" fill="#67C7FF" fontSize="8" fontFamily="monospace" textAnchor="middle" letterSpacing="1">5 MTS</text>
         </g>
         <g filter="url(#glowSoft)">
-          <path d="M 476 504 L 498 496 L 526 496 L 548 504 L 526 512 L 498 512 Z" 
+          <path d="M 476 464 L 498 456 L 526 456 L 548 464 L 526 472 L 498 472 Z" 
             fill="rgba(37, 168, 255, 0.15)" stroke="#25A8FF" strokeWidth="1" />
-          <text x="512" y="521" fill="#67C7FF" fontSize="8" fontFamily="monospace" textAnchor="middle" letterSpacing="1">10 MTS</text>
+          <text x="512" y="481" fill="#67C7FF" fontSize="8" fontFamily="monospace" textAnchor="middle" letterSpacing="1">10 MTS</text>
         </g>
         <g filter="url(#glowSoft)">
-          <path d="M 486 522 L 504 514 L 520 514 L 538 522 L 520 530 L 504 530 Z" 
+          <path d="M 486 482 L 504 474 L 520 474 L 538 482 L 520 490 L 504 490 Z" 
             fill="rgba(37, 168, 255, 0.15)" stroke="#25A8FF" strokeWidth="1" />
-          <text x="512" y="539" fill="#67C7FF" fontSize="8" fontFamily="monospace" textAnchor="middle" letterSpacing="1">15 MTS</text>
+          <text x="512" y="499" fill="#67C7FF" fontSize="8" fontFamily="monospace" textAnchor="middle" letterSpacing="1">15 MTS</text>
         </g>
-
-        <rect x="40" y="460" width="8" height="2" fill="#25A8FF" fillOpacity="0.7" />
-        <rect x="54" y="460" width="8" height="2" fill="#25A8FF" fillOpacity="0.7" />
-        <rect x="976" y="460" width="8" height="2" fill="#25A8FF" fillOpacity="0.7" />
-        <rect x="962" y="460" width="8" height="2" fill="#25A8FF" fillOpacity="0.7" />
 
         <g filter="url(#glowMedium)">
-          <circle cx="154" cy="454" r="74" fill="none" stroke="#25A8FF" strokeWidth="2" strokeOpacity="0.9" />
-          <circle cx="154" cy="454" r="58" fill="none" stroke="#25A8FF" strokeWidth="1.5" strokeOpacity="0.7" />
-          <circle cx="154" cy="454" r="42" fill="none" stroke="#25A8FF" strokeWidth="1" strokeOpacity="0.5" />
-          <circle cx="154" cy="454" r="26" fill="none" stroke="#25A8FF" strokeWidth="0.8" strokeOpacity="0.4" />
-          <line x1="154" y1="380" x2="154" y2="528" stroke="#25A8FF" strokeWidth="0.6" strokeOpacity="0.3" />
-          <line x1="80" y1="454" x2="228" y2="454" stroke="#25A8FF" strokeWidth="0.6" strokeOpacity="0.3" />
-          <path 
-            d="M 154 454 L 120 400 A 74 74 0 0 1 188 400 Z" 
-            fill="rgba(37, 168, 255, 0.08)" 
-            stroke="#25A8FF" 
-            strokeWidth="0.8"
-            strokeOpacity="0.4"
-          />
-          <polygon points="154,382 150,394 158,394" fill="#FFFF00" opacity="0.9" />
+          <circle cx="100" cy="476" r="58" fill="none" stroke="#25A8FF" strokeWidth="2" strokeOpacity="0.9" />
+          <circle cx="100" cy="476" r="44" fill="none" stroke="#25A8FF" strokeWidth="1.5" strokeOpacity="0.7" />
+          <circle cx="100" cy="476" r="30" fill="none" stroke="#25A8FF" strokeWidth="1" strokeOpacity="0.5" />
+          <circle cx="100" cy="476" r="16" fill="none" stroke="#25A8FF" strokeWidth="0.8" strokeOpacity="0.4" />
+          <line x1="100" y1="418" x2="100" y2="534" stroke="#25A8FF" strokeWidth="0.6" strokeOpacity="0.3" />
+          <line x1="42" y1="476" x2="158" y2="476" stroke="#25A8FF" strokeWidth="0.6" strokeOpacity="0.3" />
+          <polygon points="100,420 97,430 103,430" fill="#FFFF00" opacity="0.9" />
         </g>
       </svg>
 
-      <div className="absolute top-[1.2%] left-1/2 -translate-x-1/2 pointer-events-auto z-10">
+      <div className="absolute top-[2%] left-1/2 -translate-x-1/2 pointer-events-auto z-10">
         <div className="flex items-center gap-3 text-[10px] font-mono">
           <div className="flex items-center gap-1.5">
             <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse shadow-[0_0_6px_rgba(239,68,68,0.8)]" />
@@ -378,7 +159,7 @@ export function HaloHudOverlay({ recordingTime, detectedObjects, isDemoMode }: H
       </div>
 
       {isDemoMode && (
-        <div className="absolute top-[15%] right-[8%] bg-cyan-500/20 border border-cyan-400/40 px-2 py-0.5 rounded text-[9px] font-mono text-cyan-300 pointer-events-auto">
+        <div className="absolute top-[12%] right-[8%] bg-cyan-500/20 border border-cyan-400/40 px-2 py-0.5 rounded text-[9px] font-mono text-cyan-300 pointer-events-auto">
           DEMO
         </div>
       )}
