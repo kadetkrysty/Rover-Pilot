@@ -1,32 +1,104 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Wifi, WifiOff, AlertTriangle, Radio } from 'lucide-react';
+import { Wifi, WifiOff, AlertTriangle, Radio, RotateCcw, Zap } from 'lucide-react';
 import { useFlySky, FlySkyInput } from '@/hooks/useFlySky';
 import { useRoverData } from '@/lib/mockData';
 import { useLocation } from '@/hooks/useLocation';
 import CameraFeed from '@/components/CameraFeed';
 import { AspectRatio } from '@/components/ui/aspect-ratio';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+const AVAILABLE_FUNCTIONS = [
+  { value: 'steering', label: 'Steering' },
+  { value: 'forward_back', label: 'Forward/Back' },
+  { value: 'throttle', label: 'Throttle' },
+  { value: 'yaw', label: 'Yaw Rotation' },
+  { value: 'record', label: 'Record Toggle' },
+  { value: 'mode', label: 'Mode Select' },
+  { value: 'camera_pan', label: 'Camera Pan' },
+  { value: 'camera_tilt', label: 'Camera Tilt' },
+  { value: 'light', label: 'Light Control' },
+  { value: 'horn', label: 'Horn' },
+  { value: 'custom', label: 'Custom' },
+  { value: 'none', label: 'Not Assigned' },
+];
+
+const DEFAULT_MAPPING: Record<number, string> = {
+  1: 'steering',
+  2: 'forward_back',
+  3: 'throttle',
+  4: 'yaw',
+  5: 'record',
+  6: 'mode',
+  7: 'camera_pan',
+  8: 'camera_tilt',
+  9: 'light',
+  10: 'horn',
+};
 
 export default function FlySkyControl() {
   const flySky = useFlySky();
   const data = useRoverData();
   const location = useLocation();
-  const [throttle, setThrottle] = useState(0);
-  const [steering, setSteering] = useState(0);
-  const [mode, setMode] = useState<'MANUAL' | 'AUTONOMOUS'>('MANUAL');
+  
+  const [channelMapping, setChannelMapping] = useState<Record<number, string>>(() => {
+    const saved = localStorage.getItem('flySkyChannelMapping');
+    return saved ? JSON.parse(saved) : DEFAULT_MAPPING;
+  });
+  
+  const [activeChannels, setActiveChannels] = useState<Set<number>>(new Set());
+  const previousValuesRef = useRef<number[]>([1500, 1500, 1000, 1500, 1000, 1000, 1500, 1500, 1500, 1500]);
+  const activityTimeoutRef = useRef<Record<number, NodeJS.Timeout>>({});
 
   useEffect(() => {
-    if (flySky.isConnected) {
-      setThrottle(flySky.throttle * 100);
-      setSteering(flySky.steering * 100);
-      if (flySky.switchB) {
-        setMode('AUTONOMOUS');
-      } else {
-        setMode('MANUAL');
+    localStorage.setItem('flySkyChannelMapping', JSON.stringify(channelMapping));
+  }, [channelMapping]);
+
+  useEffect(() => {
+    const currentValues = [
+      flySky.channel1, flySky.channel2, flySky.channel3, flySky.channel4, flySky.channel5,
+      flySky.channel6, flySky.channel7, flySky.channel8, flySky.channel9, flySky.channel10
+    ];
+
+    currentValues.forEach((value, index) => {
+      const channelNum = index + 1;
+      const previousValue = previousValuesRef.current[index];
+      const delta = Math.abs(value - previousValue);
+      
+      if (delta > 50) {
+        setActiveChannels(prev => new Set(Array.from(prev).concat(channelNum)));
+        
+        if (activityTimeoutRef.current[channelNum]) {
+          clearTimeout(activityTimeoutRef.current[channelNum]);
+        }
+        
+        activityTimeoutRef.current[channelNum] = setTimeout(() => {
+          setActiveChannels(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(channelNum);
+            return newSet;
+          });
+        }, 500);
       }
-    }
+    });
+
+    previousValuesRef.current = currentValues;
   }, [flySky]);
+
+  const handleMappingChange = (channel: number, value: string) => {
+    setChannelMapping(prev => ({ ...prev, [channel]: value }));
+  };
+
+  const resetToDefault = () => {
+    setChannelMapping(DEFAULT_MAPPING);
+  };
 
   const getSignalColor = (strength: number) => {
     if (strength > 75) return 'text-secondary';
@@ -43,18 +115,73 @@ export default function FlySkyControl() {
     return 4;
   };
 
-  const ChannelDisplay = ({ ch, label, value, color }: { ch: number; label: string; value: number; color: string }) => (
-    <div className="hud-panel p-3">
-      <div className="text-xs font-display text-primary/70 uppercase mb-2">CH{ch} - {label}</div>
-      <div className={`text-xl font-mono font-bold ${color}`}>{value.toFixed(0)}µs</div>
-      <div className="w-full h-2 bg-black/50 border border-border rounded mt-2 overflow-hidden">
-        <div
-          className={`h-full bg-gradient-to-r ${color.replace('text-', 'from-')} to-${color.replace('text-', '')} transition-all`}
-          style={{ width: `${50 + (((value - 1500) / 500) * 50)}%` }}
-        />
+  const getChannelValue = (ch: number): number => {
+    const values: Record<number, number> = {
+      1: flySky.channel1, 2: flySky.channel2, 3: flySky.channel3, 4: flySky.channel4,
+      5: flySky.channel5, 6: flySky.channel6, 7: flySky.channel7, 8: flySky.channel8,
+      9: flySky.channel9, 10: flySky.channel10
+    };
+    return values[ch] || 1500;
+  };
+
+  const ChannelMappingRow = ({ channel }: { channel: number }) => {
+    const value = getChannelValue(channel);
+    const isActive = activeChannels.has(channel);
+    const position = ((value - 1000) / 1000) * 100;
+    const assignedFunction = channelMapping[channel] || 'none';
+    const functionLabel = AVAILABLE_FUNCTIONS.find(f => f.value === assignedFunction)?.label || 'Not Assigned';
+    
+    return (
+      <div 
+        className={`flex items-center gap-2 p-2 rounded border transition-all ${
+          isActive 
+            ? 'border-secondary bg-secondary/20 shadow-[0_0_10px_rgba(0,255,136,0.3)]' 
+            : 'border-border/30 bg-black/20'
+        }`}
+        data-testid={`channel-mapping-row-${channel}`}
+      >
+        <div className="flex items-center gap-1 min-w-[50px]">
+          {isActive && <Zap className="w-3 h-3 text-secondary animate-pulse" />}
+          <span className={`text-xs font-mono font-bold ${isActive ? 'text-secondary' : 'text-primary'}`}>
+            CH{channel}
+          </span>
+        </div>
+        
+        <div className="flex-1 min-w-[60px]">
+          <div className="text-[10px] font-mono text-muted-foreground mb-0.5">{value.toFixed(0)}µs</div>
+          <div className="w-full h-1.5 bg-black/50 rounded overflow-hidden">
+            <div 
+              className={`h-full transition-all duration-75 ${isActive ? 'bg-secondary' : 'bg-primary/50'}`}
+              style={{ width: `${position}%` }}
+            />
+          </div>
+        </div>
+
+        <Select 
+          value={assignedFunction} 
+          onValueChange={(val) => handleMappingChange(channel, val)}
+        >
+          <SelectTrigger 
+            className="w-[120px] h-7 text-[10px] bg-black/30 border-primary/30 text-secondary pointer-events-auto"
+            data-testid={`select-channel-${channel}`}
+          >
+            <SelectValue placeholder="Select function" />
+          </SelectTrigger>
+          <SelectContent className="bg-background border-primary/30">
+            {AVAILABLE_FUNCTIONS.map(fn => (
+              <SelectItem 
+                key={fn.value} 
+                value={fn.value}
+                className="text-xs"
+              >
+                {fn.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="min-h-screen bg-background text-foreground font-sans p-6" data-testid="page-flysky-control">
@@ -64,7 +191,7 @@ export default function FlySkyControl() {
       </div>
 
       <div className="grid grid-cols-12 gap-6">
-        {/* Left Panel: Channel Display */}
+        {/* Left Panel: Camera Feed */}
         <div className="col-span-8 space-y-4">
           {/* Connection Status */}
           <div className={`hud-panel p-4 border-2 transition-all ${
@@ -129,7 +256,6 @@ export default function FlySkyControl() {
             </AspectRatio>
           </div>
 
-
           {/* No Connection Message */}
           {!flySky.isConnected && (
             <div className="hud-panel p-8 text-center">
@@ -144,44 +270,8 @@ export default function FlySkyControl() {
           )}
         </div>
 
-        {/* Right Panel: Status & Info */}
+        {/* Right Panel: Receiver Info & Channel Mapping */}
         <div className="col-span-4 space-y-4">
-          {/* Mode & Battery */}
-          <div className="hud-panel p-4">
-            <h3 className="text-xs font-display text-primary/70 mb-3">SYSTEM STATUS</h3>
-            <div className="space-y-3">
-              <div>
-                <div className="text-xs text-muted-foreground mb-1">MODE</div>
-                <div className={`text-lg font-bold font-mono px-3 py-2 rounded text-center ${
-                  mode === 'MANUAL'
-                    ? 'bg-secondary/10 text-secondary'
-                    : 'bg-accent/10 text-accent'
-                }`}>
-                  {mode}
-                </div>
-              </div>
-              
-              <div>
-                <div className="text-xs text-muted-foreground mb-1">THROTTLE</div>
-                <div className="text-2xl font-mono font-bold text-secondary">{throttle.toFixed(0)}%</div>
-              </div>
-
-              <div>
-                <div className="text-xs text-muted-foreground mb-1">STEERING</div>
-                <div className="text-2xl font-mono font-bold text-primary">{steering.toFixed(0)}</div>
-              </div>
-
-              <div>
-                <div className="text-xs text-muted-foreground mb-1">BATTERY</div>
-                <div className={`text-2xl font-mono font-bold ${
-                  data.battery > 50 ? 'text-secondary' : data.battery > 20 ? 'text-accent' : 'text-destructive'
-                }`}>
-                  {Math.floor(data.battery)}%
-                </div>
-              </div>
-            </div>
-          </div>
-
           {/* Receiver Info */}
           <div className="hud-panel p-4">
             <h3 className="text-xs font-display text-primary/70 mb-3">RECEIVER INFO</h3>
@@ -213,20 +303,30 @@ export default function FlySkyControl() {
             </div>
           </div>
 
-          {/* Control Mapping */}
+          {/* Channel Mapping */}
           <div className="hud-panel p-4">
-            <h3 className="text-xs font-display text-primary/70 mb-3">CHANNEL MAPPING</h3>
-            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[10px] font-mono text-secondary">
-              <div>CH1 → Steering</div>
-              <div>CH6 → Mode Select</div>
-              <div>CH2 → Forward/Back</div>
-              <div>CH7 → Camera Pan</div>
-              <div>CH3 → Throttle</div>
-              <div>CH8 → Camera Tilt</div>
-              <div>CH4 → Yaw Rotation</div>
-              <div>CH9 → Light Control</div>
-              <div>CH5 → Record Toggle</div>
-              <div>CH10 → Horn</div>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-xs font-display text-primary/70">CHANNEL MAPPING</h3>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={resetToDefault}
+                className="h-6 px-2 text-[10px] text-muted-foreground hover:text-primary"
+                data-testid="button-reset-mapping"
+              >
+                <RotateCcw className="w-3 h-3 mr-1" />
+                Reset
+              </Button>
+            </div>
+            
+            <div className="text-[9px] text-muted-foreground mb-2 italic">
+              Move a stick or flip a switch to detect the channel
+            </div>
+
+            <div className="space-y-1.5 max-h-[400px] overflow-y-auto pr-1">
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(ch => (
+                <ChannelMappingRow key={ch} channel={ch} />
+              ))}
             </div>
           </div>
         </div>
