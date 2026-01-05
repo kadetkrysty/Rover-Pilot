@@ -15,9 +15,11 @@ interface HaloHudOverlayProps {
     height: number;
   }>;
   isDemoMode: boolean;
+  latitude?: number;
+  longitude?: number;
 }
 
-export function HaloHudOverlay({ recordingTime, detectedObjects, isDemoMode }: HaloHudOverlayProps) {
+export function HaloHudOverlay({ recordingTime, detectedObjects, isDemoMode, latitude = 34.0522, longitude = -118.2437 }: HaloHudOverlayProps) {
   const formatTime = (seconds: number) => {
     const hrs = Math.floor(seconds / 3600);
     const mins = Math.floor((seconds % 3600) / 60);
@@ -51,6 +53,29 @@ export function HaloHudOverlay({ recordingTime, detectedObjects, isDemoMode }: H
           strokeMiterlimit="10"
           filter="url(#headerGlow)"
         />
+        <text 
+          x="130" 
+          y="38" 
+          fill="#00ffff" 
+          fontSize="24" 
+          fontFamily="monospace" 
+          fontWeight="bold"
+          transform="rotate(7, 130, 38)"
+        >
+          LAT: {latitude.toFixed(6)}°
+        </text>
+        <text 
+          x="1700" 
+          y="42" 
+          fill="#00ffff" 
+          fontSize="24" 
+          fontFamily="monospace" 
+          fontWeight="bold"
+          textAnchor="end"
+          transform="rotate(-7, 1700, 42)"
+        >
+          LNG: {longitude.toFixed(6)}°
+        </text>
       </svg>
 
       <svg 

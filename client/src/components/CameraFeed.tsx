@@ -7,6 +7,8 @@ interface CameraFeedProps {
   showOverlay?: boolean;
   className?: string;
   showCameraControl?: boolean;
+  latitude?: number;
+  longitude?: number;
 }
 
 interface DetectedObject {
@@ -22,7 +24,9 @@ interface DetectedObject {
 export default function CameraFeed({ 
   showOverlay = true, 
   className = '',
-  showCameraControl = true
+  showCameraControl = true,
+  latitude = 34.0522,
+  longitude = -118.2437
 }: CameraFeedProps) {
   const { isConnected } = useWebSocket();
   const [recordingTime, setRecordingTime] = useState(863);
@@ -71,6 +75,8 @@ export default function CameraFeed({
             recordingTime={recordingTime}
             detectedObjects={detectedObjects}
             isDemoMode={isDemoMode}
+            latitude={latitude}
+            longitude={longitude}
           />
         )}
 
