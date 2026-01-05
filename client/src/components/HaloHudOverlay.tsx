@@ -474,11 +474,11 @@ export function ProximityRadar({ className = '' }: ProximityRadarProps) {
           <g clipPath="url(#radarClip)">
             <g style={{ transformOrigin: '50px 50px' }} className="animate-[spin_3s_linear_infinite]">
               <path 
-                d="M50,50 L50,6 A44,44 0 0,1 94,50 Z" 
+                d="M50,50 L6,50 A44,44 0 0,1 50,6 Z" 
                 fill="url(#sweepGradient)"
-                opacity="0.6"
+                opacity="0.5"
               />
-              <line x1="50" y1="50" x2="50" y2="6" stroke="#00ffff" strokeWidth="2" opacity="0.9" />
+              <line x1="50" y1="50" x2="50" y2="6" stroke="#00ffff" strokeWidth="2" opacity="0.9" filter="url(#radarGlow)" />
             </g>
           </g>
 
