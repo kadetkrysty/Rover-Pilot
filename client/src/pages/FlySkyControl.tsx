@@ -123,7 +123,8 @@ export default function FlySkyControl() {
                 className="h-full" 
                 showCameraControl={true} 
                 latitude={location.latitude ?? 34.0522} 
-                longitude={location.longitude ?? -118.2437} 
+                longitude={location.longitude ?? -118.2437}
+                showDetectedObjects={false}
               />
             </AspectRatio>
           </div>
@@ -215,17 +216,17 @@ export default function FlySkyControl() {
           {/* Control Mapping */}
           <div className="hud-panel p-4">
             <h3 className="text-xs font-display text-primary/70 mb-3">CHANNEL MAPPING</h3>
-            <div className="space-y-1 text-[10px] font-mono text-muted-foreground/80">
-              <div>CH1 → Steering (Roll)</div>
-              <div>CH2 → Forward/Back (Pitch)</div>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[10px] font-mono text-secondary">
+              <div>CH1 → Steering</div>
+              <div>CH6 → Mode Select</div>
+              <div>CH2 → Forward/Back</div>
+              <div>CH7 → Camera Pan</div>
               <div>CH3 → Throttle</div>
+              <div>CH8 → Camera Tilt</div>
               <div>CH4 → Yaw Rotation</div>
-              <div>CH5 → Switch A (Record Toggle)</div>
-              <div>CH6 → Switch B (Mode Select)</div>
-              <div>CH7 → Aux 1 (Camera Pan)</div>
-              <div>CH8 → Aux 2 (Camera Tilt)</div>
-              <div>CH9 → Aux 3 (Light Control)</div>
-              <div>CH10 → Aux 4 (Horn)</div>
+              <div>CH9 → Light Control</div>
+              <div>CH5 → Record Toggle</div>
+              <div>CH10 → Horn</div>
             </div>
           </div>
         </div>

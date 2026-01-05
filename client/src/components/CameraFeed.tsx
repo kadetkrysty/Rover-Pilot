@@ -9,6 +9,7 @@ interface CameraFeedProps {
   showCameraControl?: boolean;
   latitude?: number;
   longitude?: number;
+  showDetectedObjects?: boolean;
 }
 
 interface DetectedObject {
@@ -26,7 +27,8 @@ export default function CameraFeed({
   className = '',
   showCameraControl = true,
   latitude = 34.0522,
-  longitude = -118.2437
+  longitude = -118.2437,
+  showDetectedObjects = true
 }: CameraFeedProps) {
   const { isConnected } = useWebSocket();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -99,7 +101,7 @@ export default function CameraFeed({
         {showOverlay && (
           <HaloHudOverlay 
             recordingTime={recordingTime}
-            detectedObjects={detectedObjects}
+            detectedObjects={showDetectedObjects ? detectedObjects : []}
             isDemoMode={isDemoMode}
             latitude={latitude}
             longitude={longitude}
