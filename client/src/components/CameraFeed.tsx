@@ -29,12 +29,33 @@ export default function CameraFeed({
   longitude = -118.2437
 }: CameraFeedProps) {
   const { isConnected } = useWebSocket();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
   const [recordingTime, setRecordingTime] = useState(863);
   const [detectedObjects, setDetectedObjects] = useState<DetectedObject[]>([
     { id: 'OBJ_001', type: 'OBSTACLE_ROCK', confidence: 94, x: 25, y: 25, width: 15, height: 15 },
     { id: 'OBJ_002', type: 'TERRAIN_HAZARD', confidence: 78, x: 60, y: 45, width: 12, height: 10 }
   ]);
   const isDemoMode = !isConnected;
+
+  useEffect(() => {
+    const updateSize = () => {
+      if (containerRef.current) {
+        setContainerSize({
+          width: containerRef.current.clientWidth,
+          height: containerRef.current.clientHeight
+        });
+      }
+    };
+    updateSize();
+    window.addEventListener('resize', updateSize);
+    const observer = new ResizeObserver(updateSize);
+    if (containerRef.current) observer.observe(containerRef.current);
+    return () => {
+      window.removeEventListener('resize', updateSize);
+      observer.disconnect();
+    };
+  }, []);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -57,8 +78,13 @@ export default function CameraFeed({
     return () => clearInterval(aiTimer);
   }, []);
 
+  const controlSize = Math.max(60, Math.min(120, containerSize.width * 0.08));
+  const leftOffset = containerSize.width * 0.085;
+  const rightOffset = containerSize.width * 0.085;
+  const bottomOffset = containerSize.height * 0.12;
+
   return (
-    <div className={`relative w-full bg-black overflow-hidden border border-primary/20 shadow-2xl ${className}`}>
+    <div ref={containerRef} className={`relative w-full bg-black overflow-hidden border border-primary/20 shadow-2xl ${className}`}>
       <div className="aspect-video relative">
         {isDemoMode ? (
           <DemoSimulatedFeed />
@@ -80,15 +106,15 @@ export default function CameraFeed({
           />
         )}
 
-        {showCameraControl && (
-          <div className="absolute z-20" style={{ left: '66px', bottom: '25px' }}>
-            <CircularCameraControl />
+        {showCameraControl && containerSize.width > 0 && (
+          <div className="absolute z-20" style={{ left: `${leftOffset}px`, bottom: `${bottomOffset}px`, transform: 'translate(-50%, 50%)' }}>
+            <CircularCameraControl size={controlSize} />
           </div>
         )}
 
-        {showCameraControl && (
-          <div className="absolute z-20" style={{ right: '66px', bottom: '25px' }}>
-            <ProximityRadar />
+        {showCameraControl && containerSize.width > 0 && (
+          <div className="absolute z-20" style={{ right: `${rightOffset}px`, bottom: `${bottomOffset}px`, transform: 'translate(50%, 50%)' }}>
+            <ProximityRadar size={controlSize} />
           </div>
         )}
       </div>

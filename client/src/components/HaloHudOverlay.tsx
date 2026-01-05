@@ -331,9 +331,10 @@ export function HaloHudOverlay({ recordingTime, detectedObjects, isDemoMode, lat
 
 interface CircularCameraControlProps {
   className?: string;
+  size?: number;
 }
 
-export function CircularCameraControl({ className = '' }: CircularCameraControlProps) {
+export function CircularCameraControl({ className = '', size = 100 }: CircularCameraControlProps) {
   const { sendCommand } = useWebSocket();
   const [pan, setPan] = useState(0);
   const [tilt, setTilt] = useState(0);
@@ -371,7 +372,7 @@ export function CircularCameraControl({ className = '' }: CircularCameraControlP
 
   return (
     <div className={`relative pointer-events-auto ${className}`}>
-      <div className="relative w-[100px] h-[100px]">
+      <div className="relative" style={{ width: size, height: size }}>
         <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100">
           <defs>
             <radialGradient id="cameraControlBg" cx="50%" cy="50%" r="50%">
@@ -456,12 +457,13 @@ export function CircularCameraControl({ className = '' }: CircularCameraControlP
 
 interface ProximityRadarProps {
   className?: string;
+  size?: number;
 }
 
-export function ProximityRadar({ className = '' }: ProximityRadarProps) {
+export function ProximityRadar({ className = '', size = 100 }: ProximityRadarProps) {
   return (
     <div className={`relative ${className}`}>
-      <div className="relative w-[100px] h-[100px]">
+      <div className="relative" style={{ width: size, height: size }}>
         <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100">
           <defs>
             <radialGradient id="radarBg" cx="50%" cy="50%" r="50%">
