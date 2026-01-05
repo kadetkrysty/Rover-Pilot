@@ -75,7 +75,7 @@ export default function CameraFeed({
         )}
 
         {showCameraControl && (
-          <div className="absolute bottom-4 left-4 z-20">
+          <div className="absolute z-20" style={{ left: '66px', bottom: '25px' }}>
             <CircularCameraControl />
           </div>
         )}
