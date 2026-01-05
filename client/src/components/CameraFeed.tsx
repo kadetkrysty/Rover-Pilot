@@ -81,7 +81,7 @@ export default function CameraFeed({
   const controlSize = Math.max(80, Math.min(180, containerSize.width * 0.146));
   const leftOffset = containerSize.width * 0.163;
   const rightOffset = containerSize.width * 0.163;
-  const bottomOffset = containerSize.height * 0.20;
+  const bottomOffset = containerSize.height * 0.18;
 
   return (
     <div ref={containerRef} className={`relative w-full bg-black overflow-hidden border border-primary/20 shadow-2xl ${className}`}>
