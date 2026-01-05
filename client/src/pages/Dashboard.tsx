@@ -46,7 +46,7 @@ export default function Dashboard() {
           {/* Camera Feed with Halo-style HUD and Circular Camera Control */}
           <div className="hud-panel overflow-hidden">
             <AspectRatio ratio={16 / 9}>
-              <CameraFeed className="h-full" showCameraControl={true} />
+              <CameraFeed className="h-full" showCameraControl={true} latitude={location.latitude ?? 34.0522} longitude={location.longitude ?? -118.2437} />
             </AspectRatio>
           </div>
           
@@ -154,7 +154,7 @@ export default function Dashboard() {
         <div className="flex flex-col gap-2">
           <div className="hud-panel overflow-hidden">
             <AspectRatio ratio={16 / 9}>
-              <CameraFeed className="h-full" />
+              <CameraFeed className="h-full" latitude={location.latitude ?? 34.0522} longitude={location.longitude ?? -118.2437} />
             </AspectRatio>
           </div>
           
@@ -228,7 +228,7 @@ export default function Dashboard() {
       <main className="sm:hidden flex flex-col gap-2 p-2 h-full overflow-y-auto">
         <div className="hud-panel overflow-hidden">
           <AspectRatio ratio={16 / 9}>
-            <CameraFeed className="h-full" />
+            <CameraFeed className="h-full" latitude={location.latitude ?? 34.0522} longitude={location.longitude ?? -118.2437} />
           </AspectRatio>
         </div>
         
