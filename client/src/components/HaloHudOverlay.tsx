@@ -44,8 +44,8 @@ export function HaloHudOverlay({ recordingTime, detectedObjects, isDemoMode }: H
         </defs>
         <polygon 
           points="2.5 19.83 249.62 50.07 290.33 83.93 707.97 119 775.3 60.15 1171.17 60.55 1241.71 119 1659.36 82.32 1693.62 52.09 1923 23.46 1923 2.5 2.5 2.5 2.5 19.83"
-          fill="#2cd7ff"
-          fillOpacity="0.6"
+          fill="#161d2d"
+          fillOpacity="0.9"
           stroke="aqua"
           strokeWidth="5"
           strokeMiterlimit="10"
@@ -68,9 +68,9 @@ export function HaloHudOverlay({ recordingTime, detectedObjects, isDemoMode }: H
             </feMerge>
           </filter>
         </defs>
-        <g opacity="0.6" filter="url(#footerGlow)">
+        <g opacity="0.9" filter="url(#footerGlow)">
           <path 
-            fill="#2cd7ff"
+            fill="#161d2d"
             d="M2.5,332.91V2.71L156.91,15l41.38,30.76-1.13,1.94A180.85,180.85,0,0,0,183,81.33l-.06.15a141,141,0,0,0-9.45,50.93c0,78,63.48,141.5,141.5,141.5a140.89,140.89,0,0,0,52.67-10.13c56.95-22.16,82.79-79.79,83-80.37l.79-1.8,302,53.18,97.8-55.88h224.31l102.78,56.88,300-54.17.83,1.68a159.64,159.64,0,0,0,9.28,15.59l.07.11.06.11A141.52,141.52,0,0,0,1708,239.2l.11-.1.58-.4,1.68-1.17c1-1.07,1.92-2.13,2.85-3.2l.12-.13a140.86,140.86,0,0,0,39.17-71.54c15.63-64.15-22-112.21-22.42-112.69l-1.54-1.92L1771,13,1927.5,2.74V332.91Z"
           />
           <path 
