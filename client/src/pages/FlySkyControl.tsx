@@ -1,9 +1,7 @@
 import { useState, useEffect, useRef, useCallback, memo } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { Wifi, WifiOff, AlertTriangle, Radio, RotateCcw, Zap } from 'lucide-react';
-import { useFlySky, FlySkyInput } from '@/hooks/useFlySky';
-import { useRoverData } from '@/lib/mockData';
+import { useFlySky } from '@/hooks/useFlySky';
 import { useLocation } from '@/hooks/useLocation';
 import CameraFeed from '@/components/CameraFeed';
 import { AspectRatio } from '@/components/ui/aspect-ratio';
@@ -36,9 +34,85 @@ const DEFAULT_MAPPING: Record<number, string> = {
   10: 'horn',
 };
 
+interface ChannelMappingRowProps {
+  channel: number;
+  value: number;
+  isActive: boolean;
+  assignedFunction: string;
+  onMappingChange: (channel: number, value: string) => void;
+}
+
+const ChannelMappingRow = memo(function ChannelMappingRow({ 
+  channel, 
+  value, 
+  isActive, 
+  assignedFunction, 
+  onMappingChange 
+}: ChannelMappingRowProps) {
+  const position = ((value - 1000) / 1000) * 100;
+  
+  const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    e.stopPropagation();
+    onMappingChange(channel, e.target.value);
+  };
+  
+  return (
+    <div 
+      className={`flex items-center gap-3 p-2.5 rounded border transition-colors ${
+        isActive 
+          ? 'border-secondary bg-secondary/20' 
+          : 'border-border/30 bg-black/20'
+      }`}
+      data-testid={`channel-mapping-row-${channel}`}
+    >
+      <div className="flex items-center gap-1.5 min-w-[55px]">
+        {isActive && <Zap className="w-4 h-4 text-secondary animate-pulse" />}
+        <span className={`text-sm font-mono font-bold ${isActive ? 'text-secondary' : 'text-primary'}`}>
+          CH{channel}
+        </span>
+      </div>
+      
+      <div className="flex-1 min-w-[70px]">
+        <div className="text-xs font-mono text-white/80 mb-1">{value.toFixed(0)}µs</div>
+        <div className="w-full h-2 bg-black/50 rounded overflow-hidden">
+          <div 
+            className={`h-full transition-all duration-75 ${isActive ? 'bg-secondary' : 'bg-primary/50'}`}
+            style={{ width: `${position}%` }}
+          />
+        </div>
+      </div>
+
+      <select
+        value={assignedFunction}
+        onChange={handleChange}
+        onClick={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+        className="w-[130px] h-8 px-2 text-xs font-mono font-semibold bg-[#0a0f18] border border-primary/50 text-white rounded cursor-pointer hover:bg-[#1a2535] focus:outline-none focus:ring-1 focus:ring-primary"
+        style={{ 
+          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2300ffff' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`,
+          backgroundRepeat: 'no-repeat',
+          backgroundPosition: 'right 8px center',
+          WebkitAppearance: 'none',
+          MozAppearance: 'none'
+        }}
+        data-testid={`select-channel-${channel}`}
+      >
+        {AVAILABLE_FUNCTIONS.map(fn => (
+          <option 
+            key={fn.value} 
+            value={fn.value}
+            style={{ backgroundColor: '#0a0f18', color: 'white' }}
+          >
+            {fn.label}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+});
+
 export default function FlySkyControl() {
   const flySky = useFlySky();
-  const data = useRoverData();
   const location = useLocation();
   
   const [channelMapping, setChannelMapping] = useState<Record<number, string>>(() => {
@@ -48,7 +122,7 @@ export default function FlySkyControl() {
   
   const [activeChannels, setActiveChannels] = useState<Set<number>>(new Set());
   const previousValuesRef = useRef<number[]>([1500, 1500, 1000, 1500, 1000, 1000, 1500, 1500, 1500, 1500]);
-  const activityTimeoutRef = useRef<Record<number, NodeJS.Timeout>>({});
+  const activityTimeoutRef = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
 
   useEffect(() => {
     localStorage.setItem('flySkyChannelMapping', JSON.stringify(channelMapping));
@@ -85,20 +159,13 @@ export default function FlySkyControl() {
     previousValuesRef.current = currentValues;
   }, [flySky]);
 
-  const handleMappingChange = (channel: number, value: string) => {
+  const handleMappingChange = useCallback((channel: number, value: string) => {
     setChannelMapping(prev => ({ ...prev, [channel]: value }));
-  };
+  }, []);
 
-  const resetToDefault = () => {
+  const resetToDefault = useCallback(() => {
     setChannelMapping(DEFAULT_MAPPING);
-  };
-
-  const getSignalColor = (strength: number) => {
-    if (strength > 75) return 'text-secondary';
-    if (strength > 50) return 'text-accent';
-    if (strength > 25) return 'text-accent/50';
-    return 'text-destructive';
-  };
+  }, []);
 
   const getSignalBars = (strength: number) => {
     if (strength === 0) return 0;
@@ -108,74 +175,17 @@ export default function FlySkyControl() {
     return 4;
   };
 
-  const getChannelValue = (ch: number): number => {
-    const values: Record<number, number> = {
-      1: flySky.channel1, 2: flySky.channel2, 3: flySky.channel3, 4: flySky.channel4,
-      5: flySky.channel5, 6: flySky.channel6, 7: flySky.channel7, 8: flySky.channel8,
-      9: flySky.channel9, 10: flySky.channel10
-    };
-    return values[ch] || 1500;
+  const getSignalColor = (strength: number) => {
+    if (strength > 75) return 'text-secondary';
+    if (strength > 50) return 'text-accent';
+    if (strength > 25) return 'text-accent/50';
+    return 'text-destructive';
   };
 
-  const ChannelMappingRow = memo(({ channel, value, isActive, assignedFunction, onMappingChange }: { 
-    channel: number; 
-    value: number; 
-    isActive: boolean; 
-    assignedFunction: string;
-    onMappingChange: (channel: number, value: string) => void;
-  }) => {
-    const position = ((value - 1000) / 1000) * 100;
-    
-    return (
-      <div 
-        className={`flex items-center gap-3 p-2.5 rounded border transition-all ${
-          isActive 
-            ? 'border-secondary bg-secondary/20' 
-            : 'border-border/30 bg-black/20'
-        }`}
-        data-testid={`channel-mapping-row-${channel}`}
-      >
-        <div className="flex items-center gap-1.5 min-w-[55px]">
-          {isActive && <Zap className="w-4 h-4 text-secondary animate-pulse" />}
-          <span className={`text-sm font-mono font-bold ${isActive ? 'text-secondary' : 'text-primary'}`}>
-            CH{channel}
-          </span>
-        </div>
-        
-        <div className="flex-1 min-w-[70px]">
-          <div className="text-xs font-mono text-white/80 mb-1">{value.toFixed(0)}µs</div>
-          <div className="w-full h-2 bg-black/50 rounded overflow-hidden">
-            <div 
-              className={`h-full transition-all duration-75 ${isActive ? 'bg-secondary' : 'bg-primary/50'}`}
-              style={{ width: `${position}%` }}
-            />
-          </div>
-        </div>
-
-        <select
-          value={assignedFunction}
-          onChange={(e) => onMappingChange(channel, e.target.value)}
-          className="w-[130px] h-8 px-2 text-xs font-mono font-semibold bg-[#0a0f18] border border-primary/50 text-white rounded cursor-pointer hover:bg-[#1a2535] focus:outline-none focus:ring-1 focus:ring-primary appearance-none"
-          style={{ 
-            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2300ffff' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`,
-            backgroundRepeat: 'no-repeat',
-            backgroundPosition: 'right 8px center'
-          }}
-          data-testid={`select-channel-${channel}`}
-        >
-          {AVAILABLE_FUNCTIONS.map(fn => (
-            <option 
-              key={fn.value} 
-              value={fn.value}
-              className="bg-[#0a0f18] text-white"
-            >
-              {fn.label}
-            </option>
-          ))}
-        </select>
-      </div>
-    );
-  });
+  const channelValues = [
+    flySky.channel1, flySky.channel2, flySky.channel3, flySky.channel4, flySky.channel5,
+    flySky.channel6, flySky.channel7, flySky.channel8, flySky.channel9, flySky.channel10
+  ];
 
   return (
     <div className="min-h-screen bg-background text-foreground font-sans p-6" data-testid="page-flysky-control">
@@ -313,16 +323,16 @@ export default function FlySkyControl() {
               </Button>
             </div>
             
-            <div className="text-[9px] text-muted-foreground mb-2 italic">
+            <div className="text-[10px] text-muted-foreground mb-3">
               Move a stick or flip a switch to detect the channel
             </div>
 
-            <div className="space-y-1.5 max-h-[400px] overflow-y-auto pr-1">
+            <div className="space-y-2">
               {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(ch => (
                 <ChannelMappingRow 
                   key={ch} 
                   channel={ch} 
-                  value={getChannelValue(ch)}
+                  value={channelValues[ch - 1]}
                   isActive={activeChannels.has(ch)}
                   assignedFunction={channelMapping[ch] || 'none'}
                   onMappingChange={handleMappingChange}
