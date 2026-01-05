@@ -78,10 +78,10 @@ export default function CameraFeed({
     return () => clearInterval(aiTimer);
   }, []);
 
-  const controlSize = Math.max(60, Math.min(120, containerSize.width * 0.08));
-  const leftOffset = containerSize.width * 0.085;
-  const rightOffset = containerSize.width * 0.085;
-  const bottomOffset = containerSize.height * 0.12;
+  const controlSize = Math.max(70, Math.min(140, containerSize.width * 0.105));
+  const leftOffset = containerSize.width * 0.163;
+  const rightOffset = containerSize.width * 0.163;
+  const bottomOffset = containerSize.height * 0.21;
 
   return (
     <div ref={containerRef} className={`relative w-full bg-black overflow-hidden border border-primary/20 shadow-2xl ${className}`}>
