@@ -129,27 +129,26 @@ export default function FlySkyControl() {
     const isActive = activeChannels.has(channel);
     const position = ((value - 1000) / 1000) * 100;
     const assignedFunction = channelMapping[channel] || 'none';
-    const functionLabel = AVAILABLE_FUNCTIONS.find(f => f.value === assignedFunction)?.label || 'Not Assigned';
     
     return (
       <div 
-        className={`flex items-center gap-2 p-2 rounded border transition-all ${
+        className={`flex items-center gap-3 p-2.5 rounded border transition-all ${
           isActive 
-            ? 'border-secondary bg-secondary/20 shadow-[0_0_10px_rgba(0,255,136,0.3)]' 
+            ? 'border-secondary bg-secondary/20' 
             : 'border-border/30 bg-black/20'
         }`}
         data-testid={`channel-mapping-row-${channel}`}
       >
-        <div className="flex items-center gap-1 min-w-[50px]">
-          {isActive && <Zap className="w-3 h-3 text-secondary animate-pulse" />}
-          <span className={`text-xs font-mono font-bold ${isActive ? 'text-secondary' : 'text-primary'}`}>
+        <div className="flex items-center gap-1.5 min-w-[55px]">
+          {isActive && <Zap className="w-4 h-4 text-secondary animate-pulse" />}
+          <span className={`text-sm font-mono font-bold ${isActive ? 'text-secondary' : 'text-primary'}`}>
             CH{channel}
           </span>
         </div>
         
-        <div className="flex-1 min-w-[60px]">
-          <div className="text-[10px] font-mono text-muted-foreground mb-0.5">{value.toFixed(0)}µs</div>
-          <div className="w-full h-1.5 bg-black/50 rounded overflow-hidden">
+        <div className="flex-1 min-w-[70px]">
+          <div className="text-xs font-mono text-white/80 mb-1">{value.toFixed(0)}µs</div>
+          <div className="w-full h-2 bg-black/50 rounded overflow-hidden">
             <div 
               className={`h-full transition-all duration-75 ${isActive ? 'bg-secondary' : 'bg-primary/50'}`}
               style={{ width: `${position}%` }}
@@ -162,17 +161,21 @@ export default function FlySkyControl() {
           onValueChange={(val) => handleMappingChange(channel, val)}
         >
           <SelectTrigger 
-            className="w-[120px] h-7 text-[10px] bg-black/30 border-primary/30 text-secondary pointer-events-auto"
+            className="w-[130px] h-8 text-xs font-mono font-semibold bg-black/50 border-primary/50 text-white hover:bg-black/70 focus:ring-1 focus:ring-primary"
             data-testid={`select-channel-${channel}`}
           >
             <SelectValue placeholder="Select function" />
           </SelectTrigger>
-          <SelectContent className="bg-background border-primary/30">
+          <SelectContent 
+            className="bg-[#0a0f18] border-primary/50 z-[100]"
+            position="popper"
+            sideOffset={4}
+          >
             {AVAILABLE_FUNCTIONS.map(fn => (
               <SelectItem 
                 key={fn.value} 
                 value={fn.value}
-                className="text-xs"
+                className="text-sm font-mono text-white/90 hover:bg-primary/20 focus:bg-primary/20 cursor-pointer"
               >
                 {fn.label}
               </SelectItem>
