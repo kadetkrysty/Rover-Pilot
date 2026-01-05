@@ -34,21 +34,21 @@ export function HaloHudOverlay({ recordingTime, detectedObjects, isDemoMode }: H
       >
         <defs>
           <filter id="glowSoft">
-            <feGaussianBlur stdDeviation="1" result="blur"/>
+            <feGaussianBlur stdDeviation="1.5" result="blur"/>
             <feMerge>
               <feMergeNode in="blur"/>
               <feMergeNode in="SourceGraphic"/>
             </feMerge>
           </filter>
           <filter id="glowMedium">
-            <feGaussianBlur stdDeviation="2" result="blur"/>
+            <feGaussianBlur stdDeviation="3" result="blur"/>
             <feMerge>
               <feMergeNode in="blur"/>
               <feMergeNode in="SourceGraphic"/>
             </feMerge>
           </filter>
           <filter id="glowStrong">
-            <feGaussianBlur stdDeviation="3.5" result="blur"/>
+            <feGaussianBlur stdDeviation="5" result="blur"/>
             <feMerge>
               <feMergeNode in="blur"/>
               <feMergeNode in="SourceGraphic"/>
@@ -58,348 +58,312 @@ export function HaloHudOverlay({ recordingTime, detectedObjects, isDemoMode }: H
 
         <path
           d="M 0 0 
-             L 0 125 
-             L 15 125 
-             L 25 115 
-             L 45 115 
-             L 55 105 
-             L 85 105 
-             L 100 90 
-             L 140 90 
-             L 160 75 
-             L 220 75 
-             L 245 55 
-             L 310 55 
-             L 340 35 
-             L 400 35 
-             L 420 20 
-             L 420 0 
+             L 0 136 
+             L 122 176 
+             L 246 158 
+             L 346 126 
+             L 420 96 
+             L 476 64 
+             L 506 44 
+             L 528 22 
+             L 528 0 
              Z"
-          fill="#2589D0"
-          fillOpacity="0.95"
+          fill="#1a3a5c"
+          fillOpacity="0.85"
         />
         <path
-          d="M 0 125 
-             L 15 125 
-             L 25 115 
-             L 45 115 
-             L 55 105 
-             L 85 105 
-             L 100 90 
-             L 140 90 
-             L 160 75 
-             L 220 75 
-             L 245 55 
-             L 310 55 
-             L 340 35 
-             L 400 35 
-             L 420 20"
+          d="M 0 136 
+             L 122 176 
+             L 246 158 
+             L 346 126 
+             L 420 96 
+             L 476 64 
+             L 506 44 
+             L 528 22"
           fill="none"
           stroke="#25A8FF"
-          strokeWidth="1.5"
+          strokeWidth="2.4"
           filter="url(#glowMedium)"
         />
         <path
-          d="M 0 125 
-             L 15 125 
-             L 25 115 
-             L 45 115 
-             L 55 105 
-             L 85 105 
-             L 100 90 
-             L 140 90 
-             L 160 75 
-             L 220 75 
-             L 245 55 
-             L 310 55 
-             L 340 35 
-             L 400 35 
-             L 420 20"
+          d="M 3 133 
+             L 122 172 
+             L 244 155 
+             L 343 124 
+             L 417 94 
+             L 473 63 
+             L 503 43 
+             L 525 22"
           fill="none"
           stroke="#67C7FF"
-          strokeWidth="0.5"
-          strokeOpacity="0.8"
+          strokeWidth="1"
+          strokeOpacity="0.7"
         />
 
         <path
           d="M 1024 0 
-             L 1024 125 
-             L 1009 125 
-             L 999 115 
-             L 979 115 
-             L 969 105 
-             L 939 105 
-             L 924 90 
-             L 884 90 
-             L 864 75 
-             L 804 75 
-             L 779 55 
-             L 714 55 
-             L 684 35 
-             L 624 35 
-             L 604 20 
-             L 604 0 
+             L 1024 136 
+             L 902 176 
+             L 778 158 
+             L 678 126 
+             L 604 96 
+             L 548 64 
+             L 518 44 
+             L 496 22 
+             L 496 0 
              Z"
-          fill="#2589D0"
-          fillOpacity="0.95"
+          fill="#1a3a5c"
+          fillOpacity="0.85"
         />
         <path
-          d="M 1024 125 
-             L 1009 125 
-             L 999 115 
-             L 979 115 
-             L 969 105 
-             L 939 105 
-             L 924 90 
-             L 884 90 
-             L 864 75 
-             L 804 75 
-             L 779 55 
-             L 714 55 
-             L 684 35 
-             L 624 35 
-             L 604 20"
+          d="M 1024 136 
+             L 902 176 
+             L 778 158 
+             L 678 126 
+             L 604 96 
+             L 548 64 
+             L 518 44 
+             L 496 22"
           fill="none"
           stroke="#25A8FF"
-          strokeWidth="1.5"
+          strokeWidth="2.4"
           filter="url(#glowMedium)"
         />
         <path
-          d="M 1024 125 
-             L 1009 125 
-             L 999 115 
-             L 979 115 
-             L 969 105 
-             L 939 105 
-             L 924 90 
-             L 884 90 
-             L 864 75 
-             L 804 75 
-             L 779 55 
-             L 714 55 
-             L 684 35 
-             L 624 35 
-             L 604 20"
+          d="M 1021 133 
+             L 902 172 
+             L 780 155 
+             L 681 124 
+             L 607 94 
+             L 551 63 
+             L 521 43 
+             L 499 22"
           fill="none"
           stroke="#67C7FF"
-          strokeWidth="0.5"
-          strokeOpacity="0.8"
+          strokeWidth="1"
+          strokeOpacity="0.7"
         />
 
-        <rect x="447" y="8" width="130" height="24" rx="5" ry="5" 
-          fill="rgba(37, 168, 255, 0.1)" 
-          stroke="#25A8FF" 
-          strokeWidth="1.5"
+        <path
+          d="M 402 18 
+             Q 402 8, 412 4
+             L 438 0 
+             L 586 0 
+             Q 612 0, 622 18
+             L 622 44 
+             Q 622 54, 612 58
+             L 586 62 
+             L 438 62 
+             Q 412 62, 402 44
+             Z"
+          fill="rgba(37, 168, 255, 0.08)"
+          stroke="#25A8FF"
+          strokeWidth="2"
           filter="url(#glowMedium)"
         />
-        <rect x="452" y="12" width="120" height="16" rx="3" ry="3" 
-          fill="rgba(37, 168, 255, 0.08)" 
-          stroke="#67C7FF" 
-          strokeWidth="0.5"
+        <path
+          d="M 428 18 
+             L 596 18 
+             Q 612 18, 614 28
+             L 614 38 
+             Q 612 48, 596 48
+             L 428 48 
+             Q 412 48, 410 38
+             L 410 28 
+             Q 412 18, 428 18
+             Z"
+          fill="rgba(103, 199, 255, 0.1)"
+          stroke="#67C7FF"
+          strokeWidth="0.8"
           strokeOpacity="0.6"
         />
 
         <g filter="url(#glowSoft)">
-          <path d="M 480 42 L 486 38 L 538 38 L 544 42 L 538 46 L 486 46 Z" fill="rgba(37, 168, 255, 0.2)" stroke="#25A8FF" strokeWidth="0.8" />
-          <text x="512" y="43" fill="#67C7FF" fontSize="6" fontFamily="monospace" textAnchor="middle" dominantBaseline="middle">15 MTS</text>
+          <path d="M 486 86 L 504 78 L 520 78 L 538 86 L 520 94 L 504 94 Z" 
+            fill="rgba(37, 168, 255, 0.15)" stroke="#25A8FF" strokeWidth="1" />
+          <text x="512" y="103" fill="#67C7FF" fontSize="8" fontFamily="monospace" textAnchor="middle" letterSpacing="1">15 MTS</text>
         </g>
         <g filter="url(#glowSoft)">
-          <path d="M 472 54 L 480 50 L 544 50 L 552 54 L 544 58 L 480 58 Z" fill="rgba(37, 168, 255, 0.2)" stroke="#25A8FF" strokeWidth="0.8" />
-          <text x="512" y="55" fill="#67C7FF" fontSize="6" fontFamily="monospace" textAnchor="middle" dominantBaseline="middle">10 MTS</text>
+          <path d="M 476 104 L 498 96 L 526 96 L 548 104 L 526 112 L 498 112 Z" 
+            fill="rgba(37, 168, 255, 0.15)" stroke="#25A8FF" strokeWidth="1" />
+          <text x="512" y="121" fill="#67C7FF" fontSize="8" fontFamily="monospace" textAnchor="middle" letterSpacing="1">10 MTS</text>
         </g>
         <g filter="url(#glowSoft)">
-          <path d="M 464 66 L 474 62 L 550 62 L 560 66 L 550 70 L 474 70 Z" fill="rgba(37, 168, 255, 0.2)" stroke="#25A8FF" strokeWidth="0.8" />
-          <text x="512" y="67" fill="#67C7FF" fontSize="6" fontFamily="monospace" textAnchor="middle" dominantBaseline="middle">5 MTS</text>
+          <path d="M 466 122 L 492 114 L 532 114 L 558 122 L 532 130 L 492 130 Z" 
+            fill="rgba(37, 168, 255, 0.15)" stroke="#25A8FF" strokeWidth="1" />
+          <text x="512" y="139" fill="#67C7FF" fontSize="8" fontFamily="monospace" textAnchor="middle" letterSpacing="1">5 MTS</text>
         </g>
 
-        <line x1="55" y1="85" x2="80" y2="85" stroke="#25A8FF" strokeWidth="1.2" strokeOpacity="0.7" filter="url(#glowSoft)" />
-        <line x1="90" y1="72" x2="110" y2="72" stroke="#25A8FF" strokeWidth="1" strokeOpacity="0.6" filter="url(#glowSoft)" />
-        <line x1="125" y1="62" x2="140" y2="62" stroke="#25A8FF" strokeWidth="0.8" strokeOpacity="0.5" filter="url(#glowSoft)" />
-        <rect x="30" y="100" width="6" height="2" fill="#25A8FF" fillOpacity="0.7" />
-        <rect x="42" y="100" width="6" height="2" fill="#25A8FF" fillOpacity="0.7" />
+        <line x1="60" y1="150" x2="100" y2="150" stroke="#25A8FF" strokeWidth="1.5" strokeOpacity="0.6" filter="url(#glowSoft)" />
+        <line x1="110" y1="140" x2="140" y2="140" stroke="#25A8FF" strokeWidth="1.2" strokeOpacity="0.5" filter="url(#glowSoft)" />
+        <rect x="40" y="160" width="8" height="2" fill="#25A8FF" fillOpacity="0.7" />
+        <rect x="54" y="160" width="8" height="2" fill="#25A8FF" fillOpacity="0.7" />
         
-        <line x1="969" y1="85" x2="944" y2="85" stroke="#25A8FF" strokeWidth="1.2" strokeOpacity="0.7" filter="url(#glowSoft)" />
-        <line x1="934" y1="72" x2="914" y2="72" stroke="#25A8FF" strokeWidth="1" strokeOpacity="0.6" filter="url(#glowSoft)" />
-        <line x1="899" y1="62" x2="884" y2="62" stroke="#25A8FF" strokeWidth="0.8" strokeOpacity="0.5" filter="url(#glowSoft)" />
-        <rect x="988" y="100" width="6" height="2" fill="#25A8FF" fillOpacity="0.7" />
-        <rect x="976" y="100" width="6" height="2" fill="#25A8FF" fillOpacity="0.7" />
+        <line x1="964" y1="150" x2="924" y2="150" stroke="#25A8FF" strokeWidth="1.5" strokeOpacity="0.6" filter="url(#glowSoft)" />
+        <line x1="914" y1="140" x2="884" y2="140" stroke="#25A8FF" strokeWidth="1.2" strokeOpacity="0.5" filter="url(#glowSoft)" />
+        <rect x="976" y="160" width="8" height="2" fill="#25A8FF" fillOpacity="0.7" />
+        <rect x="962" y="160" width="8" height="2" fill="#25A8FF" fillOpacity="0.7" />
 
         <path
           d="M 0 576 
-             L 0 456 
-             L 25 456 
-             L 35 466 
-             L 50 466 
-             L 60 456 
-             L 80 456 
-             L 95 440 
-             L 125 440 
-             L 145 420 
-             L 185 420 
-             L 215 400 
-             L 280 400 
-             L 320 430 
-             L 370 430 
-             L 400 460 
-             L 440 460 
-             L 470 490 
-             L 490 490 
-             L 512 520 
+             L 0 444 
+             L 42 444 
+             L 66 460 
+             L 106 460 
+             L 130 438 
+             L 170 416 
+             L 222 404 
+             L 302 408 
+             L 352 432 
+             L 394 462 
+             L 430 492 
+             L 460 512 
+             L 486 540 
              L 512 576 
              Z"
-          fill="#2589D0"
-          fillOpacity="0.95"
+          fill="#1a3a5c"
+          fillOpacity="0.85"
         />
         <path
-          d="M 0 456 
-             L 25 456 
-             L 35 466 
-             L 50 466 
-             L 60 456 
-             L 80 456 
-             L 95 440 
-             L 125 440 
-             L 145 420 
-             L 185 420 
-             L 215 400 
-             L 280 400 
-             L 320 430 
-             L 370 430 
-             L 400 460 
-             L 440 460 
-             L 470 490 
-             L 490 490 
-             L 512 520"
+          d="M 0 444 
+             L 42 444 
+             L 66 460 
+             L 106 460 
+             L 130 438 
+             L 170 416 
+             L 222 404 
+             L 302 408 
+             L 352 432 
+             L 394 462 
+             L 430 492 
+             L 460 512 
+             L 486 540 
+             L 512 576"
           fill="none"
           stroke="#25A8FF"
-          strokeWidth="1.5"
+          strokeWidth="2.4"
           filter="url(#glowMedium)"
         />
         <path
-          d="M 0 456 
-             L 25 456 
-             L 35 466 
-             L 50 466 
-             L 60 456 
-             L 80 456 
-             L 95 440 
-             L 125 440 
-             L 145 420 
-             L 185 420 
-             L 215 400 
-             L 280 400 
-             L 320 430 
-             L 370 430 
-             L 400 460 
-             L 440 460 
-             L 470 490 
-             L 490 490 
-             L 512 520"
+          d="M 3 447 
+             L 42 447 
+             L 64 462 
+             L 104 462 
+             L 128 441 
+             L 168 419 
+             L 220 407 
+             L 300 411 
+             L 350 434 
+             L 392 464 
+             L 428 494 
+             L 458 514 
+             L 484 541"
           fill="none"
           stroke="#67C7FF"
-          strokeWidth="0.5"
-          strokeOpacity="0.8"
+          strokeWidth="1"
+          strokeOpacity="0.7"
         />
 
         <path
           d="M 1024 576 
-             L 1024 456 
-             L 999 456 
-             L 989 466 
-             L 974 466 
-             L 964 456 
-             L 944 456 
-             L 929 440 
-             L 899 440 
-             L 879 420 
-             L 839 420 
-             L 809 400 
-             L 744 400 
-             L 704 430 
-             L 654 430 
-             L 624 460 
-             L 584 460 
-             L 554 490 
-             L 534 490 
-             L 512 520 
+             L 1024 444 
+             L 982 444 
+             L 958 460 
+             L 918 460 
+             L 894 438 
+             L 854 416 
+             L 802 404 
+             L 722 408 
+             L 672 432 
+             L 630 462 
+             L 594 492 
+             L 564 512 
+             L 538 540 
              L 512 576 
              Z"
-          fill="#2589D0"
-          fillOpacity="0.95"
+          fill="#1a3a5c"
+          fillOpacity="0.85"
         />
         <path
-          d="M 1024 456 
-             L 999 456 
-             L 989 466 
-             L 974 466 
-             L 964 456 
-             L 944 456 
-             L 929 440 
-             L 899 440 
-             L 879 420 
-             L 839 420 
-             L 809 400 
-             L 744 400 
-             L 704 430 
-             L 654 430 
-             L 624 460 
-             L 584 460 
-             L 554 490 
-             L 534 490 
-             L 512 520"
+          d="M 1024 444 
+             L 982 444 
+             L 958 460 
+             L 918 460 
+             L 894 438 
+             L 854 416 
+             L 802 404 
+             L 722 408 
+             L 672 432 
+             L 630 462 
+             L 594 492 
+             L 564 512 
+             L 538 540 
+             L 512 576"
           fill="none"
           stroke="#25A8FF"
-          strokeWidth="1.5"
+          strokeWidth="2.4"
           filter="url(#glowMedium)"
         />
         <path
-          d="M 1024 456 
-             L 999 456 
-             L 989 466 
-             L 974 466 
-             L 964 456 
-             L 944 456 
-             L 929 440 
-             L 899 440 
-             L 879 420 
-             L 839 420 
-             L 809 400 
-             L 744 400 
-             L 704 430 
-             L 654 430 
-             L 624 460 
-             L 584 460 
-             L 554 490 
-             L 534 490 
-             L 512 520"
+          d="M 1021 447 
+             L 982 447 
+             L 960 462 
+             L 920 462 
+             L 896 441 
+             L 856 419 
+             L 804 407 
+             L 724 411 
+             L 674 434 
+             L 632 464 
+             L 596 494 
+             L 566 514 
+             L 540 541"
           fill="none"
           stroke="#67C7FF"
-          strokeWidth="0.5"
-          strokeOpacity="0.8"
+          strokeWidth="1"
+          strokeOpacity="0.7"
         />
 
         <g filter="url(#glowSoft)">
-          <path d="M 464 510 L 474 506 L 550 506 L 560 510 L 550 514 L 474 514 Z" fill="rgba(37, 168, 255, 0.2)" stroke="#25A8FF" strokeWidth="0.8" />
-          <text x="512" y="511" fill="#67C7FF" fontSize="6" fontFamily="monospace" textAnchor="middle" dominantBaseline="middle">5 MTS</text>
+          <path d="M 466 486 L 492 478 L 532 478 L 558 486 L 532 494 L 492 494 Z" 
+            fill="rgba(37, 168, 255, 0.15)" stroke="#25A8FF" strokeWidth="1" />
+          <text x="512" y="503" fill="#67C7FF" fontSize="8" fontFamily="monospace" textAnchor="middle" letterSpacing="1">5 MTS</text>
         </g>
         <g filter="url(#glowSoft)">
-          <path d="M 472 522 L 480 518 L 544 518 L 552 522 L 544 526 L 480 526 Z" fill="rgba(37, 168, 255, 0.2)" stroke="#25A8FF" strokeWidth="0.8" />
-          <text x="512" y="523" fill="#67C7FF" fontSize="6" fontFamily="monospace" textAnchor="middle" dominantBaseline="middle">10 MTS</text>
+          <path d="M 476 504 L 498 496 L 526 496 L 548 504 L 526 512 L 498 512 Z" 
+            fill="rgba(37, 168, 255, 0.15)" stroke="#25A8FF" strokeWidth="1" />
+          <text x="512" y="521" fill="#67C7FF" fontSize="8" fontFamily="monospace" textAnchor="middle" letterSpacing="1">10 MTS</text>
         </g>
         <g filter="url(#glowSoft)">
-          <path d="M 480 534 L 486 530 L 538 530 L 544 534 L 538 538 L 486 538 Z" fill="rgba(37, 168, 255, 0.2)" stroke="#25A8FF" strokeWidth="0.8" />
-          <text x="512" y="535" fill="#67C7FF" fontSize="6" fontFamily="monospace" textAnchor="middle" dominantBaseline="middle">15 MTS</text>
+          <path d="M 486 522 L 504 514 L 520 514 L 538 522 L 520 530 L 504 530 Z" 
+            fill="rgba(37, 168, 255, 0.15)" stroke="#25A8FF" strokeWidth="1" />
+          <text x="512" y="539" fill="#67C7FF" fontSize="8" fontFamily="monospace" textAnchor="middle" letterSpacing="1">15 MTS</text>
         </g>
 
-        <rect x="30" y="475" width="6" height="2" fill="#25A8FF" fillOpacity="0.7" />
-        <rect x="42" y="475" width="6" height="2" fill="#25A8FF" fillOpacity="0.7" />
-        <rect x="60" y="460" width="5" height="2" fill="#25A8FF" fillOpacity="0.6" />
-        <rect x="988" y="475" width="6" height="2" fill="#25A8FF" fillOpacity="0.7" />
-        <rect x="976" y="475" width="6" height="2" fill="#25A8FF" fillOpacity="0.7" />
-        <rect x="959" y="460" width="5" height="2" fill="#25A8FF" fillOpacity="0.6" />
+        <rect x="40" y="460" width="8" height="2" fill="#25A8FF" fillOpacity="0.7" />
+        <rect x="54" y="460" width="8" height="2" fill="#25A8FF" fillOpacity="0.7" />
+        <rect x="976" y="460" width="8" height="2" fill="#25A8FF" fillOpacity="0.7" />
+        <rect x="962" y="460" width="8" height="2" fill="#25A8FF" fillOpacity="0.7" />
+
+        <g filter="url(#glowMedium)">
+          <circle cx="154" cy="454" r="74" fill="none" stroke="#25A8FF" strokeWidth="2" strokeOpacity="0.9" />
+          <circle cx="154" cy="454" r="58" fill="none" stroke="#25A8FF" strokeWidth="1.5" strokeOpacity="0.7" />
+          <circle cx="154" cy="454" r="42" fill="none" stroke="#25A8FF" strokeWidth="1" strokeOpacity="0.5" />
+          <circle cx="154" cy="454" r="26" fill="none" stroke="#25A8FF" strokeWidth="0.8" strokeOpacity="0.4" />
+          <line x1="154" y1="380" x2="154" y2="528" stroke="#25A8FF" strokeWidth="0.6" strokeOpacity="0.3" />
+          <line x1="80" y1="454" x2="228" y2="454" stroke="#25A8FF" strokeWidth="0.6" strokeOpacity="0.3" />
+          <path 
+            d="M 154 454 L 120 400 A 74 74 0 0 1 188 400 Z" 
+            fill="rgba(37, 168, 255, 0.08)" 
+            stroke="#25A8FF" 
+            strokeWidth="0.8"
+            strokeOpacity="0.4"
+          />
+          <polygon points="154,382 150,394 158,394" fill="#FFFF00" opacity="0.9" />
+        </g>
       </svg>
 
-      <div className="absolute top-[1.5%] left-1/2 -translate-x-1/2 pointer-events-auto z-10">
+      <div className="absolute top-[1.2%] left-1/2 -translate-x-1/2 pointer-events-auto z-10">
         <div className="flex items-center gap-3 text-[10px] font-mono">
           <div className="flex items-center gap-1.5">
             <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse shadow-[0_0_6px_rgba(239,68,68,0.8)]" />
@@ -414,7 +378,7 @@ export function HaloHudOverlay({ recordingTime, detectedObjects, isDemoMode }: H
       </div>
 
       {isDemoMode && (
-        <div className="absolute top-[12%] right-[12%] bg-cyan-500/20 border border-cyan-400/40 px-2 py-0.5 rounded text-[9px] font-mono text-cyan-300 pointer-events-auto">
+        <div className="absolute top-[15%] right-[8%] bg-cyan-500/20 border border-cyan-400/40 px-2 py-0.5 rounded text-[9px] font-mono text-cyan-300 pointer-events-auto">
           DEMO
         </div>
       )}
