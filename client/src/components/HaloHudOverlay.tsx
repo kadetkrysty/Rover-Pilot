@@ -108,7 +108,7 @@ export function HaloHudOverlay({ recordingTime, detectedObjects, isDemoMode, lat
       <svg 
         className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
         viewBox="0 0 500 500"
-        style={{ width: '45%', height: '80%', maxWidth: '400px', maxHeight: '400px' }}
+        style={{ width: '31.5%', height: '56%', maxWidth: '280px', maxHeight: '280px' }}
       >
         <defs>
           <filter id="targetGlow">
