@@ -65,14 +65,14 @@ export function HaloHudOverlay({ recordingTime, detectedObjects, isDemoMode, lat
           LAT: {latitude.toFixed(6)}°
         </text>
         <text 
-          x="1700" 
+          x="1600" 
           y="42" 
           fill="#00ffff" 
-          fontSize="24" 
+          fontSize="32" 
           fontFamily="monospace" 
           fontWeight="bold"
           textAnchor="end"
-          transform="rotate(-7, 1700, 42)"
+          transform="rotate(-5, 1700, 42)"
         >
           LNG: {longitude.toFixed(6)}°
         </text>
