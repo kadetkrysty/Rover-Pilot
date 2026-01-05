@@ -445,9 +445,9 @@ export function ProximityRadar({ className = '' }: ProximityRadarProps) {
               <stop offset="100%" stopColor="#0A192F" stopOpacity="0.6" />
             </radialGradient>
             <linearGradient id="sweepGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#00ffff" stopOpacity="0" />
+              <stop offset="0%" stopColor="#00ffff" stopOpacity="0.8" />
               <stop offset="50%" stopColor="#00ffff" stopOpacity="0.4" />
-              <stop offset="100%" stopColor="#00ffff" stopOpacity="0.8" />
+              <stop offset="100%" stopColor="#00ffff" stopOpacity="0" />
             </linearGradient>
             <filter id="radarGlow">
               <feGaussianBlur stdDeviation="2" result="blur"/>
