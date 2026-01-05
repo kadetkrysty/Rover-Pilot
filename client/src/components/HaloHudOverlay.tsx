@@ -428,3 +428,55 @@ export function CircularCameraControl({ className = '' }: CircularCameraControlP
     </div>
   );
 }
+
+interface ProximityRadarProps {
+  className?: string;
+}
+
+export function ProximityRadar({ className = '' }: ProximityRadarProps) {
+  return (
+    <div className={`relative ${className}`}>
+      <div className="relative w-[100px] h-[100px]">
+        <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100">
+          <defs>
+            <radialGradient id="radarBg" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stopColor="#00ffff" stopOpacity="0.1" />
+              <stop offset="70%" stopColor="#0A192F" stopOpacity="0.4" />
+              <stop offset="100%" stopColor="#0A192F" stopOpacity="0.6" />
+            </radialGradient>
+            <filter id="radarGlow">
+              <feGaussianBlur stdDeviation="2" result="blur"/>
+              <feMerge>
+                <feMergeNode in="blur"/>
+                <feMergeNode in="SourceGraphic"/>
+              </feMerge>
+            </filter>
+          </defs>
+
+          <circle cx="50" cy="50" r="46" fill="url(#radarBg)" stroke="#00ffff" strokeWidth="2" filter="url(#radarGlow)" />
+          <circle cx="50" cy="50" r="35" fill="none" stroke="#00ffff" strokeWidth="0.8" strokeOpacity="0.4" />
+          <circle cx="50" cy="50" r="24" fill="none" stroke="#00ffff" strokeWidth="0.6" strokeOpacity="0.3" />
+          <circle cx="50" cy="50" r="12" fill="none" stroke="#00ffff" strokeWidth="0.4" strokeOpacity="0.2" />
+
+          <line x1="50" y1="4" x2="50" y2="96" stroke="#00ffff" strokeWidth="0.6" strokeOpacity="0.3" />
+          <line x1="4" y1="50" x2="96" y2="50" stroke="#00ffff" strokeWidth="0.6" strokeOpacity="0.3" />
+          <line x1="17" y1="17" x2="83" y2="83" stroke="#00ffff" strokeWidth="0.4" strokeOpacity="0.2" />
+          <line x1="83" y1="17" x2="17" y2="83" stroke="#00ffff" strokeWidth="0.4" strokeOpacity="0.2" />
+
+          <text x="50" y="10" fill="#00ffff" fontSize="6" textAnchor="middle" opacity="0.7">N</text>
+          <text x="50" y="96" fill="#00ffff" fontSize="6" textAnchor="middle" opacity="0.7">S</text>
+          <text x="8" y="52" fill="#00ffff" fontSize="6" textAnchor="middle" opacity="0.7">W</text>
+          <text x="92" y="52" fill="#00ffff" fontSize="6" textAnchor="middle" opacity="0.7">E</text>
+
+          <circle cx="50" cy="50" r="3" fill="#00ffff" opacity="0.9" />
+          
+          <circle cx="38" cy="35" r="2.5" fill="#00ff00" opacity="0.8" />
+          <circle cx="62" cy="42" r="2.5" fill="#00ff00" opacity="0.8" />
+          <circle cx="55" cy="68" r="2.5" fill="#00ff00" opacity="0.8" />
+          <circle cx="30" cy="55" r="2.5" fill="#00ff00" opacity="0.8" />
+          <circle cx="70" cy="60" r="2.5" fill="#00ff00" opacity="0.8" />
+        </svg>
+      </div>
+    </div>
+  );
+}

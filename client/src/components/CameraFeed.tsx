@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useWebSocket } from '@/lib/useWebSocket';
-import { HaloHudOverlay, CircularCameraControl } from './HaloHudOverlay';
+import { HaloHudOverlay, CircularCameraControl, ProximityRadar } from './HaloHudOverlay';
 import marsTerrainImage from '@assets/mars_terrain_1767567282694.jpg';
 
 interface CameraFeedProps {
@@ -77,6 +77,12 @@ export default function CameraFeed({
         {showCameraControl && (
           <div className="absolute z-20" style={{ left: '66px', bottom: '25px' }}>
             <CircularCameraControl />
+          </div>
+        )}
+
+        {showCameraControl && (
+          <div className="absolute z-20" style={{ right: '66px', bottom: '25px' }}>
+            <ProximityRadar />
           </div>
         )}
       </div>
