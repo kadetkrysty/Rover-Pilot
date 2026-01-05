@@ -4,10 +4,14 @@ import { Card } from '@/components/ui/card';
 import { Wifi, WifiOff, AlertTriangle, Radio } from 'lucide-react';
 import { useFlySky, FlySkyInput } from '@/hooks/useFlySky';
 import { useRoverData } from '@/lib/mockData';
+import { useLocation } from '@/hooks/useLocation';
+import CameraFeed from '@/components/CameraFeed';
+import { AspectRatio } from '@/components/ui/aspect-ratio';
 
 export default function FlySkyControl() {
   const flySky = useFlySky();
   const data = useRoverData();
+  const location = useLocation();
   const [throttle, setThrottle] = useState(0);
   const [steering, setSteering] = useState(0);
   const [mode, setMode] = useState<'MANUAL' | 'AUTONOMOUS'>('MANUAL');
@@ -110,6 +114,18 @@ export default function FlySkyControl() {
                 FAILSAFE ACTIVE - Signal lost for more than 1 second
               </div>
             )}
+          </div>
+
+          {/* Camera Feed with HUD Overlay */}
+          <div className="hud-panel overflow-hidden">
+            <AspectRatio ratio={16 / 9}>
+              <CameraFeed 
+                className="h-full" 
+                showCameraControl={true} 
+                latitude={location.latitude ?? 34.0522} 
+                longitude={location.longitude ?? -118.2437} 
+              />
+            </AspectRatio>
           </div>
 
           {/* Channel Display Grid */}
