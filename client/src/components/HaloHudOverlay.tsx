@@ -444,6 +444,11 @@ export function ProximityRadar({ className = '' }: ProximityRadarProps) {
               <stop offset="70%" stopColor="#0A192F" stopOpacity="0.4" />
               <stop offset="100%" stopColor="#0A192F" stopOpacity="0.6" />
             </radialGradient>
+            <linearGradient id="sweepGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#00ffff" stopOpacity="0" />
+              <stop offset="50%" stopColor="#00ffff" stopOpacity="0.4" />
+              <stop offset="100%" stopColor="#00ffff" stopOpacity="0.8" />
+            </linearGradient>
             <filter id="radarGlow">
               <feGaussianBlur stdDeviation="2" result="blur"/>
               <feMerge>
@@ -451,6 +456,9 @@ export function ProximityRadar({ className = '' }: ProximityRadarProps) {
                 <feMergeNode in="SourceGraphic"/>
               </feMerge>
             </filter>
+            <clipPath id="radarClip">
+              <circle cx="50" cy="50" r="44" />
+            </clipPath>
           </defs>
 
           <circle cx="50" cy="50" r="46" fill="url(#radarBg)" stroke="#00ffff" strokeWidth="2" filter="url(#radarGlow)" />
@@ -462,6 +470,17 @@ export function ProximityRadar({ className = '' }: ProximityRadarProps) {
           <line x1="4" y1="50" x2="96" y2="50" stroke="#00ffff" strokeWidth="0.6" strokeOpacity="0.3" />
           <line x1="17" y1="17" x2="83" y2="83" stroke="#00ffff" strokeWidth="0.4" strokeOpacity="0.2" />
           <line x1="83" y1="17" x2="17" y2="83" stroke="#00ffff" strokeWidth="0.4" strokeOpacity="0.2" />
+
+          <g clipPath="url(#radarClip)">
+            <g style={{ transformOrigin: '50px 50px' }} className="animate-[spin_3s_linear_infinite]">
+              <path 
+                d="M50,50 L50,6 A44,44 0 0,1 94,50 Z" 
+                fill="url(#sweepGradient)"
+                opacity="0.6"
+              />
+              <line x1="50" y1="50" x2="50" y2="6" stroke="#00ffff" strokeWidth="2" opacity="0.9" />
+            </g>
+          </g>
 
           <text x="50" y="10" fill="#00ffff" fontSize="6" textAnchor="middle" opacity="0.7">N</text>
           <text x="50" y="96" fill="#00ffff" fontSize="6" textAnchor="middle" opacity="0.7">S</text>
