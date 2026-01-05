@@ -244,7 +244,7 @@ export function HaloHudOverlay({ recordingTime, detectedObjects, isDemoMode }: H
         </g>
       </svg>
 
-      <div className="absolute bottom-[8%] left-1/2 -translate-x-1/2 pointer-events-auto z-10">
+      <div className="absolute bottom-[3%] left-1/2 -translate-x-1/2 pointer-events-auto z-10">
         <div className="flex items-center gap-3 text-[10px] font-mono">
           <div className="flex items-center gap-1.5">
             <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse shadow-[0_0_6px_rgba(239,68,68,0.8)]" />
