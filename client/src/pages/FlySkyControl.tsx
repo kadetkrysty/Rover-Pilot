@@ -128,58 +128,6 @@ export default function FlySkyControl() {
             </AspectRatio>
           </div>
 
-          {/* Channel Display Grid */}
-          {flySky.isConnected && (
-            <div className="space-y-4">
-              {/* Main Control Channels (1-6) */}
-              <div>
-                <div className="text-xs font-display text-primary mb-2">PRIMARY CHANNELS</div>
-                <div className="grid grid-cols-3 gap-3">
-                  <ChannelDisplay ch={1} label="Roll" value={flySky.channel1} color="text-primary" />
-                  <ChannelDisplay ch={2} label="Pitch" value={flySky.channel2} color="text-secondary" />
-                  <ChannelDisplay ch={3} label="Throttle" value={flySky.channel3} color="text-secondary" />
-                  <ChannelDisplay ch={4} label="Yaw" value={flySky.channel4} color="text-accent" />
-                  
-                  {/* Channel 5 - Switch A */}
-                  <div className={`hud-panel p-3 border-2 transition-all ${
-                    flySky.switchA ? 'border-secondary/50 bg-secondary/10' : 'border-border'
-                  }`}>
-                    <div className="text-xs font-display text-primary/70 uppercase mb-2">CH5 - Switch A</div>
-                    <div className="text-xl font-mono font-bold text-foreground">{flySky.channel5.toFixed(0)}µs</div>
-                    <div className={`text-sm font-bold mt-2 px-2 py-1 rounded text-center ${
-                      flySky.switchA ? 'bg-secondary text-secondary-foreground' : 'bg-border/30 text-muted-foreground'
-                    }`}>
-                      {flySky.switchA ? 'ON' : 'OFF'}
-                    </div>
-                  </div>
-
-                  {/* Channel 6 - Switch B */}
-                  <div className={`hud-panel p-3 border-2 transition-all ${
-                    flySky.switchB ? 'border-accent/50 bg-accent/10' : 'border-border'
-                  }`}>
-                    <div className="text-xs font-display text-primary/70 uppercase mb-2">CH6 - Switch B</div>
-                    <div className="text-xl font-mono font-bold text-foreground">{flySky.channel6.toFixed(0)}µs</div>
-                    <div className={`text-sm font-bold mt-2 px-2 py-1 rounded text-center ${
-                      flySky.switchB ? 'bg-accent text-accent-foreground' : 'bg-border/30 text-muted-foreground'
-                    }`}>
-                      {flySky.switchB ? 'ON' : 'OFF'}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Auxiliary Channels (7-10) */}
-              <div>
-                <div className="text-xs font-display text-primary mb-2">AUXILIARY CHANNELS</div>
-                <div className="grid grid-cols-4 gap-3">
-                  <ChannelDisplay ch={7} label="Aux 1" value={flySky.channel7} color="text-purple-400" />
-                  <ChannelDisplay ch={8} label="Aux 2" value={flySky.channel8} color="text-orange-400" />
-                  <ChannelDisplay ch={9} label="Aux 3" value={flySky.channel9} color="text-pink-400" />
-                  <ChannelDisplay ch={10} label="Aux 4" value={flySky.channel10} color="text-cyan-400" />
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* No Connection Message */}
           {!flySky.isConnected && (
@@ -268,25 +216,18 @@ export default function FlySkyControl() {
           <div className="hud-panel p-4">
             <h3 className="text-xs font-display text-primary/70 mb-3">CHANNEL MAPPING</h3>
             <div className="space-y-1 text-[10px] font-mono text-muted-foreground/80">
-              <div>CH1 → Steering</div>
-              <div>CH2 → Forward/Back</div>
+              <div>CH1 → Steering (Roll)</div>
+              <div>CH2 → Forward/Back (Pitch)</div>
               <div>CH3 → Throttle</div>
               <div>CH4 → Yaw Rotation</div>
-              <div>CH5 → Record Toggle</div>
-              <div>CH6 → Mode Select</div>
-              <div>CH7-10 → Custom Aux</div>
+              <div>CH5 → Switch A (Record Toggle)</div>
+              <div>CH6 → Switch B (Mode Select)</div>
+              <div>CH7 → Aux 1 (Camera Pan)</div>
+              <div>CH8 → Aux 2 (Camera Tilt)</div>
+              <div>CH9 → Aux 3 (Light Control)</div>
+              <div>CH10 → Aux 4 (Horn)</div>
             </div>
           </div>
-
-          {/* Status Indicator */}
-          {flySky.isConnected && (
-            <Card className="hud-panel p-4 border-secondary/30 bg-secondary/5">
-              <div className="text-center">
-                <div className="text-sm font-bold text-secondary mb-1">Ready to Drive</div>
-                <div className="text-xs text-muted-foreground">10 channels responding</div>
-              </div>
-            </Card>
-          )}
         </div>
       </div>
     </div>
