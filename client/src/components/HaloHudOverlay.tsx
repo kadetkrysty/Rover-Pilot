@@ -54,13 +54,13 @@ export function HaloHudOverlay({ recordingTime, detectedObjects, isDemoMode, lat
           filter="url(#headerGlow)"
         />
         <text 
-          x="130" 
+          x="360" 
           y="38" 
           fill="#00ffff" 
-          fontSize="24" 
+          fontSize="32" 
           fontFamily="monospace" 
           fontWeight="bold"
-          transform="rotate(7, 130, 38)"
+          transform="rotate(5, 130, 38)"
         >
           LAT: {latitude.toFixed(6)}°
         </text>
