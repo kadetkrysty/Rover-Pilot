@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback, memo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Wifi, WifiOff, AlertTriangle, Radio, RotateCcw, Zap } from 'lucide-react';
@@ -7,13 +7,6 @@ import { useRoverData } from '@/lib/mockData';
 import { useLocation } from '@/hooks/useLocation';
 import CameraFeed from '@/components/CameraFeed';
 import { AspectRatio } from '@/components/ui/aspect-ratio';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 const AVAILABLE_FUNCTIONS = [
   { value: 'steering', label: 'Steering' },
@@ -124,11 +117,14 @@ export default function FlySkyControl() {
     return values[ch] || 1500;
   };
 
-  const ChannelMappingRow = ({ channel }: { channel: number }) => {
-    const value = getChannelValue(channel);
-    const isActive = activeChannels.has(channel);
+  const ChannelMappingRow = memo(({ channel, value, isActive, assignedFunction, onMappingChange }: { 
+    channel: number; 
+    value: number; 
+    isActive: boolean; 
+    assignedFunction: string;
+    onMappingChange: (channel: number, value: string) => void;
+  }) => {
     const position = ((value - 1000) / 1000) * 100;
-    const assignedFunction = channelMapping[channel] || 'none';
     
     return (
       <div 
@@ -156,35 +152,30 @@ export default function FlySkyControl() {
           </div>
         </div>
 
-        <Select 
-          value={assignedFunction} 
-          onValueChange={(val) => handleMappingChange(channel, val)}
+        <select
+          value={assignedFunction}
+          onChange={(e) => onMappingChange(channel, e.target.value)}
+          className="w-[130px] h-8 px-2 text-xs font-mono font-semibold bg-[#0a0f18] border border-primary/50 text-white rounded cursor-pointer hover:bg-[#1a2535] focus:outline-none focus:ring-1 focus:ring-primary appearance-none"
+          style={{ 
+            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2300ffff' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`,
+            backgroundRepeat: 'no-repeat',
+            backgroundPosition: 'right 8px center'
+          }}
+          data-testid={`select-channel-${channel}`}
         >
-          <SelectTrigger 
-            className="w-[130px] h-8 text-xs font-mono font-semibold bg-black/50 border-primary/50 text-white hover:bg-black/70 focus:ring-1 focus:ring-primary"
-            data-testid={`select-channel-${channel}`}
-          >
-            <SelectValue placeholder="Select function" />
-          </SelectTrigger>
-          <SelectContent 
-            className="bg-[#0a0f18] border-primary/50 z-[100]"
-            position="popper"
-            sideOffset={4}
-          >
-            {AVAILABLE_FUNCTIONS.map(fn => (
-              <SelectItem 
-                key={fn.value} 
-                value={fn.value}
-                className="text-sm font-mono text-white/90 hover:bg-primary/20 focus:bg-primary/20 cursor-pointer"
-              >
-                {fn.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          {AVAILABLE_FUNCTIONS.map(fn => (
+            <option 
+              key={fn.value} 
+              value={fn.value}
+              className="bg-[#0a0f18] text-white"
+            >
+              {fn.label}
+            </option>
+          ))}
+        </select>
       </div>
     );
-  };
+  });
 
   return (
     <div className="min-h-screen bg-background text-foreground font-sans p-6" data-testid="page-flysky-control">
@@ -328,7 +319,14 @@ export default function FlySkyControl() {
 
             <div className="space-y-1.5 max-h-[400px] overflow-y-auto pr-1">
               {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(ch => (
-                <ChannelMappingRow key={ch} channel={ch} />
+                <ChannelMappingRow 
+                  key={ch} 
+                  channel={ch} 
+                  value={getChannelValue(ch)}
+                  isActive={activeChannels.has(ch)}
+                  assignedFunction={channelMapping[ch] || 'none'}
+                  onMappingChange={handleMappingChange}
+                />
               ))}
             </div>
           </div>
