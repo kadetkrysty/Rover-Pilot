@@ -350,7 +350,7 @@ export function CircularCameraControl({ className = '' }: CircularCameraControlP
         <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100">
           <defs>
             <radialGradient id="cameraControlBg" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stopColor="#25A8FF" stopOpacity="0.15" />
+              <stop offset="0%" stopColor="#00ffff" stopOpacity="0.15" />
               <stop offset="70%" stopColor="#0A192F" stopOpacity="0.4" />
               <stop offset="100%" stopColor="#0A192F" stopOpacity="0.6" />
             </radialGradient>
@@ -363,21 +363,21 @@ export function CircularCameraControl({ className = '' }: CircularCameraControlP
             </filter>
           </defs>
 
-          <circle cx="50" cy="50" r="46" fill="url(#cameraControlBg)" stroke="#25A8FF" strokeWidth="2" filter="url(#cameraGlow)" />
-          <circle cx="50" cy="50" r="35" fill="none" stroke="#25A8FF" strokeWidth="0.8" strokeOpacity="0.4" />
-          <circle cx="50" cy="50" r="24" fill="none" stroke="#25A8FF" strokeWidth="0.6" strokeOpacity="0.3" />
+          <circle cx="50" cy="50" r="46" fill="url(#cameraControlBg)" stroke="#00ffff" strokeWidth="2" filter="url(#cameraGlow)" />
+          <circle cx="50" cy="50" r="35" fill="none" stroke="#00ffff" strokeWidth="0.8" strokeOpacity="0.4" />
+          <circle cx="50" cy="50" r="24" fill="none" stroke="#00ffff" strokeWidth="0.6" strokeOpacity="0.3" />
 
-          <line x1="50" y1="6" x2="50" y2="94" stroke="#25A8FF" strokeWidth="0.8" strokeOpacity="0.4" />
-          <line x1="6" y1="50" x2="94" y2="50" stroke="#25A8FF" strokeWidth="0.8" strokeOpacity="0.4" />
+          <line x1="50" y1="6" x2="50" y2="94" stroke="#00ffff" strokeWidth="0.8" strokeOpacity="0.4" />
+          <line x1="6" y1="50" x2="94" y2="50" stroke="#00ffff" strokeWidth="0.8" strokeOpacity="0.4" />
 
-          <polygon points="50,8 47,16 53,16" fill="#67C7FF" opacity="0.9" />
-          <polygon points="50,92 47,84 53,84" fill="#67C7FF" opacity="0.9" />
-          <polygon points="8,50 16,47 16,53" fill="#67C7FF" opacity="0.9" />
-          <polygon points="92,50 84,47 84,53" fill="#67C7FF" opacity="0.9" />
+          <polygon points="50,8 47,16 53,16" fill="#00ffff" opacity="0.9" />
+          <polygon points="50,92 47,84 53,84" fill="#00ffff" opacity="0.9" />
+          <polygon points="8,50 16,47 16,53" fill="#00ffff" opacity="0.9" />
+          <polygon points="92,50 84,47 84,53" fill="#00ffff" opacity="0.9" />
 
-          <circle cx={indicatorX} cy={indicatorY} r="6" fill="#25A8FF" fillOpacity="0.3" filter="url(#cameraGlow)" />
-          <circle cx={indicatorX} cy={indicatorY} r="4" fill="#25A8FF" />
-          <circle cx={indicatorX} cy={indicatorY} r="2" fill="#67C7FF" />
+          <circle cx={indicatorX} cy={indicatorY} r="6" fill="#00ffff" fillOpacity="0.3" filter="url(#cameraGlow)" />
+          <circle cx={indicatorX} cy={indicatorY} r="4" fill="#00ffff" />
+          <circle cx={indicatorX} cy={indicatorY} r="2" fill="#00ffff" />
         </svg>
 
         <button
