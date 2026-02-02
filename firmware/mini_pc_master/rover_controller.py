@@ -633,9 +633,10 @@ async def ws_broadcast_loop():
                              for p in scan.points[:360]]
                 })
             
-            # Send to all clients
+            # Send to all clients (copy set to avoid modification during iteration)
             disconnected = set()
-            for client in ws_clients:
+            clients_snapshot = list(ws_clients)
+            for client in clients_snapshot:
                 try:
                     await client.send(telemetry_msg)
                     if lidar_msg:
