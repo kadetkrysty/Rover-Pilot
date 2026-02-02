@@ -25,12 +25,21 @@ The frontend is a React 18 application with TypeScript, utilizing Wouter for rou
 - **Telemetry Dashboard**: Displays live sensor data, rover status, and system diagnostics.
 - **Camera Feed**: Live visualization with pan/tilt control (Raspberry Pi 3 B+ based).
 - **Control Interfaces**: Manual driving via gamepad and RC transmitter (FlySky FS-I6x via iBUS protocol), and GPS waypoint navigation.
-- **SLAM Map Viewer**: Frontend component (`SlamMapViewer.tsx`) visualizes the occupancy grid, rover position, and uncertainty ellipse.
+- **SLAM Map Viewer**: Frontend component (`SlamMapViewer.tsx`) visualizes the occupancy grid, rover position, and uncertainty ellipse with real LIDAR data.
+- **360° Radar Scanner**: RadarScanner.tsx displays full 360° LIDAR point cloud with intensity-based coloring.
+- **LIDAR Obstacle Avoidance**: Integrated into RC control loop - automatically adjusts throttle/steering to avoid obstacles detected by 360° LIDAR.
 - **3D Simulation**: Three.js-based simulation with object detection overlay.
+
+### LIDAR API Endpoints
+- `/api/lidar/scan` - Full 360° point cloud data (angle, distance, intensity)
+- `/api/lidar/sectors` - Sector-based obstacle map (8 directional zones)
+- `/api/lidar/closest` - Nearest obstacle detection
+- `/api/lidar/obstacles` - Obstacles within specified range/angle
 
 ### System Design Choices
 - **Master Controller**: Mini PC (Intel Celeron) running Ubuntu, hosting the web server, WebSocket, and SLAM/EKF processes.
-- **Sensor Hub**: Arduino Mega 2560 handles sensor data acquisition (LIDAR, IMU, GPS, Ultrasonic, HuskyLens) and RC receiver input, communicating with the Mini PC via USB Serial.
+- **Sensor Hub**: Arduino Mega 2560 handles sensor data acquisition (IMU, GPS, Ultrasonic, HuskyLens) and RC receiver input, communicating with the Mini PC via USB Serial.
+- **360° LIDAR**: YDLIDAR T-mini Plus connected directly to Mini PC via USB (CP2102 chip, 230400 baud). Driver module (`ydlidar_driver.py`) handles full 360° scan parsing with XOR checksum validation, obstacle detection in 8 directional sectors, and real-time streaming via WebSocket.
 - **Motor Control**: Hoverboard FOC Controller connected via UART to the Arduino.
 
 ## External Dependencies
