@@ -88,11 +88,12 @@ export function useWebSocket(): UseWebSocketResult {
     }
 
     try {
+      console.log('Connecting to WebSocket:', wsUrl);
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
 
       ws.onopen = () => {
-        console.log('WebSocket connected');
+        console.log('WebSocket connected to:', wsUrl);
         setIsConnected(true);
         reconnectAttemptsRef.current = 0;
         setConnectionStatus(prev => ({
@@ -118,6 +119,7 @@ export function useWebSocket(): UseWebSocketResult {
       ws.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data);
+          console.log('WebSocket message received:', message.type, message);
           
           if (message.type === 'auth_required') {
             setSessionId(message.sessionId);
