@@ -60,8 +60,14 @@ class YDLidarDriver:
             )
             time.sleep(0.5)
             
-            self.serial.write(b'\xA5\x60')
+            # Enable DTR for data transmission (required for T-mini Plus)
+            self.serial.dtr = True
+            self.serial.rts = False
             time.sleep(0.1)
+            
+            # Send start scan command
+            self.serial.write(b'\xA5\x60')
+            time.sleep(0.5)
             
             self.connected = True
             self.running = True
