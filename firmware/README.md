@@ -78,7 +78,7 @@ Arduino Mega ──► UART (SoftwareSerial 10/11) ──► Hoverboard FOC Cont
 firmware/
 ├── arduino_mega_sensor_controller/
 │   └── arduino_mega_sensor_controller.ino  # Arduino firmware v3.0
-├── raspberry_pi_master/                    # Runs on Mini PC (Intel Celeron)
+├── mini_pc_master/                         # Runs on Mini PC (Intel Celeron)
 │   ├── rover_controller.py                 # Main controller
 │   ├── flysky_receiver.py                  # iBUS interface
 │   ├── pathfinding.py                      # Navigation
@@ -160,7 +160,7 @@ Open Serial Monitor at 115200 baud:
 ### Installation
 
 ```bash
-cd firmware/raspberry_pi_master
+cd firmware/mini_pc_master
 
 # Install dependencies
 pip install flask flask-cors flask-socketio pyserial
@@ -206,7 +206,7 @@ After=network.target
 [Service]
 Type=simple
 User=your_username
-WorkingDirectory=/home/your_username/firmware/raspberry_pi_master
+WorkingDirectory=/home/your_username/firmware/mini_pc_master
 ExecStart=/usr/bin/python3 rover_controller.py
 Restart=always
 
