@@ -27,8 +27,10 @@ export function getRoverWsUrl(): string {
     return `${protocol}//${window.location.host}/ws/telemetry`;
   }
   const wsProtocol = base.startsWith('https') ? 'wss:' : 'ws:';
-  const host = base.replace(/^https?:\/\//, '');
-  return `${wsProtocol}//${host}/ws/telemetry`;
+  // Extract host without port, then use port 5001 for WebSocket
+  const hostMatch = base.match(/^https?:\/\/([^:\/]+)/);
+  const host = hostMatch ? hostMatch[1] : 'localhost';
+  return `${wsProtocol}//${host}:5001`;
 }
 
 export function isRoverConfigured(): boolean {
