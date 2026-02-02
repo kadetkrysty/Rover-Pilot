@@ -41,12 +41,12 @@ def find_arduino_port():
     for port in ports:
         port_info = f"{port.device} {port.description} {port.manufacturer or ''}".lower()
         
-        # Skip if this is the LIDAR (CP2102)
-        if 'cp210' in port_info or 'cp2102' in port_info:
+        # Skip if this is the LIDAR (CP2102 / Silicon Labs)
+        if 'cp210' in port_info or 'silicon' in port_info:
             continue
         
-        # Look for Arduino identifiers
-        if 'ch340' in port_info or 'arduino' in port_info or 'ttyacm' in port_info:
+        # Look for Arduino identifiers (CH340 often shows as "USB2.0-Serial")
+        if 'ch340' in port_info or 'arduino' in port_info or 'ttyacm' in port_info or 'usb2.0-serial' in port_info:
             print(f"[ARDUINO] Found on {port.device} ({port.description})")
             return port.device
     
