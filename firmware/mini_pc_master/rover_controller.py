@@ -17,6 +17,8 @@ import time
 import threading
 import os
 import socket
+import signal
+import atexit
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit
@@ -579,6 +581,29 @@ if __name__ == '__main__':
     threading.Thread(target=read_telemetry_thread, daemon=True).start()
     threading.Thread(target=rc_control_thread, daemon=True).start()
     
+    # Cleanup function
+    def cleanup():
+        print("\n[SHUTDOWN] Stopping all devices...")
+        if lidar:
+            try:
+                lidar.disconnect()
+                print("[OK] LIDAR motor stopped")
+            except:
+                pass
+        if arduino:
+            try:
+                stop_rover()
+                arduino.close()
+                print("[OK] Arduino disconnected")
+            except:
+                pass
+        print("[OK] Goodbye")
+    
+    # Register cleanup handlers
+    atexit.register(cleanup)
+    signal.signal(signal.SIGTERM, lambda sig, frame: (cleanup(), exit(0)))
+    signal.signal(signal.SIGINT, lambda sig, frame: (cleanup(), exit(0)))
+    
     # Start server
     print(f"[INIT] Starting server on {WEB_HOST}:{WEB_PORT}")
     print("[INIT] API Endpoints:")
@@ -588,13 +613,4 @@ if __name__ == '__main__':
     print("       /api/lidar/closest - Closest obstacle")
     print("[INIT] Press Ctrl+C to stop\n")
     
-    try:
-        socketio.run(app, host=WEB_HOST, port=WEB_PORT, debug=False)
-    except KeyboardInterrupt:
-        print("\n[SHUTDOWN] Shutting down...")
-        if arduino:
-            stop_rover()
-            arduino.close()
-        if lidar:
-            lidar.disconnect()
-        print("[OK] Goodbye")
+    socketio.run(app, host=WEB_HOST, port=WEB_PORT, debug=False)
