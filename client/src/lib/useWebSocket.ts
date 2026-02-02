@@ -123,6 +123,8 @@ export function useWebSocket(): UseWebSocketResult {
           
           if (message.type === 'auth_required') {
             setSessionId(message.sessionId);
+            // Auto-authenticate as viewer
+            ws.send(JSON.stringify({ type: 'auth', role: 'viewer', token: '' }));
           } else if (message.type === 'auth_success') {
             setIsAuthenticated(true);
             setRole(message.role);
