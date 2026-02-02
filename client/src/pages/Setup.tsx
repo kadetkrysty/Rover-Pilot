@@ -39,7 +39,7 @@ export default function Setup() {
                 <CardContent className="space-y-4">
                     <div className="space-y-2">
                         <Label className="text-xs font-mono uppercase text-primary/70">Rover IP Address</Label>
-                        <Input defaultValue="192.168.1.100" className="font-mono bg-background/50 border-primary/30 focus:border-primary text-lg" data-testid="input-rover-ip" />
+                        <Input defaultValue="192.168.1.47" className="font-mono bg-background/50 border-primary/30 focus:border-primary text-lg" data-testid="input-rover-ip" />
                     </div>
                     <div className="space-y-2">
                          <Label className="text-xs font-mono uppercase text-primary/70">Port</Label>
