@@ -100,6 +100,7 @@ class YDLidarDriver:
         """Background thread to read and parse LIDAR data"""
         buffer = b''
         last_end_angle = 0
+        read_count = 0
         
         while self.running:
             try:
@@ -115,6 +116,10 @@ class YDLidarDriver:
                     break
                 if not chunk:
                     continue
+                
+                read_count += 1
+                if read_count % 100 == 1:
+                    print(f"[LIDAR] Read {len(chunk)} bytes, buffer size: {len(buffer)}, total points: {len(self.current_scan)}")
                     
                 buffer += chunk
                 
@@ -206,6 +211,7 @@ class YDLidarDriver:
                 )
                 
                 self.last_complete_scan = scan
+                print(f"[LIDAR] Complete scan: {len(scan.points)} points, {scan.scan_frequency:.1f} Hz")
                 
                 if self.scan_callback:
                     try:
