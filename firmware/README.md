@@ -5,26 +5,71 @@ This directory contains the firmware for the RoverOS autonomous rover system.
 ## System Architecture
 
 ```
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                              ROVER CONTROL SYSTEM                             │
+└──────────────────────────────────────────────────────────────────────────────┘
+
 ┌──────────────────┐      USB Serial      ┌──────────────────┐
 │    MINI PC       │◄────────────────────►│  ARDUINO MEGA    │
 │  Intel Celeron   │    115200 baud       │     2560         │
-│  Ubuntu          │                      │                  │
+│  Ubuntu 20.04    │                      │                  │
 │                  │                      │  Sensors:        │
 │  rover_controller│                      │  - TF Mini Pro   │
 │  WebSocket API   │                      │  - MPU6050       │
 │  SLAM/EKF        │                      │  - GPS Neo-6M    │
-│                  │                      │  - Ultrasonic x5 │
+│  Web Dashboard   │                      │  - Ultrasonic x5 │
 │                  │                      │  - HuskyLens     │
-│                  │                      │                  │
+│  Port 5000       │                      │                  │
 │                  │                      │  RC Control:     │
 │                  │                      │  - iBUS Protocol │
-└──────────────────┘                      └────────┬─────────┘
-                                                   │
-                                          ┌────────▼─────────┐
-                                          │ FlySky FS-IA10B  │
-                                          │   10-Channel     │
-                                          │   iBUS Receiver  │
-                                          └──────────────────┘
+└────────┬─────────┘                      └────────┬─────────┘
+         │                                         │
+         │  WebSocket                              │
+         │  (pan/tilt cmds)                        │
+         ▼                                         ▼
+┌──────────────────┐                      ┌──────────────────┐
+│  RASPBERRY PI    │                      │ FlySky FS-IA10B  │
+│    3 B+          │                      │   10-Channel     │
+│                  │                      │   iBUS Receiver  │
+│  Camera Pan/Tilt │                      └──────────────────┘
+│  Controller      │                               ▲
+│                  │                               │
+│  Port 5001       │                      ┌────────┴─────────┐
+└────────┬─────────┘                      │ FlySky FS-I6x    │
+         │                                │   Transmitter    │
+         │  SPI                           │   2.4GHz         │
+         ▼                                └──────────────────┘
+┌──────────────────┐
+│  SLUSHENGINE     │
+│  Model X LT      │
+│                  │
+│  Motor 1: Pan    │──► Pan Stepper Motor (±180°)
+│  Motor 2: Tilt   │──► Tilt Stepper Motor (±90°)
+│                  │
+│  12V Power       │
+└──────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                              MOTOR CONTROL SYSTEM                             │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+Arduino Mega ──► UART (SoftwareSerial 10/11) ──► Hoverboard FOC Controller
+                                                          │
+                                                          ├──► Left Wheel Motor
+                                                          └──► Right Wheel Motor
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                              POWER DISTRIBUTION                               │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+36V LiPo Battery ──┬──► Hoverboard Mainboard (36V direct)
+                   │
+                   └──► DC-DC Buck Converter (36V → 5V/5A)
+                              │
+                              ├──► Mini PC (USB-C PD)
+                              ├──► Arduino Mega (USB)
+                              ├──► Raspberry Pi 3 B+ (micro USB)
+                              └──► All 5V sensors
 ```
 
 ## Directory Structure
@@ -33,11 +78,15 @@ This directory contains the firmware for the RoverOS autonomous rover system.
 firmware/
 ├── arduino_mega_sensor_controller/
 │   └── arduino_mega_sensor_controller.ino  # Arduino firmware v3.0
-├── raspberry_pi_master/                    # Runs on Mini PC
+├── raspberry_pi_master/                    # Runs on Mini PC (Intel Celeron)
 │   ├── rover_controller.py                 # Main controller
 │   ├── flysky_receiver.py                  # iBUS interface
 │   ├── pathfinding.py                      # Navigation
 │   └── google_maps_integration.py          # Route planning
+├── raspberry_pi_camera_controller/         # Runs on Raspberry Pi 3 B+
+│   ├── camera_pantilt_controller.py        # Pan/Tilt motor control
+│   ├── install.sh                          # Setup script
+│   └── requirements.txt                    # Python dependencies
 └── README.md                               # This file
 ```
 
@@ -46,8 +95,10 @@ firmware/
 ### Controller Boards
 | Component | Description | Connection |
 |-----------|-------------|------------|
-| Mini PC (Intel Celeron) | Main controller, 8GB RAM, Ubuntu | USB to Arduino |
-| Arduino Mega 2560 | Sensor hub, iBUS receiver | USB Serial 115200 |
+| Mini PC (Intel Celeron) | Main controller, 8GB RAM, Ubuntu 20.04 | USB to Arduino, WebSocket to Raspberry Pi |
+| Arduino Mega 2560 | Sensor hub, iBUS receiver | USB Serial 115200 to Mini PC |
+| Raspberry Pi 3 B+ | Camera pan/tilt controller | WebSocket from Mini PC (port 5001) |
+| SlushEngine Model X LT | Stepper motor driver HAT | SPI to Raspberry Pi GPIO |
 
 ### Sensors
 | Sensor | Protocol | Arduino Pins | Purpose |
@@ -167,6 +218,102 @@ WantedBy=multi-user.target
 sudo systemctl enable rover
 sudo systemctl start rover
 ```
+
+---
+
+## Raspberry Pi Camera Controller Setup
+
+The Raspberry Pi 3 B+ controls the camera pan/tilt mechanism using the SlushEngine Model X LT stepper motor driver.
+
+### Prerequisites
+
+- Raspberry Pi 3 B+ (or newer)
+- Raspbian OS / Raspberry Pi OS
+- SlushEngine Model X LT HAT
+- Python 3.7+
+
+### Hardware Setup
+
+1. **Mount SlushEngine HAT** onto the Raspberry Pi GPIO header
+2. **Connect stepper motors**:
+   - Motor 1 (Port 1): Pan motor
+   - Motor 2 (Port 2): Tilt motor
+3. **Power**: Connect 12V power supply to SlushEngine
+
+### Installation
+
+```bash
+cd firmware/raspberry_pi_camera_controller
+
+# Run the install script
+chmod +x install.sh
+./install.sh
+
+# Or install manually:
+pip3 install -r requirements.txt
+
+# Enable SPI interface
+sudo raspi-config
+# Navigate to: Interface Options → SPI → Enable
+```
+
+### Running the Controller
+
+```bash
+python3 camera_pantilt_controller.py
+```
+
+Expected output:
+```
+============================================================
+  CAMERA PAN/TILT CONTROLLER v1.0.0
+  Raspberry Pi 3 B+ + SlushEngine Model X LT
+============================================================
+
+[OK] SlushEngine initialized
+[OK] Motor 1 (Pan) ready - Range: ±180°
+[OK] Motor 2 (Tilt) ready - Range: ±90°
+[INIT] Starting WebSocket server on 0.0.0.0:5001
+[INIT] Waiting for commands from Mini PC...
+```
+
+### Auto-Start on Boot
+
+```bash
+sudo nano /etc/systemd/system/camera-pantilt.service
+```
+
+```ini
+[Unit]
+Description=RoverOS Camera Pan/Tilt Controller
+After=network.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/firmware/raspberry_pi_camera_controller
+ExecStart=/usr/bin/python3 camera_pantilt_controller.py
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+sudo systemctl enable camera-pantilt
+sudo systemctl start camera-pantilt
+```
+
+### Network Configuration
+
+The camera controller listens on port 5001 for WebSocket commands from the Mini PC:
+
+| Command | Description | Parameters |
+|---------|-------------|------------|
+| `pan` | Rotate camera horizontally | `angle: -180 to 180` |
+| `tilt` | Rotate camera vertically | `angle: -90 to 90` |
+| `home` | Return to center position | None |
+| `stop` | Stop all motors | None |
 
 ---
 
