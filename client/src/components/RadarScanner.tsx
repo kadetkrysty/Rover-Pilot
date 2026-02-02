@@ -271,7 +271,43 @@ export default function RadarScanner({ ultrasonicData, lidarDistance, lidarScan,
       }
     });
 
-    if (lidarDistance > 0 && lidarDistance < MAX_RANGE) {
+    // Add LIDAR obstacles from 360° scan - group by 8 sectors and show closest in each
+    if (lidarScan && lidarScan.length > 0) {
+      const sectors: { [key: string]: { angle: number; distance: number; label: string } } = {};
+      const sectorNames = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+      
+      lidarScan.forEach(point => {
+        if (point.distance > 0 && point.distance < MAX_RANGE) {
+          // Determine sector (45° each)
+          const normalizedAngle = ((point.angle % 360) + 360) % 360;
+          const sectorIndex = Math.floor(((normalizedAngle + 22.5) % 360) / 45);
+          const sectorName = sectorNames[sectorIndex];
+          
+          // Keep closest obstacle in each sector
+          if (!sectors[sectorName] || point.distance < sectors[sectorName].distance) {
+            sectors[sectorName] = {
+              angle: normalizedAngle,
+              distance: point.distance,
+              label: `LIDAR-${sectorName}`,
+            };
+          }
+        }
+      });
+      
+      // Add sector obstacles to the list
+      Object.entries(sectors).forEach(([sectorName, data], index) => {
+        newObstacles.push({
+          id: `L${index + 1}`,
+          angle: data.angle,
+          distance: data.distance,
+          type: 'lidar',
+          label: data.label,
+          cardinal: sectorName,
+          timestamp: now,
+        });
+      });
+    } else if (lidarDistance > 0 && lidarDistance < MAX_RANGE) {
+      // Fallback to single LIDAR distance if no scan available
       newObstacles.push({
         id: 'L1',
         angle: 0,
@@ -284,7 +320,7 @@ export default function RadarScanner({ ultrasonicData, lidarDistance, lidarScan,
     }
 
     setObstacles(newObstacles);
-  }, [ultrasonicData, lidarDistance]);
+  }, [ultrasonicData, lidarDistance, lidarScan]);
 
   useEffect(() => {
     const interval = setInterval(() => {
