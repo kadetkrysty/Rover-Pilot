@@ -187,11 +187,11 @@ class YDLidarDriver:
                     with self._lock:
                         self.current_scan.extend(points)
                         
-                        # Complete scan on angle wrap-around OR time-based (every ~0.5s)
+                        # Complete scan on angle wrap-around OR time-based (every ~0.2s)
                         should_complete = False
                         if end_angle < last_end_angle and end_angle < 90 and last_end_angle > 270:
                             should_complete = True
-                        elif len(self.current_scan) >= 200 and (time.time() - self.scan_start_time) > 0.1:
+                        elif len(self.current_scan) >= 50 and (time.time() - self.scan_start_time) > 0.2:
                             should_complete = True
                     
                     if should_complete:
