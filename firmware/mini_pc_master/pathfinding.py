@@ -453,6 +453,144 @@ class ObstacleAvoidance:
             return max_speed // 2
         else:
             return max_speed
+    
+    @staticmethod
+    def get_lidar_360_obstacle_map(lidar_sectors: list) -> dict:
+        """
+        Generate obstacle map from 360° LIDAR sector data
+        
+        Args:
+            lidar_sectors: List of dicts with 'start_angle', 'end_angle', 'min_distance', 'avg_distance'
+        
+        Returns: Obstacle map with directional zones
+        """
+        NO_OBSTACLE = 12000
+        
+        sector_map = {
+            'front': {'angles': (337.5, 22.5), 'distance': NO_OBSTACLE, 'status': 'clear'},
+            'front_right': {'angles': (22.5, 67.5), 'distance': NO_OBSTACLE, 'status': 'clear'},
+            'right': {'angles': (67.5, 112.5), 'distance': NO_OBSTACLE, 'status': 'clear'},
+            'rear_right': {'angles': (112.5, 157.5), 'distance': NO_OBSTACLE, 'status': 'clear'},
+            'rear': {'angles': (157.5, 202.5), 'distance': NO_OBSTACLE, 'status': 'clear'},
+            'rear_left': {'angles': (202.5, 247.5), 'distance': NO_OBSTACLE, 'status': 'clear'},
+            'left': {'angles': (247.5, 292.5), 'distance': NO_OBSTACLE, 'status': 'clear'},
+            'front_left': {'angles': (292.5, 337.5), 'distance': NO_OBSTACLE, 'status': 'clear'},
+        }
+        
+        for sector in lidar_sectors:
+            center_angle = (sector['start_angle'] + sector['end_angle']) / 2
+            min_dist = sector.get('min_distance')
+            
+            if min_dist is None or min_dist < 10:
+                continue
+            
+            for zone_name, zone_data in sector_map.items():
+                start, end = zone_data['angles']
+                
+                if start > end:
+                    in_zone = center_angle >= start or center_angle < end
+                else:
+                    in_zone = start <= center_angle < end
+                
+                if in_zone and min_dist < zone_data['distance']:
+                    zone_data['distance'] = min_dist
+                    
+                    if min_dist < ObstacleAvoidance.EMERGENCY_THRESHOLD * 10:
+                        zone_data['status'] = 'emergency'
+                    elif min_dist < ObstacleAvoidance.CLOSE_THRESHOLD * 10:
+                        zone_data['status'] = 'close'
+                    elif min_dist < ObstacleAvoidance.CAUTION_THRESHOLD * 10:
+                        zone_data['status'] = 'caution'
+        
+        return sector_map
+    
+    @staticmethod
+    def get_avoidance_from_lidar_360(lidar_sectors: list,
+                                      current_throttle: int = 70,
+                                      current_steering: int = 0) -> tuple:
+        """
+        Calculate avoidance maneuver using full 360° LIDAR scan
+        
+        Args:
+            lidar_sectors: Sector data from YDLIDAR T-mini Plus
+            current_throttle: Current throttle value
+            current_steering: Current steering value
+        
+        Returns: (throttle, steering, action_description)
+        """
+        obstacle_map = ObstacleAvoidance.get_lidar_360_obstacle_map(lidar_sectors)
+        
+        front = obstacle_map['front']['distance']
+        front_left = obstacle_map['front_left']['distance']
+        front_right = obstacle_map['front_right']['distance']
+        left = obstacle_map['left']['distance']
+        right = obstacle_map['right']['distance']
+        
+        emergency_mm = ObstacleAvoidance.EMERGENCY_THRESHOLD * 10
+        close_mm = ObstacleAvoidance.CLOSE_THRESHOLD * 10
+        caution_mm = ObstacleAvoidance.CAUTION_THRESHOLD * 10
+        
+        front_min = min(front, front_left, front_right)
+        
+        if front_min < emergency_mm:
+            return (0, 0, "LIDAR_EMERGENCY_STOP")
+        
+        if front_min < close_mm:
+            throttle = max(20, current_throttle // 3)
+            
+            left_space = (front_left + left) / 2
+            right_space = (front_right + right) / 2
+            
+            if left_space > right_space + 200:
+                steering = -80
+                action = "LIDAR_AVOID_LEFT"
+            elif right_space > left_space + 200:
+                steering = 80
+                action = "LIDAR_AVOID_RIGHT"
+            else:
+                throttle = -30
+                steering = 50 if right_space > left_space else -50
+                action = "LIDAR_BACKUP"
+            
+            return (throttle, steering, action)
+        
+        if front_min < caution_mm:
+            throttle = max(40, int(current_throttle * 0.6))
+            
+            left_space = (front_left + left) / 2
+            right_space = (front_right + right) / 2
+            
+            if left_space > right_space + 100:
+                steering = max(-50, current_steering - 25)
+                action = "LIDAR_ADJUST_LEFT"
+            elif right_space > left_space + 100:
+                steering = min(50, current_steering + 25)
+                action = "LIDAR_ADJUST_RIGHT"
+            else:
+                steering = current_steering
+                action = "LIDAR_SLOW"
+            
+            return (throttle, steering, action)
+        
+        return (current_throttle, current_steering, "LIDAR_CLEAR")
+    
+    @staticmethod
+    def find_best_escape_direction(lidar_sectors: list) -> tuple:
+        """
+        Find the best direction to escape from obstacles using 360° LIDAR
+        
+        Returns: (best_angle, max_distance)
+        """
+        best_angle = 0
+        max_distance = 0
+        
+        for sector in lidar_sectors:
+            avg_dist = sector.get('avg_distance', 0)
+            if avg_dist > max_distance:
+                max_distance = avg_dist
+                best_angle = (sector['start_angle'] + sector['end_angle']) / 2
+        
+        return (best_angle, max_distance)
 
 
 # Example usage

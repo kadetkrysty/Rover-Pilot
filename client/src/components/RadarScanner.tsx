@@ -5,9 +5,16 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Maximize2, X } from 'lucide-react';
 import { usePerformanceSettings } from '@/lib/performanceSettings';
 
+interface LidarPoint {
+  angle: number;
+  distance: number;
+  intensity?: number;
+}
+
 interface RadarScannerProps {
   ultrasonicData: [number, number, number, number, number];
   lidarDistance: number;
+  lidarScan?: LidarPoint[];
   className?: string;
 }
 
@@ -38,6 +45,7 @@ const ULTRASONIC_ANGLES = [
 ];
 
 const MAX_RANGE = 600;
+const LIDAR_MAX_RANGE = 6000;
 const FADE_DURATION = 2000;
 
 const ULTRASONIC_IDS = ['U1', 'U2', 'U3', 'U4', 'U5'];
@@ -46,7 +54,8 @@ function renderRadar(
   canvas: HTMLCanvasElement,
   displaySize: number,
   sweepAngle: number,
-  obstacles: ObstaclePoint[]
+  obstacles: ObstaclePoint[],
+  lidarScan?: LidarPoint[]
 ) {
   const ctx = canvas.getContext('2d');
   if (!ctx || displaySize < 50) return;
@@ -152,6 +161,27 @@ function renderRadar(
     ctx.fillText(obstacle.id, pointX, pointY - 10);
   });
 
+  if (lidarScan && lidarScan.length > 0) {
+    ctx.globalAlpha = 0.6;
+    lidarScan.forEach(point => {
+      if (point.distance > 0 && point.distance < LIDAR_MAX_RANGE) {
+        const angleRad = (point.angle - 90) * (Math.PI / 180);
+        const distRatio = Math.min(point.distance / LIDAR_MAX_RANGE, 1);
+        const pointX = centerX + Math.cos(angleRad) * (distRatio * maxRadius);
+        const pointY = centerY + Math.sin(angleRad) * (distRatio * maxRadius);
+
+        const intensity = point.intensity || 100;
+        const brightness = Math.min(255, intensity * 2);
+        ctx.fillStyle = `rgb(${brightness}, ${Math.floor(brightness * 0.8)}, 255)`;
+        
+        ctx.beginPath();
+        ctx.arc(pointX, pointY, 1.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    });
+    ctx.globalAlpha = 1.0;
+  }
+
   ctx.fillStyle = 'rgba(0, 255, 200, 0.8)';
   ctx.beginPath();
   ctx.arc(centerX, centerY, 4, 0, Math.PI * 2);
@@ -181,7 +211,7 @@ function getCardinalDirection(angle: number): string {
   return 'N';
 }
 
-export default function RadarScanner({ ultrasonicData, lidarDistance, className }: RadarScannerProps) {
+export default function RadarScanner({ ultrasonicData, lidarDistance, lidarScan, className }: RadarScannerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fullscreenCanvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -274,16 +304,16 @@ export default function RadarScanner({ ultrasonicData, lidarDistance, className 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (canvas && size >= 50) {
-      renderRadar(canvas, size, sweepAngle, obstacles);
+      renderRadar(canvas, size, sweepAngle, obstacles, lidarScan);
     }
-  }, [size, sweepAngle, obstacles]);
+  }, [size, sweepAngle, obstacles, lidarScan]);
 
   useEffect(() => {
     const canvas = fullscreenCanvasRef.current;
     if (canvas && isFullscreen && fullscreenSize >= 50) {
-      renderRadar(canvas, fullscreenSize, sweepAngle, obstacles);
+      renderRadar(canvas, fullscreenSize, sweepAngle, obstacles, lidarScan);
     }
-  }, [fullscreenSize, sweepAngle, obstacles, isFullscreen]);
+  }, [fullscreenSize, sweepAngle, obstacles, isFullscreen, lidarScan]);
 
   const { ultrasonicObstacles, lidarObstacles } = useMemo(() => {
     const now = Date.now();

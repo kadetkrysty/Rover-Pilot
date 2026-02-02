@@ -23,6 +23,7 @@ from flask_socketio import SocketIO, emit
 from datetime import datetime
 import math
 from pathfinding import GPSPoint, WaypointRouter, ObstacleAvoidance
+from ydlidar_driver import YDLidarDriver, find_lidar_port, LidarScan
 
 # ===== CONFIGURATION =====
 ARDUINO_BAUD = 115200
@@ -208,6 +209,42 @@ router = WaypointRouter()
 arduino = None
 arduino_port = None
 
+# ===== YDLIDAR 360° SCANNER =====
+lidar = None
+lidar_port = None
+
+def connect_lidar():
+    """Connect to YDLIDAR T-mini Plus"""
+    global lidar, lidar_port
+    
+    lidar_port = find_lidar_port()
+    
+    if lidar_port is None:
+        print("[LIDAR] No YDLIDAR found!")
+        return False
+    
+    try:
+        lidar = YDLidarDriver(lidar_port)
+        
+        def on_lidar_scan(scan: LidarScan):
+            """Callback for each complete LIDAR scan"""
+            if socketio and scan.points:
+                scan_data = lidar.get_scan_dict()
+                socketio.emit('lidar_scan', scan_data)
+        
+        lidar.set_scan_callback(on_lidar_scan)
+        
+        if lidar.connect():
+            print(f"[OK] YDLIDAR connected on {lidar_port}")
+            return True
+        else:
+            print("[ERROR] Failed to start YDLIDAR")
+            return False
+            
+    except Exception as e:
+        print(f"[ERROR] LIDAR connection failed: {e}")
+        return False
+
 # ===== ARDUINO COMMUNICATION =====
 def connect_arduino():
     """Establish connection to Arduino"""
@@ -270,25 +307,34 @@ def send_command(cmd):
 
 # ===== RC CONTROL THREAD =====
 def rc_control_thread():
-    """Background thread for RC control via iBUS"""
+    """Background thread for RC control via iBUS with LIDAR obstacle avoidance"""
     while True:
         try:
             if rover.mode == "RC" and rover.ibus_connected:
                 throttle, steering = rover.get_rc_control()
                 
-                # Dead zone
                 if abs(throttle) < 5:
                     throttle = 0
                 if abs(steering) < 5:
                     steering = 0
                 
-                # Send to motors
+                if lidar and lidar.connected and throttle > 0:
+                    sectors = lidar.get_sector_distances(8)
+                    if sectors:
+                        new_throttle, new_steering, action = ObstacleAvoidance.get_avoidance_from_lidar_360(
+                            sectors, throttle, steering
+                        )
+                        if action != "LIDAR_CLEAR":
+                            print(f"[LIDAR] {action}: T={new_throttle} S={new_steering}")
+                            throttle = new_throttle
+                            steering = new_steering
+                
                 drive_rover(throttle, steering)
                 
         except Exception as e:
             print(f"[ERROR] RC control: {e}")
         
-        time.sleep(0.05)  # 20Hz control loop
+        time.sleep(0.05)
 
 # ===== CONTROL LOGIC =====
 def drive_rover(throttle, steering):
@@ -367,6 +413,8 @@ def status():
     return jsonify({
         'arduino_connected': rover.connected,
         'arduino_port': arduino_port,
+        'lidar_connected': lidar.connected if lidar else False,
+        'lidar_port': lidar_port,
         'ibus_connected': rover.ibus_connected,
         'mode': rover.mode,
         'host': rover.host_type,
@@ -388,7 +436,7 @@ def system_info():
         'rc_receiver': 'FlySky FS-IA10B (iBUS)',
         'rc_transmitter': 'FlySky FS-I6x',
         'sensors': {
-            'lidar': 'TF Mini Pro',
+            'lidar_360': 'YDLIDAR T-mini Plus',
             'camera': 'HuskyLens AI',
             'imu': 'MPU6050',
             'gps': 'Neo-6M',
@@ -400,6 +448,64 @@ def system_info():
 def logs():
     """Get telemetry logs"""
     return jsonify({'logs': rover.telemetry_log})
+
+# ===== LIDAR 360° API =====
+@app.route('/api/lidar/scan', methods=['GET'])
+def get_lidar_scan():
+    """Get full 360° LIDAR scan data"""
+    if not lidar:
+        return jsonify({'error': 'LIDAR not connected', 'points': []}), 503
+    
+    return jsonify(lidar.get_scan_dict())
+
+@app.route('/api/lidar/sectors', methods=['GET'])
+def get_lidar_sectors():
+    """Get LIDAR data grouped by angular sectors"""
+    if not lidar:
+        return jsonify({'error': 'LIDAR not connected', 'sectors': []}), 503
+    
+    num_sectors = request.args.get('sectors', 8, type=int)
+    return jsonify({
+        'connected': lidar.connected,
+        'sectors': lidar.get_sector_distances(num_sectors)
+    })
+
+@app.route('/api/lidar/closest', methods=['GET'])
+def get_lidar_closest():
+    """Get closest obstacle from LIDAR"""
+    if not lidar:
+        return jsonify({'error': 'LIDAR not connected'}), 503
+    
+    closest = lidar.get_closest_obstacle()
+    if closest:
+        return jsonify({
+            'connected': True,
+            'angle': round(closest.angle, 1),
+            'distance': closest.distance,
+            'intensity': closest.intensity
+        })
+    return jsonify({'connected': True, 'angle': None, 'distance': None})
+
+@app.route('/api/lidar/obstacles', methods=['GET'])
+def get_lidar_obstacles():
+    """Get obstacles within specified range"""
+    if not lidar:
+        return jsonify({'error': 'LIDAR not connected', 'obstacles': []}), 503
+    
+    min_angle = request.args.get('min_angle', 0, type=float)
+    max_angle = request.args.get('max_angle', 360, type=float)
+    max_distance = request.args.get('max_distance', 2000, type=float)
+    
+    obstacles = lidar.get_obstacles_in_range(min_angle, max_angle, max_distance)
+    
+    return jsonify({
+        'connected': lidar.connected,
+        'count': len(obstacles),
+        'obstacles': [
+            {'angle': round(o.angle, 1), 'distance': o.distance, 'intensity': o.intensity}
+            for o in obstacles
+        ]
+    })
 
 # ===== WAYPOINT NAVIGATION API =====
 @app.route('/api/navigation/waypoints', methods=['GET'])
@@ -458,11 +564,16 @@ if __name__ == '__main__':
     print("  ROVER MASTER CONTROLLER v3.0.0")
     print("  Mini PC Host - Ubuntu / Intel Celeron")
     print("  RC: FlySky FS-I6x + FS-IA10B (iBUS Protocol)")
+    print("  LIDAR: YDLIDAR T-mini Plus (360° Scanner)")
     print("="*60 + "\n")
     
     # Connect to Arduino
     if not connect_arduino():
-        print("[WARN] Running in demo mode...")
+        print("[WARN] Arduino not found, running in demo mode...")
+    
+    # Connect to YDLIDAR
+    if not connect_lidar():
+        print("[WARN] LIDAR not found, SLAM disabled...")
     
     # Start background threads
     threading.Thread(target=read_telemetry_thread, daemon=True).start()
@@ -470,6 +581,11 @@ if __name__ == '__main__':
     
     # Start server
     print(f"[INIT] Starting server on {WEB_HOST}:{WEB_PORT}")
+    print("[INIT] API Endpoints:")
+    print("       /api/telemetry     - Rover telemetry")
+    print("       /api/lidar/scan    - 360° LIDAR scan")
+    print("       /api/lidar/sectors - Sector distances")
+    print("       /api/lidar/closest - Closest obstacle")
     print("[INIT] Press Ctrl+C to stop\n")
     
     try:
@@ -479,4 +595,6 @@ if __name__ == '__main__':
         if arduino:
             stop_rover()
             arduino.close()
+        if lidar:
+            lidar.disconnect()
         print("[OK] Goodbye")

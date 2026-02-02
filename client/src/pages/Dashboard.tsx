@@ -1,5 +1,6 @@
 import { useRoverData } from '@/lib/mockData';
 import { useLocation } from '@/hooks/useLocation';
+import { useWebSocket } from '@/lib/useWebSocket';
 import CameraFeed from '@/components/CameraFeed';
 import SensorStatus from '@/components/SensorStatus';
 import RadarScanner from '@/components/RadarScanner';
@@ -14,6 +15,7 @@ import { Gauge, Compass, Activity } from 'lucide-react';
 export default function Dashboard() {
   const data = useRoverData();
   const location = useLocation();
+  const { lidarScans } = useWebSocket();
   const { data: joystickData, handleHeadingChange, reset } = useJoystickData();
 
   return (
@@ -55,6 +57,7 @@ export default function Dashboard() {
             <RadarScanner 
               ultrasonicData={data.sensors.ultrasonic}
               lidarDistance={data.lidarDistance}
+              lidarScan={lidarScans}
             />
           </div>
         </div>
@@ -213,6 +216,7 @@ export default function Dashboard() {
             <RadarScanner 
               ultrasonicData={data.sensors.ultrasonic}
               lidarDistance={data.lidarDistance}
+              lidarScan={lidarScans}
             />
           </div>
             
@@ -292,6 +296,7 @@ export default function Dashboard() {
           <RadarScanner 
             ultrasonicData={data.sensors.ultrasonic}
             lidarDistance={data.lidarDistance}
+            lidarScan={lidarScans}
           />
         </div>
         

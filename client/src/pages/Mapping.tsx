@@ -68,7 +68,7 @@ export default function Mapping() {
               <h2 className="text-sm font-display text-primary mb-4">RAW SENSOR DATA</h2>
               <div className="grid grid-cols-2 gap-4">
                 <Card className="p-4 bg-card/50">
-                  <h3 className="text-xs font-mono text-primary/70 mb-3">LIDAR (TF Mini Pro)</h3>
+                  <h3 className="text-xs font-mono text-primary/70 mb-3">LIDAR (YDLIDAR T-mini Plus - 360°)</h3>
                   <div className="relative h-48 bg-black/50 rounded flex items-center justify-center">
                     <div className="relative w-40 h-40">
                       <div className="absolute inset-0 border border-primary/30 rounded-full"></div>

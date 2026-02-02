@@ -27,6 +27,12 @@ export interface SystemStatus {
   batteryMonitor: boolean;
 }
 
+export interface LidarPoint {
+  angle: number;
+  distance: number;
+  intensity?: number;
+}
+
 export interface RoverData {
   speed: number;
   heading: number;
@@ -34,6 +40,7 @@ export interface RoverData {
   roll: number;
   gps: { lat: number; lng: number };
   lidarDistance: number;
+  lidarScan?: LidarPoint[];
   sensors: {
     ultrasonic: [number, number, number, number, number];
     huskyLens: boolean;
