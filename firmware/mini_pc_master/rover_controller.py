@@ -625,11 +625,11 @@ async def ws_broadcast_loop():
             
             # Broadcast LIDAR if available
             lidar_msg = None
-            if lidar and lidar.latest_scan:
-                scan = lidar.latest_scan
+            if lidar and lidar.last_complete_scan:
+                scan = lidar.last_complete_scan
                 lidar_msg = json.dumps({
                     'type': 'lidar_scan',
-                    'data': [{'angle': p[0], 'distance': p[1], 'timestamp': time.time()} 
+                    'data': [{'angle': p.angle, 'distance': p.distance, 'timestamp': time.time()} 
                              for p in scan.points[:360]]
                 })
             
