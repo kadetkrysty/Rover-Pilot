@@ -134,11 +134,9 @@ export function useWebSocket(): UseWebSocketResult {
           } else if (message.type === 'telemetry' && message.data) {
             setTelemetry(message.data as TelemetryData);
           } else if (message.type === 'lidar_scan' && message.data) {
+            // Replace with new scan data (not accumulate)
             const scans = message.data as LidarScan[];
-            setLidarScans(prev => {
-              const combined = [...scans, ...prev];
-              return combined.slice(0, 360);
-            });
+            setLidarScans(scans);
           } else if (message.type === 'pong') {
             const latency = Date.now() - lastPingRef.current;
             setConnectionStatus(prev => ({ ...prev, latency }));
