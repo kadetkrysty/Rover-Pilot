@@ -71,8 +71,18 @@ export function useWebSocket(): UseWebSocketResult {
       return;
     }
 
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/ws/telemetry`;
+    // Check for custom rover URL in localStorage
+    const roverUrl = localStorage.getItem('rover_api_url');
+    let wsUrl: string;
+    
+    if (roverUrl) {
+      const wsProtocol = roverUrl.startsWith('https') ? 'wss:' : 'ws:';
+      const host = roverUrl.replace(/^https?:\/\//, '');
+      wsUrl = `${wsProtocol}//${host}/ws/telemetry`;
+    } else {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      wsUrl = `${protocol}//${window.location.host}/ws/telemetry`;
+    }
 
     try {
       const ws = new WebSocket(wsUrl);

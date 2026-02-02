@@ -3,17 +3,53 @@ import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Wifi, ArrowLeft, Cpu } from 'lucide-react';
-import { useState } from 'react';
+import { Wifi, ArrowLeft, Cpu, CheckCircle, XCircle } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { getRoverUrl, setRoverUrl } from '@/lib/roverConnection';
 
 export default function Setup() {
     const [connecting, setConnecting] = useState(false);
+    const [roverIp, setRoverIp] = useState('192.168.1.47');
+    const [roverPort, setRoverPort] = useState('5000');
+    const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
+
+    useEffect(() => {
+        const saved = getRoverUrl();
+        if (saved) {
+            const match = saved.match(/^https?:\/\/([^:]+):(\d+)/);
+            if (match) {
+                setRoverIp(match[1]);
+                setRoverPort(match[2]);
+            }
+        }
+    }, []);
+
+    const handleTestConnection = async () => {
+        setTestStatus('testing');
+        const url = `http://${roverIp}:${roverPort}`;
+        try {
+            const response = await fetch(`${url}/api/system`, { 
+                method: 'GET',
+                mode: 'cors',
+                signal: AbortSignal.timeout(5000)
+            });
+            if (response.ok) {
+                setTestStatus('success');
+            } else {
+                setTestStatus('error');
+            }
+        } catch {
+            setTestStatus('error');
+        }
+    };
 
     const handleConnect = () => {
         setConnecting(true);
+        const url = `http://${roverIp}:${roverPort}`;
+        setRoverUrl(url);
         setTimeout(() => {
             window.location.href = '/';
-        }, 2000);
+        }, 1000);
     };
 
     return (
@@ -39,12 +75,35 @@ export default function Setup() {
                 <CardContent className="space-y-4">
                     <div className="space-y-2">
                         <Label className="text-xs font-mono uppercase text-primary/70">Rover IP Address</Label>
-                        <Input defaultValue="192.168.1.47" className="font-mono bg-background/50 border-primary/30 focus:border-primary text-lg" data-testid="input-rover-ip" />
+                        <Input 
+                            value={roverIp}
+                            onChange={(e) => setRoverIp(e.target.value)}
+                            className="font-mono bg-background/50 border-primary/30 focus:border-primary text-lg" 
+                            data-testid="input-rover-ip" 
+                        />
                     </div>
                     <div className="space-y-2">
                          <Label className="text-xs font-mono uppercase text-primary/70">Port</Label>
-                        <Input defaultValue="5000" className="font-mono bg-background/50 border-primary/30 focus:border-primary text-lg" data-testid="input-rover-port" />
+                        <Input 
+                            value={roverPort}
+                            onChange={(e) => setRoverPort(e.target.value)}
+                            className="font-mono bg-background/50 border-primary/30 focus:border-primary text-lg" 
+                            data-testid="input-rover-port" 
+                        />
                     </div>
+                    
+                    <Button 
+                        variant="outline"
+                        className="w-full font-mono text-xs border-primary/50"
+                        onClick={handleTestConnection}
+                        disabled={testStatus === 'testing'}
+                        data-testid="button-test-connection"
+                    >
+                        {testStatus === 'testing' && "TESTING..."}
+                        {testStatus === 'idle' && "TEST CONNECTION"}
+                        {testStatus === 'success' && <><CheckCircle className="w-4 h-4 mr-2 text-green-500" /> CONNECTION OK</>}
+                        {testStatus === 'error' && <><XCircle className="w-4 h-4 mr-2 text-red-500" /> CONNECTION FAILED</>}
+                    </Button>
                     
                     <div className="p-4 rounded bg-primary/5 border border-primary/20 mt-6">
                         <div className="flex items-center gap-2 text-primary text-sm font-bold mb-2">
