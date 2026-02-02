@@ -58,16 +58,28 @@ class YDLidarDriver:
                 self.baudrate, 
                 timeout=1
             )
-            time.sleep(0.5)
             
             # Enable DTR for data transmission (required for T-mini Plus)
             self.serial.dtr = True
             self.serial.rts = False
-            time.sleep(0.1)
+            time.sleep(0.2)
+            
+            # Flush any stale data
+            self.serial.reset_input_buffer()
+            self.serial.reset_output_buffer()
+            
+            # Send stop command first (in case it was running)
+            self.serial.write(b'\xA5\x65')
+            time.sleep(0.2)
+            self.serial.reset_input_buffer()
             
             # Send start scan command
             self.serial.write(b'\xA5\x60')
-            time.sleep(0.5)
+            time.sleep(1.0)  # Wait for LIDAR to spin up and start sending data
+            
+            # Check if data is coming
+            bytes_waiting = self.serial.in_waiting
+            print(f"[LIDAR] Initial bytes waiting: {bytes_waiting}")
             
             self.connected = True
             self.running = True
