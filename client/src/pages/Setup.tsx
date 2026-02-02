@@ -28,7 +28,7 @@ export default function Setup() {
         setTestStatus('testing');
         const url = `http://${roverIp}:${roverPort}`;
         try {
-            const response = await fetch(`${url}/api/system`, { 
+            const response = await fetch(`${url}/api/telemetry`, { 
                 method: 'GET',
                 mode: 'cors',
                 signal: AbortSignal.timeout(5000)
