@@ -19,6 +19,7 @@ import os
 import socket
 import signal
 import atexit
+import asyncio
 from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit
@@ -27,8 +28,18 @@ import math
 from pathfinding import GPSPoint, WaypointRouter, ObstacleAvoidance
 from ydlidar_driver import YDLidarDriver, find_lidar_port, LidarScan
 
+# Try to import websockets for plain WebSocket support
+try:
+    import websockets
+    from websockets.server import serve as ws_serve
+    WEBSOCKETS_AVAILABLE = True
+except ImportError:
+    WEBSOCKETS_AVAILABLE = False
+    print("[WARN] websockets library not installed. Run: pip install websockets")
+
 # ===== CONFIGURATION =====
 ARDUINO_BAUD = 115200
+WS_PORT = 5001  # Plain WebSocket port for /ws/telemetry
 WEB_HOST = '0.0.0.0'
 WEB_PORT = 5000  # Match main web server port
 
@@ -559,6 +570,106 @@ def handle_command(data):
     elif cmd_type == 'mode':
         rover.mode = data.get('mode', 'MANUAL')
 
+# ===== PLAIN WEBSOCKET SERVER (for RoverOS app) =====
+ws_clients = set()
+
+async def ws_handler(websocket, path):
+    """Handle plain WebSocket connections from RoverOS app"""
+    client_id = id(websocket)
+    ws_clients.add(websocket)
+    print(f"[WS-PLAIN] Client {client_id} connected from {websocket.remote_address}")
+    
+    try:
+        # Send initial status
+        await websocket.send(json.dumps({
+            'type': 'auth_required',
+            'sessionId': f'ws_{client_id}'
+        }))
+        
+        async for message in websocket:
+            try:
+                data = json.loads(message)
+                msg_type = data.get('type')
+                
+                if msg_type == 'auth':
+                    # Auto-authenticate as viewer (no token required for now)
+                    await websocket.send(json.dumps({
+                        'type': 'auth_success',
+                        'role': data.get('role', 'viewer')
+                    }))
+                elif msg_type == 'ping':
+                    await websocket.send(json.dumps({'type': 'pong'}))
+                elif msg_type == 'command':
+                    cmd = data.get('command', {})
+                    if cmd.get('type') == 'move':
+                        drive_rover(cmd.get('throttle', 0), cmd.get('steering', 0))
+                    elif cmd.get('type') == 'stop':
+                        stop_rover()
+            except json.JSONDecodeError:
+                pass
+    except websockets.exceptions.ConnectionClosed:
+        pass
+    finally:
+        ws_clients.discard(websocket)
+        print(f"[WS-PLAIN] Client {client_id} disconnected")
+
+async def ws_broadcast_loop():
+    """Broadcast telemetry and LIDAR data to all plain WebSocket clients"""
+    while True:
+        if ws_clients:
+            # Broadcast telemetry
+            telemetry_msg = json.dumps({
+                'type': 'telemetry',
+                'data': rover.to_dict()
+            })
+            
+            # Broadcast LIDAR if available
+            lidar_msg = None
+            if lidar and lidar.latest_scan:
+                scan = lidar.latest_scan
+                lidar_msg = json.dumps({
+                    'type': 'lidar_scan',
+                    'data': [{'angle': p[0], 'distance': p[1], 'timestamp': time.time()} 
+                             for p in scan.points[:360]]
+                })
+            
+            # Send to all clients
+            disconnected = set()
+            for client in ws_clients:
+                try:
+                    await client.send(telemetry_msg)
+                    if lidar_msg:
+                        await client.send(lidar_msg)
+                except:
+                    disconnected.add(client)
+            
+            ws_clients.difference_update(disconnected)
+        
+        await asyncio.sleep(0.1)  # 10 Hz update rate
+
+def run_ws_server():
+    """Run plain WebSocket server in separate thread"""
+    if not WEBSOCKETS_AVAILABLE:
+        print("[WARN] Plain WebSocket server disabled (websockets not installed)")
+        return
+    
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    
+    async def start_server():
+        server = await ws_serve(ws_handler, WEB_HOST, WS_PORT)
+        print(f"[WS-PLAIN] Plain WebSocket server on ws://{WEB_HOST}:{WS_PORT}/ws/telemetry")
+        
+        # Start broadcast loop
+        broadcast_task = asyncio.create_task(ws_broadcast_loop())
+        
+        await server.wait_closed()
+    
+    try:
+        loop.run_until_complete(start_server())
+    except Exception as e:
+        print(f"[ERROR] Plain WebSocket server failed: {e}")
+
 # ===== MAIN =====
 if __name__ == '__main__':
     print("\n" + "="*60)
@@ -579,6 +690,10 @@ if __name__ == '__main__':
     # Start background threads
     threading.Thread(target=read_telemetry_thread, daemon=True).start()
     threading.Thread(target=rc_control_thread, daemon=True).start()
+    
+    # Start plain WebSocket server for RoverOS app
+    if WEBSOCKETS_AVAILABLE:
+        threading.Thread(target=run_ws_server, daemon=True).start()
     
     # Cleanup function
     def cleanup():
@@ -610,6 +725,8 @@ if __name__ == '__main__':
     print("       /api/lidar/scan    - 360° LIDAR scan")
     print("       /api/lidar/sectors - Sector distances")
     print("       /api/lidar/closest - Closest obstacle")
+    if WEBSOCKETS_AVAILABLE:
+        print(f"[INIT] WebSocket: ws://{WEB_HOST}:{WS_PORT} (plain WebSocket for RoverOS)")
     print("[INIT] Press Ctrl+C to stop\n")
     
     socketio.run(app, host=WEB_HOST, port=WEB_PORT, debug=False)

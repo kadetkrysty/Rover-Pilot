@@ -76,10 +76,13 @@ export function useWebSocket(): UseWebSocketResult {
     let wsUrl: string;
     
     if (roverUrl) {
+      // For remote rover, connect to WebSocket on port 5001
       const wsProtocol = roverUrl.startsWith('https') ? 'wss:' : 'ws:';
-      const host = roverUrl.replace(/^https?:\/\//, '');
-      wsUrl = `${wsProtocol}//${host}/ws/telemetry`;
+      const hostMatch = roverUrl.match(/^https?:\/\/([^:\/]+)/);
+      const host = hostMatch ? hostMatch[1] : 'localhost';
+      wsUrl = `${wsProtocol}//${host}:5001`;
     } else {
+      // For local development, use same host
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       wsUrl = `${protocol}//${window.location.host}/ws/telemetry`;
     }
