@@ -660,10 +660,11 @@ def run_ws_server():
         server = await ws_serve(ws_handler, WEB_HOST, WS_PORT)
         print(f"[WS-PLAIN] Plain WebSocket server on ws://{WEB_HOST}:{WS_PORT}/ws/telemetry")
         
-        # Start broadcast loop
-        broadcast_task = asyncio.create_task(ws_broadcast_loop())
-        
-        await server.wait_closed()
+        # Run broadcast loop and server together
+        await asyncio.gather(
+            ws_broadcast_loop(),
+            server.wait_closed()
+        )
     
     try:
         loop.run_until_complete(start_server())
