@@ -314,16 +314,19 @@ class YDLidarDriver:
 
 
 def find_lidar_port() -> Optional[str]:
-    """Auto-detect YDLIDAR port"""
+    """Auto-detect YDLIDAR port (CP2102 chip)"""
     import serial.tools.list_ports
     
     ports = list(serial.tools.list_ports.comports())
     
+    # YDLIDAR uses CP2102 chip - look for it specifically
     for port in ports:
-        if 'CP210' in port.description or 'CP2102' in port.description:
-            if 'ttyUSB1' in port.device or 'ttyUSB2' in port.device:
-                return port.device
+        port_info = f"{port.description} {port.manufacturer or ''}".lower()
+        if 'cp210' in port_info or 'cp2102' in port_info:
+            print(f"[LIDAR] Found CP2102 on {port.device}")
+            return port.device
     
+    # Fallback: try ttyUSB1 (usually LIDAR when Arduino is on ttyUSB0)
     for path in ['/dev/ttyUSB1', '/dev/ttyUSB2']:
         try:
             test = serial.Serial(path, 230400, timeout=0.1)

@@ -34,36 +34,32 @@ WEB_PORT = 5000  # Match main web server port
 
 # ===== AUTO-DETECT ARDUINO PORT =====
 def find_arduino_port():
-    """Auto-detect Arduino Mega port on Linux/Windows"""
+    """Auto-detect Arduino Mega port on Linux/Windows (CH340 chip)"""
     ports = list(serial.tools.list_ports.comports())
     
-    # Priority order for detection
-    arduino_identifiers = [
-        'Arduino Mega',
-        'Arduino',
-        'ttyACM',
-        'ttyUSB',
-        'CH340',
-        'CP210',
-    ]
-    
+    # Arduino Mega clone uses CH340 chip - explicitly exclude CP2102 (LIDAR)
     for port in ports:
-        port_info = f"{port.device} {port.description} {port.manufacturer or ''}"
-        for identifier in arduino_identifiers:
-            if identifier.lower() in port_info.lower():
+        port_info = f"{port.device} {port.description} {port.manufacturer or ''}".lower()
+        
+        # Skip if this is the LIDAR (CP2102)
+        if 'cp210' in port_info or 'cp2102' in port_info:
+            continue
+        
+        # Look for Arduino identifiers
+        if 'ch340' in port_info or 'arduino' in port_info or 'ttyacm' in port_info:
+            print(f"[ARDUINO] Found on {port.device} ({port.description})")
+            return port.device
+    
+    # Fallback: try ttyUSB0 first (usually Arduino), but verify it's not CP2102
+    for port in ports:
+        if 'ttyUSB0' in port.device:
+            port_info = f"{port.description} {port.manufacturer or ''}".lower()
+            if 'cp210' not in port_info:
+                print(f"[ARDUINO] Fallback to {port.device}")
                 return port.device
     
-    # Fallback to common paths
-    fallback_paths = [
-        '/dev/ttyACM0',
-        '/dev/ttyACM1',
-        '/dev/ttyUSB0',
-        '/dev/ttyUSB1',
-        'COM3',
-        'COM4',
-    ]
-    
-    for path in fallback_paths:
+    # Last resort fallback
+    for path in ['/dev/ttyACM0', '/dev/ttyACM1', '/dev/ttyUSB0']:
         try:
             test = serial.Serial(path, ARDUINO_BAUD, timeout=0.1)
             test.close()
