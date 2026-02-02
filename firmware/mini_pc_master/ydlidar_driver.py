@@ -97,11 +97,16 @@ class YDLidarDriver:
         
         while self.running:
             try:
+                if not self.running:
+                    break
                 if not self.serial or not self.serial.is_open:
                     time.sleep(0.1)
                     continue
                 
-                chunk = self.serial.read(256)
+                try:
+                    chunk = self.serial.read(256)
+                except (OSError, TypeError):
+                    break
                 if not chunk:
                     continue
                     

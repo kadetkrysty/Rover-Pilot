@@ -270,7 +270,10 @@ def read_telemetry_thread():
     """Background thread to read telemetry from Arduino"""
     while True:
         try:
-            if arduino and arduino.in_waiting > 0:
+            if not arduino or not arduino.is_open:
+                time.sleep(0.1)
+                continue
+            if arduino.in_waiting > 0:
                 line = arduino.readline().decode('utf-8', errors='ignore').strip()
                 
                 if line.startswith('{'):
