@@ -29,6 +29,7 @@ export function SlamMapViewer({
   const [simulationTime, setSimulationTime] = useState(0);
   const [isRunning, setIsRunning] = useState(isSimulating);
   const lastUpdateRef = useRef(Date.now());
+  const gpsOriginRef = useRef<{ lat: number; lng: number } | null>(null);
 
   const simulateLidarSweep = useCallback((angle: number): LidarScan[] => {
     const scans: LidarScan[] = [];
@@ -113,12 +114,16 @@ export function SlamMapViewer({
           scans
         );
       } else {
-        ekf.predict(dt, 0.05, 0.01);
+        const angularVel = (imuData && dt > 0) ? ((imuData.heading * Math.PI / 180 - ekf.getState().theta + Math.PI) % (2 * Math.PI) - Math.PI) / dt * 0.1 : 0;
+        ekf.predict(dt, angularVel, 0);
 
-        if (gpsData) {
+        if (gpsData && gpsData.lat !== 0 && gpsData.lng !== 0) {
           const accuracy = gpsData.accuracy || 5;
-          const x = (gpsData.lng - (-118.2437)) * 111000 * Math.cos(gpsData.lat * Math.PI / 180);
-          const y = (gpsData.lat - 34.0522) * 111000;
+          if (!gpsOriginRef.current) {
+            gpsOriginRef.current = { lat: gpsData.lat, lng: gpsData.lng };
+          }
+          const x = (gpsData.lng - gpsOriginRef.current.lng) * 111000 * Math.cos(gpsData.lat * Math.PI / 180);
+          const y = (gpsData.lat - gpsOriginRef.current.lat) * 111000;
           ekf.updateWithGPS(x, y, accuracy);
         }
 
@@ -128,11 +133,15 @@ export function SlamMapViewer({
 
         if (lidarScans.length > 0) {
           const state = ekf.getState();
+          const scansInMeters = lidarScans.map(s => ({
+            ...s,
+            distance: s.distance / 1000
+          }));
           occupancyMap.updateWithLidarScan(
             state.x,
             state.y,
             state.theta,
-            lidarScans
+            scansInMeters
           );
         }
       }
