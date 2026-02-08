@@ -1,5 +1,4 @@
 import { useRoverData } from '@/lib/mockData';
-import { useLocation } from '@/hooks/useLocation';
 import { useWebSocket } from '@/lib/useWebSocket';
 import CameraFeed from '@/components/CameraFeed';
 import SensorStatus from '@/components/SensorStatus';
@@ -14,9 +13,11 @@ import { Gauge, Compass, Activity } from 'lucide-react';
 
 export default function Dashboard() {
   const data = useRoverData();
-  const location = useLocation();
-  const { lidarScans } = useWebSocket();
+  const { lidarScans, telemetry } = useWebSocket();
   const { data: joystickData, handleHeadingChange, reset } = useJoystickData();
+
+  const roverLat = telemetry?.gps?.lat && telemetry.gps.lat !== 0 ? telemetry.gps.lat : null;
+  const roverLng = telemetry?.gps?.lng && telemetry.gps.lng !== 0 ? telemetry.gps.lng : null;
 
   return (
     <div className="h-[calc(100dvh-56px)] bg-background text-foreground font-sans selection:bg-primary/30 overflow-hidden relative" data-testid="page-dashboard">
@@ -48,7 +49,7 @@ export default function Dashboard() {
           {/* Camera Feed with Halo-style HUD and Circular Camera Control */}
           <div className="hud-panel overflow-hidden">
             <AspectRatio ratio={16 / 9}>
-              <CameraFeed className="h-full" showCameraControl={true} latitude={location.latitude ?? 34.0522} longitude={location.longitude ?? -118.2437} />
+              <CameraFeed className="h-full" showCameraControl={true} latitude={roverLat ?? 0} longitude={roverLng ?? 0} />
             </AspectRatio>
           </div>
           
@@ -117,13 +118,13 @@ export default function Dashboard() {
             <div className="grid grid-cols-2 gap-1.5">
               <div className="bg-card/50 border border-border rounded p-1.5">
                 <div className="text-base font-mono text-foreground font-bold" data-testid="text-latitude">
-                  {location.loading ? '---' : location.latitude?.toFixed(6) ?? '---'}
+                  {roverLat?.toFixed(6) ?? '---'}
                 </div>
                 <div className="text-[8px] text-muted-foreground">LAT</div>
               </div>
               <div className="bg-card/50 border border-border rounded p-1.5">
                 <div className="text-base font-mono text-foreground font-bold" data-testid="text-longitude">
-                  {location.loading ? '---' : location.longitude?.toFixed(6) ?? '---'}
+                  {roverLng?.toFixed(6) ?? '---'}
                 </div>
                 <div className="text-[8px] text-muted-foreground">LNG</div>
               </div>
@@ -157,7 +158,7 @@ export default function Dashboard() {
         <div className="flex flex-col gap-2">
           <div className="hud-panel overflow-hidden">
             <AspectRatio ratio={16 / 9}>
-              <CameraFeed className="h-full" latitude={location.latitude ?? 34.0522} longitude={location.longitude ?? -118.2437} />
+              <CameraFeed className="h-full" latitude={roverLat ?? 0} longitude={roverLng ?? 0} />
             </AspectRatio>
           </div>
           
@@ -194,11 +195,11 @@ export default function Dashboard() {
             <h3 className="text-[10px] font-display text-primary/80 pb-1">GPS / TELEMETRY</h3>
             <div className="grid grid-cols-4 gap-1 text-center">
               <div>
-                <div className="text-xs font-mono font-bold">{location.latitude?.toFixed(4) ?? '--'}</div>
+                <div className="text-xs font-mono font-bold">{roverLat?.toFixed(4) ?? '--'}</div>
                 <div className="text-[7px] text-muted-foreground">LAT</div>
               </div>
               <div>
-                <div className="text-xs font-mono font-bold">{location.longitude?.toFixed(4) ?? '--'}</div>
+                <div className="text-xs font-mono font-bold">{roverLng?.toFixed(4) ?? '--'}</div>
                 <div className="text-[7px] text-muted-foreground">LNG</div>
               </div>
               <div>
@@ -232,7 +233,7 @@ export default function Dashboard() {
       <main className="sm:hidden flex flex-col gap-2 p-2 h-full overflow-y-auto">
         <div className="hud-panel overflow-hidden">
           <AspectRatio ratio={16 / 9}>
-            <CameraFeed className="h-full" latitude={location.latitude ?? 34.0522} longitude={location.longitude ?? -118.2437} />
+            <CameraFeed className="h-full" latitude={roverLat ?? 0} longitude={roverLng ?? 0} />
           </AspectRatio>
         </div>
         
@@ -259,11 +260,11 @@ export default function Dashboard() {
           <h3 className="text-[10px] font-display text-primary/80 pb-1">GPS</h3>
           <div className="grid grid-cols-2 gap-2 text-center">
             <div>
-              <div className="text-sm font-mono font-bold">{location.latitude?.toFixed(6) ?? '---'}</div>
+              <div className="text-sm font-mono font-bold">{roverLat?.toFixed(6) ?? '---'}</div>
               <div className="text-[8px] text-muted-foreground">LAT</div>
             </div>
             <div>
-              <div className="text-sm font-mono font-bold">{location.longitude?.toFixed(6) ?? '---'}</div>
+              <div className="text-sm font-mono font-bold">{roverLng?.toFixed(6) ?? '---'}</div>
               <div className="text-[8px] text-muted-foreground">LNG</div>
             </div>
           </div>

@@ -61,7 +61,7 @@ export const useRoverData = () => {
     heading: 0,
     pitch: 0,
     roll: 0,
-    gps: { lat: 34.0522, lng: -118.2437 },
+    gps: { lat: 0, lng: 0 },
     lidarDistance: 120,
     sensors: {
       ultrasonic: [120, 150, 45, 200, 180],

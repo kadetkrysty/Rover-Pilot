@@ -26,8 +26,8 @@ export default function CameraFeed({
   showOverlay = true, 
   className = '',
   showCameraControl = true,
-  latitude = 34.0522,
-  longitude = -118.2437,
+  latitude = 0,
+  longitude = 0,
   showDetectedObjects = true
 }: CameraFeedProps) {
   const { isConnected } = useWebSocket();
