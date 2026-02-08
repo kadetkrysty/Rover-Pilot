@@ -1,0 +1,51 @@
+cristian@RoverPilot-PC:~$ sudo journalctl -u rover_controller -n 50 --no-pager
+Feb 08 23:31:08 RoverPilot-PC systemd[1]: rover_controller.service: Main process exited, code=exited, status=1/FAILURE
+Feb 08 23:31:08 RoverPilot-PC systemd[1]: rover_controller.service: Failed with result 'exit-code'.
+Feb 08 23:31:08 RoverPilot-PC systemd[1]: rover_controller.service: Consumed 1.084s CPU time.
+Feb 08 23:31:13 RoverPilot-PC systemd[1]: rover_controller.service: Scheduled restart job, restart counter is at 9.
+Feb 08 23:31:13 RoverPilot-PC systemd[1]: Started rover_controller.service - RoverOS Master Controller.
+Feb 08 23:31:14 RoverPilot-PC python3[2003]: /home/cristian/Rover-Pilot/firmware/mini_pc_master/rover_controller.py:34: DeprecationWarning: websockets.server.serve is deprecated
+Feb 08 23:31:14 RoverPilot-PC python3[2003]:   from websockets.server import serve as ws_serve
+Feb 08 23:31:14 RoverPilot-PC python3[2003]: ============================================================
+Feb 08 23:31:14 RoverPilot-PC python3[2003]:   ROVER MASTER CONTROLLER v3.0.0
+Feb 08 23:31:14 RoverPilot-PC python3[2003]:   Mini PC Host - Ubuntu / Intel Celeron
+Feb 08 23:31:14 RoverPilot-PC python3[2003]:   RC: FlySky FS-I6x + FS-IA10B (iBUS Protocol)
+Feb 08 23:31:14 RoverPilot-PC python3[2003]:   LIDAR: YDLIDAR T-mini Plus (360° Scanner)
+Feb 08 23:31:14 RoverPilot-PC python3[2003]: ============================================================
+Feb 08 23:31:14 RoverPilot-PC python3[2003]: [ARDUINO] Found on /dev/ttyUSB0 (USB2.0-Serial)
+Feb 08 23:31:16 RoverPilot-PC python3[2003]: [OK] Connected to Arduino on /dev/ttyUSB0
+Feb 08 23:31:16 RoverPilot-PC python3[2003]: [LIDAR] Found CP2102 on /dev/ttyUSB1
+Feb 08 23:31:17 RoverPilot-PC python3[2003]: [LIDAR] Initial bytes waiting: 4095
+Feb 08 23:31:17 RoverPilot-PC python3[2003]: [LIDAR] Read 256 bytes, buffer size: 0, total points: 0[LIDAR] Connected to YDLIDAR on /dev/ttyUSB1
+Feb 08 23:31:17 RoverPilot-PC python3[2003]: [OK] YDLIDAR connected on /dev/ttyUSB1
+Feb 08 23:31:17 RoverPilot-PC python3[2003]: [INIT] Starting server on 0.0.0.0:5000
+Feb 08 23:31:17 RoverPilot-PC python3[2003]: [INIT] API Endpoints:
+Feb 08 23:31:17 RoverPilot-PC python3[2003]:        /api/telemetry     - Rover telemetry
+Feb 08 23:31:17 RoverPilot-PC python3[2003]:        /api/lidar/scan    - 360° LIDAR scan
+Feb 08 23:31:17 RoverPilot-PC python3[2003]:        /api/lidar/sectors - Sector distances
+Feb 08 23:31:17 RoverPilot-PC python3[2003]:        /api/lidar/closest - Closest obstacle
+Feb 08 23:31:17 RoverPilot-PC python3[2003]: [INIT] WebSocket: ws://0.0.0.0:5001 (plain WebSocket for RoverOS)
+Feb 08 23:31:17 RoverPilot-PC python3[2003]: [INIT] Press Ctrl+C to stop
+Feb 08 23:31:17 RoverPilot-PC python3[2003]: Traceback (most recent call last):
+Feb 08 23:31:17 RoverPilot-PC python3[2003]:   File "/home/cristian/Rover-Pilot/firmware/mini_pc_master/rover_controller.py", line 737, in <module>
+Feb 08 23:31:17 RoverPilot-PC python3[2003]:     [WS-PLAIN] Plain WebSocket server on ws://0.0.0.0:5001/ws/telemetry
+Feb 08 23:31:17 RoverPilot-PC python3[2003]: socketio.run(app, host=WEB_HOST, port=WEB_PORT, debug=False)
+Feb 08 23:31:17 RoverPilot-PC python3[2003]:   File "/home/cristian/Rover-Pilot/firmware/mini_pc_master/venv/lib/python3.12/site-packages/flask_socketio/__init__.py", line 649, in run
+Feb 08 23:31:17 RoverPilot-PC python3[2003]:     raise RuntimeError('The Werkzeug web server is not '
+Feb 08 23:31:17 RoverPilot-PC python3[2003]: RuntimeError: The Werkzeug web server is not designed to run in production. Pass allow_unsafe_werkzeug=True to the run() method to disable this error.
+Feb 08 23:31:17 RoverPilot-PC python3[2003]: [SHUTDOWN] Stopping all devices...
+Feb 08 23:31:17 RoverPilot-PC python3[2003]: [ERROR] Failed to parse telemetry: 'bool' object has no attribute 'get'
+Feb 08 23:31:17 RoverPilot-PC python3[2003]: [LIDAR] Disconnected
+Feb 08 23:31:17 RoverPilot-PC python3[2003]: [OK] LIDAR motor stopped
+Feb 08 23:31:17 RoverPilot-PC python3[2003]: [COMMAND] Emergency stop
+Feb 08 23:31:17 RoverPilot-PC python3[2003]: [ERROR] Telemetry read: read failed: [Errno 9] Bad file descriptor
+Feb 08 23:31:17 RoverPilot-PC python3[2003]: [OK] Arduino disconnected
+Feb 08 23:31:17 RoverPilot-PC python3[2003]: [OK] Goodbye
+Feb 08 23:31:17 RoverPilot-PC systemd[1]: rover_controller.service: Main process exited, code=exited, status=1/FAILURE
+Feb 08 23:31:17 RoverPilot-PC systemd[1]: rover_controller.service: Failed with result 'exit-code'.
+Feb 08 23:31:17 RoverPilot-PC systemd[1]: rover_controller.service: Consumed 1.095s CPU time.
+Feb 08 23:31:23 RoverPilot-PC systemd[1]: rover_controller.service: Scheduled restart job, restart counter is at 10.
+Feb 08 23:31:23 RoverPilot-PC systemd[1]: rover_controller.service: Start request repeated too quickly.
+Feb 08 23:31:23 RoverPilot-PC systemd[1]: rover_controller.service: Failed with result 'exit-code'.
+Feb 08 23:31:23 RoverPilot-PC systemd[1]: Failed to start rover_controller.service - RoverOS Master Controller.
+Feb 08 23:31:23 RoverPilot-PC systemd[1]: rover_controller.service: Consumed 1.095s CPU time.

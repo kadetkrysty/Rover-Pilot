@@ -734,4 +734,4 @@ if __name__ == '__main__':
         print(f"[INIT] WebSocket: ws://{WEB_HOST}:{WS_PORT} (plain WebSocket for RoverOS)")
     print("[INIT] Press Ctrl+C to stop\n")
     
-    socketio.run(app, host=WEB_HOST, port=WEB_PORT, debug=False)
+    socketio.run(app, host=WEB_HOST, port=WEB_PORT, debug=False, allow_unsafe_werkzeug=True)
