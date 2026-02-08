@@ -98,6 +98,7 @@ class RoverState:
         self.gps_lng = 0.0
         self.gps_speed = 0.0
         self.gps_accuracy = 0
+        self.gps_satellites = 0
         
         # iBUS RC Control (10 channels from FlySky FS-IA10B)
         self.ibus_connected = False
@@ -124,6 +125,7 @@ class RoverState:
                 self.gps_lng = data['gps'].get('lng', 0)
                 self.gps_speed = data['gps'].get('spd', 0)
                 self.gps_accuracy = data['gps'].get('acc', 0)
+                self.gps_satellites = data['gps'].get('sat', 0)
             
             # IMU
             if 'imu' in data:
@@ -165,7 +167,8 @@ class RoverState:
                 'lat': round(self.gps_lat, 6),
                 'lng': round(self.gps_lng, 6),
                 'speed': round(self.gps_speed, 1),
-                'accuracy': self.gps_accuracy
+                'accuracy': self.gps_accuracy,
+                'satellites': self.gps_satellites
             },
             'imu': {
                 'heading': round(self.heading, 1),

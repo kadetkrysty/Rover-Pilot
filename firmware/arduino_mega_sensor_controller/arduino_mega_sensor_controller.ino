@@ -23,6 +23,7 @@
 #include <Wire.h>
 #include <SoftwareSerial.h>
 #include <IBusBM.h>
+#include <TinyGPSPlus.h>
 
 // ===== PIN DEFINITIONS =====
 // Hoverboard FOC controller (SoftwareSerial)
@@ -92,8 +93,8 @@ const unsigned long ULTRASONIC_INTERVAL = 100;  // 100ms = 10Hz
 const unsigned long IBUS_INTERVAL = 10;         // 10ms = 100Hz
 const unsigned long STATUS_BLINK = 500;         // 500ms
 
-// ===== GPS PARSING =====
-String gpsBuffer = "";
+// ===== GPS =====
+TinyGPSPlus gps;
 bool gpsLocked = false;
 
 // ===== IMU VARIABLES =====
@@ -431,70 +432,23 @@ void initHuskyLens() {
 // ===== GPS PARSING =====
 void readGPS() {
   while (Serial3.available()) {
-    char c = Serial3.read();
-    
-    if (c == '\n') {
-      parseNMEA(gpsBuffer);
-      gpsBuffer = "";
-    } else if (c != '\r') {
-      gpsBuffer += c;
-      if (gpsBuffer.length() > 100) gpsBuffer = "";
-    }
+    gps.encode(Serial3.read());
   }
-}
 
-void parseNMEA(String sentence) {
-  if (!sentence.startsWith("$GPGGA") && !sentence.startsWith("$GPRMC")) {
-    return;
+  if (gps.location.isUpdated()) {
+    telemetry.gpsLat = gps.location.lat();
+    telemetry.gpsLng = gps.location.lng();
+    telemetry.sensorsHealthy[2] = true;
+    gpsLocked = true;
   }
-  
-  // Simple GGA parsing for lat/lng
-  if (sentence.startsWith("$GPGGA")) {
-    int commas[15];
-    int commaCount = 0;
-    
-    for (int i = 0; i < sentence.length() && commaCount < 15; i++) {
-      if (sentence[i] == ',') {
-        commas[commaCount++] = i;
-      }
-    }
-    
-    if (commaCount >= 6) {
-      // Latitude (field 2)
-      String latStr = sentence.substring(commas[1] + 1, commas[2]);
-      String latDir = sentence.substring(commas[2] + 1, commas[3]);
-      
-      // Longitude (field 4)
-      String lngStr = sentence.substring(commas[3] + 1, commas[4]);
-      String lngDir = sentence.substring(commas[4] + 1, commas[5]);
-      
-      if (latStr.length() > 0 && lngStr.length() > 0) {
-        // Convert NMEA format to decimal degrees
-        double lat = nmeaToDecimal(latStr);
-        double lng = nmeaToDecimal(lngStr);
-        
-        if (latDir == "S") lat = -lat;
-        if (lngDir == "W") lng = -lng;
-        
-        telemetry.gpsLat = lat;
-        telemetry.gpsLng = lng;
-        telemetry.sensorsHealthy[2] = true;
-        gpsLocked = true;
-      }
-    }
-  }
-}
 
-double nmeaToDecimal(String nmea) {
-  if (nmea.length() < 4) return 0;
-  
-  int dotPos = nmea.indexOf('.');
-  if (dotPos < 2) return 0;
-  
-  double degrees = nmea.substring(0, dotPos - 2).toDouble();
-  double minutes = nmea.substring(dotPos - 2).toDouble();
-  
-  return degrees + minutes / 60.0;
+  if (gps.speed.isUpdated()) {
+    telemetry.gpsSpeed = gps.speed.kmph();
+  }
+
+  if (gps.hdop.isUpdated()) {
+    telemetry.gpsAccuracy = gps.hdop.value();
+  }
 }
 
 // ===== TELEMETRY OUTPUT =====
@@ -511,6 +465,8 @@ void sendTelemetry() {
   Serial.print(telemetry.gpsSpeed, 1);
   Serial.print(",\"acc\":");
   Serial.print(telemetry.gpsAccuracy);
+  Serial.print(",\"sat\":");
+  Serial.print(gps.satellites.value());
   Serial.print("}");
   
   // IMU
