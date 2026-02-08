@@ -13,6 +13,10 @@ import struct
 import threading
 import time
 import math
+import os
+import subprocess
+import glob as glob_module
+import fcntl
 from dataclasses import dataclass
 from typing import List, Optional, Callable
 
@@ -51,7 +55,7 @@ class YDLidarDriver:
         self._read_thread: Optional[threading.Thread] = None
         self._last_valid_scan_time = time.time()
         self._consecutive_empty_reads = 0
-        self._max_recovery_attempts = 5
+        self._max_recovery_attempts = 6
         
     def connect(self) -> bool:
         """Connect to LIDAR sensor"""
@@ -111,80 +115,205 @@ class YDLidarDriver:
         self.connected = False
         print("[LIDAR] Disconnected")
     
+    def _find_usb_device_path(self) -> Optional[str]:
+        """Find the sysfs path for the USB device behind this serial port"""
+        try:
+            port_name = os.path.basename(self.port)
+            sysfs_path = f"/sys/class/tty/{port_name}/device"
+            if not os.path.exists(sysfs_path):
+                return None
+            real_path = os.path.realpath(sysfs_path)
+            usb_path = real_path
+            while usb_path and usb_path != '/':
+                authorize_file = os.path.join(usb_path, 'authorized')
+                if os.path.exists(authorize_file):
+                    return usb_path
+                usb_path = os.path.dirname(usb_path)
+            return None
+        except Exception as e:
+            print(f"[LIDAR] Could not find USB device path: {e}")
+            return None
+    
+    def _usb_reset(self) -> bool:
+        """Perform a USB device reset - simulates physical unplug/replug"""
+        try:
+            usb_path = self._find_usb_device_path()
+            if usb_path:
+                authorize_file = os.path.join(usb_path, 'authorized')
+                print(f"[LIDAR] USB reset via sysfs: {authorize_file}")
+                if self.serial and self.serial.is_open:
+                    try:
+                        self.serial.close()
+                    except:
+                        pass
+                with open(authorize_file, 'w') as f:
+                    f.write('0')
+                time.sleep(2.0)
+                with open(authorize_file, 'w') as f:
+                    f.write('1')
+                time.sleep(3.0)
+                return True
+            
+            try:
+                port_name = os.path.basename(self.port)
+                sysfs_path = f"/sys/class/tty/{port_name}/device"
+                real_path = os.path.realpath(sysfs_path)
+                
+                usb_dev = real_path
+                while usb_dev:
+                    busnum_path = os.path.join(usb_dev, 'busnum')
+                    devnum_path = os.path.join(usb_dev, 'devnum')
+                    if os.path.exists(busnum_path) and os.path.exists(devnum_path):
+                        with open(busnum_path) as f:
+                            busnum = int(f.read().strip())
+                        with open(devnum_path) as f:
+                            devnum = int(f.read().strip())
+                        dev_path = f"/dev/bus/usb/{busnum:03d}/{devnum:03d}"
+                        if os.path.exists(dev_path):
+                            print(f"[LIDAR] USB reset via ioctl: {dev_path}")
+                            if self.serial and self.serial.is_open:
+                                try:
+                                    self.serial.close()
+                                except:
+                                    pass
+                            USBDEVFS_RESET = 21780
+                            fd = os.open(dev_path, os.O_WRONLY)
+                            fcntl.ioctl(fd, USBDEVFS_RESET, 0)
+                            os.close(fd)
+                            time.sleep(3.0)
+                            return True
+                    usb_dev = os.path.dirname(usb_dev)
+                    if usb_dev == '/sys' or usb_dev == '/':
+                        break
+            except Exception as e:
+                print(f"[LIDAR] ioctl USB reset failed: {e}")
+            
+            return False
+        except Exception as e:
+            print(f"[LIDAR] USB reset failed: {e}")
+            return False
+    
+    def _verify_scan_data(self, timeout: float = 5.0) -> int:
+        """Read from serial and count valid scan points"""
+        valid_points = 0
+        check_start = time.time()
+        temp_buffer = b''
+        while time.time() - check_start < timeout:
+            try:
+                chunk = self.serial.read(512)
+            except:
+                break
+            if not chunk:
+                continue
+            temp_buffer += chunk
+            while len(temp_buffer) >= 10:
+                idx = temp_buffer.find(b'\xaa\x55')
+                if idx == -1:
+                    temp_buffer = temp_buffer[-1:]
+                    break
+                if idx > 0:
+                    temp_buffer = temp_buffer[idx:]
+                if len(temp_buffer) < 10:
+                    break
+                lsn = temp_buffer[3]
+                packet_len = 10 + lsn * 3
+                if len(temp_buffer) < packet_len:
+                    break
+                for i in range(lsn):
+                    offset = 10 + i * 3
+                    if offset + 2 <= len(temp_buffer):
+                        dist = struct.unpack('<H', temp_buffer[offset:offset+2])[0]
+                        if 10 < dist < 12000:
+                            valid_points += 1
+                temp_buffer = temp_buffer[packet_len:]
+            if valid_points > 10:
+                break
+        return valid_points
+
     def _restart_scanning(self, attempt: int) -> bool:
         """Restart LIDAR scanning - escalating recovery strategies"""
         try:
-            print(f"[LIDAR] Attempting recovery (strategy {min(attempt, 3)})...")
-            
             if attempt <= 2:
+                print(f"[LIDAR] Strategy 1: DTR toggle + resend scan command...")
                 if not self.serial or not self.serial.is_open:
                     return False
                 self.serial.write(b'\xA5\x65')
                 time.sleep(0.5)
                 self.serial.dtr = False
-                self.serial.rts = True
-                time.sleep(0.3)
+                time.sleep(0.5)
                 self.serial.dtr = True
-                self.serial.rts = False
-                time.sleep(0.3)
-                self.serial.reset_input_buffer()
-                self.serial.reset_output_buffer()
-                self.serial.write(b'\xA5\x60')
-                time.sleep(2.0)
-            else:
-                print("[LIDAR] Escalating: closing and reopening serial port...")
-                port = self.port
-                baudrate = self.baudrate
-                if self.serial and self.serial.is_open:
-                    try:
-                        self.serial.write(b'\xA5\x65')
-                        time.sleep(0.2)
-                        self.serial.close()
-                    except:
-                        pass
-                time.sleep(1.0)
-                
-                self.serial = serial.Serial(port, baudrate, timeout=1)
-                self.serial.dtr = True
-                self.serial.rts = False
                 time.sleep(0.5)
                 self.serial.reset_input_buffer()
                 self.serial.reset_output_buffer()
                 self.serial.write(b'\xA5\x60')
                 time.sleep(2.0)
+            elif attempt <= 4:
+                print(f"[LIDAR] Strategy 2: Full serial port close/reopen...")
+                port = self.port
+                baudrate = self.baudrate
+                if self.serial and self.serial.is_open:
+                    try:
+                        self.serial.write(b'\xA5\x65')
+                        time.sleep(0.3)
+                        self.serial.close()
+                    except:
+                        pass
+                time.sleep(2.0)
+                self.serial = serial.Serial(port, baudrate, timeout=1)
+                self.serial.dtr = True
+                self.serial.rts = False
+                time.sleep(1.0)
+                self.serial.reset_input_buffer()
+                self.serial.reset_output_buffer()
+                self.serial.write(b'\xA5\x60')
+                time.sleep(3.0)
+            else:
+                print(f"[LIDAR] Strategy 3: USB device reset (simulated unplug/replug)...")
+                port = self.port
+                baudrate = self.baudrate
+                if self._usb_reset():
+                    if not os.path.exists(port):
+                        print(f"[LIDAR] Waiting for {port} to reappear...")
+                        for _ in range(10):
+                            time.sleep(1.0)
+                            if os.path.exists(port):
+                                break
+                    if not os.path.exists(port):
+                        tty_ports = glob_module.glob('/dev/ttyUSB*')
+                        print(f"[LIDAR] Available ports after reset: {tty_ports}")
+                        if tty_ports:
+                            port = tty_ports[0]
+                            self.port = port
+                            print(f"[LIDAR] Using port: {port}")
+                        else:
+                            print(f"[LIDAR] No serial ports found after USB reset")
+                            return False
+                    
+                    self.serial = serial.Serial(port, baudrate, timeout=1)
+                    self.serial.dtr = True
+                    self.serial.rts = False
+                    time.sleep(1.0)
+                    self.serial.reset_input_buffer()
+                    self.serial.reset_output_buffer()
+                    self.serial.write(b'\xA5\x60')
+                    time.sleep(3.0)
+                else:
+                    print(f"[LIDAR] USB reset not available, retrying serial reopen...")
+                    if self.serial and self.serial.is_open:
+                        try:
+                            self.serial.close()
+                        except:
+                            pass
+                    time.sleep(3.0)
+                    self.serial = serial.Serial(port, baudrate, timeout=1)
+                    self.serial.dtr = True
+                    self.serial.rts = False
+                    time.sleep(1.0)
+                    self.serial.reset_input_buffer()
+                    self.serial.write(b'\xA5\x60')
+                    time.sleep(3.0)
             
-            valid_points = 0
-            check_start = time.time()
-            temp_buffer = b''
-            while time.time() - check_start < 3.0:
-                chunk = self.serial.read(512)
-                if not chunk:
-                    continue
-                temp_buffer += chunk
-                while len(temp_buffer) >= 10:
-                    idx = temp_buffer.find(b'\xaa\x55')
-                    if idx == -1:
-                        temp_buffer = temp_buffer[-1:]
-                        break
-                    if idx > 0:
-                        temp_buffer = temp_buffer[idx:]
-                    if len(temp_buffer) < 10:
-                        break
-                    lsn = temp_buffer[3]
-                    packet_len = 10 + lsn * 3
-                    if len(temp_buffer) < packet_len:
-                        break
-                    for i in range(lsn):
-                        offset = 10 + i * 3
-                        if offset + 2 <= len(temp_buffer):
-                            dist = struct.unpack('<H', temp_buffer[offset:offset+2])[0]
-                            if 10 < dist < 12000:
-                                valid_points += 1
-                    temp_buffer = temp_buffer[packet_len:]
-                
-                if valid_points > 10:
-                    break
-            
+            valid_points = self._verify_scan_data(5.0)
             print(f"[LIDAR] Recovery check: {valid_points} valid points detected")
             
             if valid_points > 10:
