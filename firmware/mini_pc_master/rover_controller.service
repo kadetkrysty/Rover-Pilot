@@ -1,0 +1,19 @@
+[Unit]
+Description=RoverOS Master Controller
+After=network.target
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=cristian
+WorkingDirectory=/home/cristian/Rover-Pilot/firmware/mini_pc_master
+ExecStart=/home/cristian/Rover-Pilot/firmware/mini_pc_master/venv/bin/python3 rover_controller.py
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target
