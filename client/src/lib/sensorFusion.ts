@@ -194,7 +194,7 @@ export class OccupancyGridMap {
   private logOddsMax: number = 2.0;
   private logOddsMin: number = -2.0;
 
-  constructor(width: number = 400, height: number = 400, resolution: number = 0.05) {
+  constructor(width: number = 600, height: number = 600, resolution: number = 0.05) {
     this.width = width;
     this.height = height;
     this.resolution = resolution;
