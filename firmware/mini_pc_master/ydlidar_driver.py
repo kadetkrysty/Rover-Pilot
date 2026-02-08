@@ -230,25 +230,70 @@ class YDLidarDriver:
                 break
         return valid_points
 
+    def _check_device_health(self) -> bool:
+        """Send health status command (A5 92) to check if LIDAR is responsive"""
+        try:
+            if not self.serial or not self.serial.is_open:
+                return False
+            self.serial.reset_input_buffer()
+            self.serial.write(b'\xA5\x92')
+            time.sleep(0.5)
+            response = self.serial.read(self.serial.in_waiting or 64)
+            if response and b'\xA5\x5A' in response:
+                print(f"[LIDAR] Health check OK - device responsive ({len(response)} bytes)")
+                return True
+            print(f"[LIDAR] Health check - no valid response ({len(response)} bytes)")
+            return False
+        except Exception as e:
+            print(f"[LIDAR] Health check failed: {e}")
+            return False
+    
     def _restart_scanning(self, attempt: int) -> bool:
-        """Restart LIDAR scanning - escalating recovery strategies"""
+        """Restart LIDAR scanning - escalating recovery using YDLIDAR SDK commands"""
         try:
             if attempt <= 2:
-                print(f"[LIDAR] Strategy 1: DTR toggle + resend scan command...")
+                print(f"[LIDAR] Strategy 1: Stop (A5 65) → wait → Start (A5 60)...")
                 if not self.serial or not self.serial.is_open:
                     return False
                 self.serial.write(b'\xA5\x65')
-                time.sleep(0.5)
-                self.serial.dtr = False
-                time.sleep(0.5)
-                self.serial.dtr = True
-                time.sleep(0.5)
+                time.sleep(2.0)
                 self.serial.reset_input_buffer()
                 self.serial.reset_output_buffer()
+                self._check_device_health()
+                self.serial.reset_input_buffer()
                 self.serial.write(b'\xA5\x60')
-                time.sleep(2.0)
+                time.sleep(3.0)
             elif attempt <= 4:
-                print(f"[LIDAR] Strategy 2: Full serial port close/reopen...")
+                print(f"[LIDAR] Strategy 2: Soft reboot (A5 40) → reconnect...")
+                if self.serial and self.serial.is_open:
+                    try:
+                        self.serial.write(b'\xA5\x65')
+                        time.sleep(0.5)
+                        self.serial.write(b'\xA5\x40')
+                        time.sleep(0.5)
+                        self.serial.close()
+                    except:
+                        pass
+                time.sleep(4.0)
+                
+                port = self.port
+                baudrate = self.baudrate
+                self.serial = serial.Serial(port, baudrate, timeout=1)
+                self.serial.dtr = True
+                self.serial.rts = False
+                time.sleep(1.0)
+                self.serial.reset_input_buffer()
+                
+                if self._check_device_health():
+                    print(f"[LIDAR] Device responded after reboot")
+                else:
+                    print(f"[LIDAR] Device not responding after reboot, sending start anyway...")
+                
+                self.serial.reset_input_buffer()
+                self.serial.write(b'\xA5\x60')
+                time.sleep(3.0)
+            else:
+                print(f"[LIDAR] Strategy 3: USB device reset (simulated unplug/replug)...")
                 port = self.port
                 baudrate = self.baudrate
                 if self.serial and self.serial.is_open:
@@ -258,19 +303,7 @@ class YDLidarDriver:
                         self.serial.close()
                     except:
                         pass
-                time.sleep(2.0)
-                self.serial = serial.Serial(port, baudrate, timeout=1)
-                self.serial.dtr = True
-                self.serial.rts = False
-                time.sleep(1.0)
-                self.serial.reset_input_buffer()
-                self.serial.reset_output_buffer()
-                self.serial.write(b'\xA5\x60')
-                time.sleep(3.0)
-            else:
-                print(f"[LIDAR] Strategy 3: USB device reset (simulated unplug/replug)...")
-                port = self.port
-                baudrate = self.baudrate
+                
                 if self._usb_reset():
                     if not os.path.exists(port):
                         print(f"[LIDAR] Waiting for {port} to reappear...")
@@ -288,30 +321,18 @@ class YDLidarDriver:
                         else:
                             print(f"[LIDAR] No serial ports found after USB reset")
                             return False
-                    
-                    self.serial = serial.Serial(port, baudrate, timeout=1)
-                    self.serial.dtr = True
-                    self.serial.rts = False
-                    time.sleep(1.0)
-                    self.serial.reset_input_buffer()
-                    self.serial.reset_output_buffer()
-                    self.serial.write(b'\xA5\x60')
-                    time.sleep(3.0)
                 else:
-                    print(f"[LIDAR] USB reset not available, retrying serial reopen...")
-                    if self.serial and self.serial.is_open:
-                        try:
-                            self.serial.close()
-                        except:
-                            pass
+                    print(f"[LIDAR] USB reset not available, doing full serial reopen...")
                     time.sleep(3.0)
-                    self.serial = serial.Serial(port, baudrate, timeout=1)
-                    self.serial.dtr = True
-                    self.serial.rts = False
-                    time.sleep(1.0)
-                    self.serial.reset_input_buffer()
-                    self.serial.write(b'\xA5\x60')
-                    time.sleep(3.0)
+                
+                self.serial = serial.Serial(port, baudrate, timeout=1)
+                self.serial.dtr = True
+                self.serial.rts = False
+                time.sleep(1.0)
+                self.serial.reset_input_buffer()
+                self.serial.reset_output_buffer()
+                self.serial.write(b'\xA5\x60')
+                time.sleep(3.0)
             
             valid_points = self._verify_scan_data(5.0)
             print(f"[LIDAR] Recovery check: {valid_points} valid points detected")
