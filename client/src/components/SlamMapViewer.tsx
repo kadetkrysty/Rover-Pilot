@@ -22,14 +22,33 @@ export function SlamMapViewer({
   isSimulating = true
 }: SlamMapViewerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [ekf] = useState(() => new ExtendedKalmanFilter());
   const [occupancyMap] = useState(() => new OccupancyGridMap(200, 200, 0.1));
   const [fusionState, setFusionState] = useState<SensorFusionState | null>(null);
   const [zoom, setZoom] = useState(2);
   const [simulationTime, setSimulationTime] = useState(0);
   const [isRunning, setIsRunning] = useState(isSimulating);
+  const [canvasSize, setCanvasSize] = useState({ width: 600, height: 400 });
   const lastUpdateRef = useRef(Date.now());
   const gpsOriginRef = useRef<{ lat: number; lng: number } | null>(null);
+  const lidarHeadingRef = useRef<number>(0);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const { width } = entry.contentRect;
+        if (width > 0) {
+          const height = Math.round(width * 2 / 3);
+          setCanvasSize({ width: Math.round(width), height });
+        }
+      }
+    });
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, []);
 
   const simulateLidarSweep = useCallback((angle: number): LidarScan[] => {
     const scans: LidarScan[] = [];
@@ -154,22 +173,56 @@ export function SlamMapViewer({
   }, [isRunning, isSimulating, ekf, occupancyMap, simulateLidarSweep, simulationTime, gpsData, imuData, lidarScans]);
 
   useEffect(() => {
+    if (imuData) {
+      lidarHeadingRef.current = imuData.heading * Math.PI / 180;
+    }
+  }, [imuData]);
+
+  useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+
+    const dpr = window.devicePixelRatio || 1;
+    const displayWidth = canvasSize.width;
+    const displayHeight = canvasSize.height;
+
+    canvas.width = displayWidth * dpr;
+    canvas.height = displayHeight * dpr;
+    canvas.style.width = `${displayWidth}px`;
+    canvas.style.height = `${displayHeight}px`;
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const { width, height } = canvas;
-    ctx.fillStyle = '#1a1a2e';
-    ctx.fillRect(0, 0, width, height);
+    ctx.scale(dpr, dpr);
+
+    ctx.fillStyle = '#0d1117';
+    ctx.fillRect(0, 0, displayWidth, displayHeight);
 
     const mapDims = occupancyMap.getDimensions();
     const gridData = occupancyMap.getGrid();
     
-    const centerX = width / 2;
-    const centerY = height / 2;
+    const centerX = displayWidth / 2;
+    const centerY = displayHeight / 2;
     const scale = zoom * 10;
+    const cellScreenSize = Math.max(mapDims.resolution * scale, 2);
+
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.06)';
+    ctx.lineWidth = 0.5;
+    const gridSpacing = scale;
+    
+    for (let x = centerX % gridSpacing; x < displayWidth; x += gridSpacing) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, displayHeight);
+      ctx.stroke();
+    }
+    for (let y = centerY % gridSpacing; y < displayHeight; y += gridSpacing) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(displayWidth, y);
+      ctx.stroke();
+    }
 
     for (let y = 0; y < mapDims.height; y++) {
       for (let x = 0; x < mapDims.width; x++) {
@@ -180,73 +233,91 @@ export function SlamMapViewer({
         const screenX = centerX + worldX * scale;
         const screenY = centerY - worldY * scale;
         
-        if (screenX < -5 || screenX > width + 5 || screenY < -5 || screenY > height + 5) continue;
+        if (screenX < -cellScreenSize || screenX > displayWidth + cellScreenSize || 
+            screenY < -cellScreenSize || screenY > displayHeight + cellScreenSize) continue;
         
         if (prob > 0.65) {
-          ctx.fillStyle = '#ef4444';
-          ctx.fillRect(screenX - 1, screenY - 1, 3, 3);
+          const intensity = Math.min((prob - 0.5) * 4, 1);
+          ctx.fillStyle = `rgba(239, 68, 68, ${0.7 + intensity * 0.3})`;
+          ctx.fillRect(
+            Math.floor(screenX - cellScreenSize / 2), 
+            Math.floor(screenY - cellScreenSize / 2), 
+            Math.ceil(cellScreenSize), 
+            Math.ceil(cellScreenSize)
+          );
         } else if (prob < 0.35) {
-          ctx.fillStyle = 'rgba(34, 197, 94, 0.3)';
-          ctx.fillRect(screenX - 1, screenY - 1, 2, 2);
+          const clarity = Math.min((0.5 - prob) * 3, 1);
+          ctx.fillStyle = `rgba(34, 197, 94, ${0.15 + clarity * 0.25})`;
+          ctx.fillRect(
+            Math.floor(screenX - cellScreenSize / 2), 
+            Math.floor(screenY - cellScreenSize / 2), 
+            Math.ceil(cellScreenSize), 
+            Math.ceil(cellScreenSize)
+          );
         }
       }
-    }
-
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
-    ctx.lineWidth = 1;
-    const gridSpacing = scale;
-    
-    for (let x = centerX % gridSpacing; x < width; x += gridSpacing) {
-      ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, height);
-      ctx.stroke();
-    }
-    for (let y = centerY % gridSpacing; y < height; y += gridSpacing) {
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(width, y);
-      ctx.stroke();
     }
 
     if (fusionState) {
       const roverX = centerX + fusionState.x * scale;
       const roverY = centerY - fusionState.y * scale;
       
+      const heading = isSimulating ? -fusionState.theta : -lidarHeadingRef.current;
+      
       ctx.save();
       ctx.translate(roverX, roverY);
-      ctx.rotate(-fusionState.theta);
+      ctx.rotate(heading);
       
+      ctx.shadowColor = '#22c55e';
+      ctx.shadowBlur = 8;
       ctx.fillStyle = '#22c55e';
       ctx.beginPath();
-      ctx.moveTo(12, 0);
-      ctx.lineTo(-6, -8);
-      ctx.lineTo(-6, 8);
+      ctx.moveTo(14, 0);
+      ctx.lineTo(-7, -9);
+      ctx.lineTo(-4, 0);
+      ctx.lineTo(-7, 9);
       ctx.closePath();
       ctx.fill();
+      ctx.shadowBlur = 0;
       
-      ctx.strokeStyle = 'rgba(34, 197, 94, 0.3)';
-      ctx.lineWidth = 2;
+      ctx.strokeStyle = '#22c55e';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.moveTo(14, 0);
+      ctx.lineTo(40, 0);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      
+      ctx.strokeStyle = 'rgba(34, 197, 94, 0.25)';
+      ctx.lineWidth = 1.5;
       const uncertaintyRadius = Math.sqrt(fusionState.covariance[0][0] + fusionState.covariance[1][1]) * scale;
       ctx.beginPath();
-      ctx.arc(0, 0, Math.min(uncertaintyRadius, 50), 0, Math.PI * 2);
+      ctx.arc(0, 0, Math.min(uncertaintyRadius, 60), 0, Math.PI * 2);
+      ctx.stroke();
+      
+      ctx.strokeStyle = 'rgba(34, 197, 94, 0.15)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(0, 0, 30, -0.5, 0.5);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(0, 0, 50, -0.3, 0.3);
       ctx.stroke();
       
       ctx.restore();
-      
-      ctx.strokeStyle = 'rgba(34, 197, 94, 0.5)';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.arc(roverX, roverY, 20, -fusionState.theta - 0.3, -fusionState.theta + 0.3);
-      ctx.stroke();
     }
 
     ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-    ctx.font = '10px monospace';
-    ctx.fillText(`Scale: ${(1/zoom).toFixed(1)}m/div`, 10, height - 30);
-    ctx.fillText(`Time: ${(simulationTime * 0.05).toFixed(1)}s`, 10, height - 15);
+    ctx.font = '11px monospace';
+    ctx.fillText(`Scale: ${(1/zoom).toFixed(1)}m/div`, 10, displayHeight - 30);
+    ctx.fillText(`Time: ${(simulationTime * 0.05).toFixed(1)}s`, 10, displayHeight - 15);
+    
+    if (imuData) {
+      ctx.fillText(`HDG: ${imuData.heading.toFixed(1)}°`, 10, displayHeight - 45);
+    }
 
-  }, [fusionState, occupancyMap, zoom, simulationTime]);
+  }, [fusionState, occupancyMap, zoom, simulationTime, canvasSize, imuData, isSimulating]);
 
   const handleReset = () => {
     ekf.reset();
@@ -286,12 +357,11 @@ export function SlamMapViewer({
         </div>
       </div>
 
-      <div className="relative border border-primary/30 rounded-lg overflow-hidden bg-black">
+      <div ref={containerRef} className="relative border border-primary/30 rounded-lg overflow-hidden bg-black">
         <canvas
           ref={canvasRef}
-          width={600}
-          height={400}
-          className="w-full"
+          className="block"
+          style={{ imageRendering: 'pixelated' }}
           data-testid="slam-map-canvas"
         />
         
