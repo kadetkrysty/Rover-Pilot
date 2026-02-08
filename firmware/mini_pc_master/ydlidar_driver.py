@@ -111,37 +111,89 @@ class YDLidarDriver:
         self.connected = False
         print("[LIDAR] Disconnected")
     
-    def _restart_scanning(self) -> bool:
-        """Restart LIDAR scanning without disconnecting USB"""
+    def _restart_scanning(self, attempt: int) -> bool:
+        """Restart LIDAR scanning - escalating recovery strategies"""
         try:
-            if not self.serial or not self.serial.is_open:
-                return False
+            print(f"[LIDAR] Attempting recovery (strategy {min(attempt, 3)})...")
             
-            print("[LIDAR] Attempting recovery - restarting scan...")
+            if attempt <= 2:
+                if not self.serial or not self.serial.is_open:
+                    return False
+                self.serial.write(b'\xA5\x65')
+                time.sleep(0.5)
+                self.serial.dtr = False
+                self.serial.rts = True
+                time.sleep(0.3)
+                self.serial.dtr = True
+                self.serial.rts = False
+                time.sleep(0.3)
+                self.serial.reset_input_buffer()
+                self.serial.reset_output_buffer()
+                self.serial.write(b'\xA5\x60')
+                time.sleep(2.0)
+            else:
+                print("[LIDAR] Escalating: closing and reopening serial port...")
+                port = self.port
+                baudrate = self.baudrate
+                if self.serial and self.serial.is_open:
+                    try:
+                        self.serial.write(b'\xA5\x65')
+                        time.sleep(0.2)
+                        self.serial.close()
+                    except:
+                        pass
+                time.sleep(1.0)
+                
+                self.serial = serial.Serial(port, baudrate, timeout=1)
+                self.serial.dtr = True
+                self.serial.rts = False
+                time.sleep(0.5)
+                self.serial.reset_input_buffer()
+                self.serial.reset_output_buffer()
+                self.serial.write(b'\xA5\x60')
+                time.sleep(2.0)
             
-            self.serial.write(b'\xA5\x65')
-            time.sleep(0.3)
+            valid_points = 0
+            check_start = time.time()
+            temp_buffer = b''
+            while time.time() - check_start < 3.0:
+                chunk = self.serial.read(512)
+                if not chunk:
+                    continue
+                temp_buffer += chunk
+                while len(temp_buffer) >= 10:
+                    idx = temp_buffer.find(b'\xaa\x55')
+                    if idx == -1:
+                        temp_buffer = temp_buffer[-1:]
+                        break
+                    if idx > 0:
+                        temp_buffer = temp_buffer[idx:]
+                    if len(temp_buffer) < 10:
+                        break
+                    lsn = temp_buffer[3]
+                    packet_len = 10 + lsn * 3
+                    if len(temp_buffer) < packet_len:
+                        break
+                    for i in range(lsn):
+                        offset = 10 + i * 3
+                        if offset + 2 <= len(temp_buffer):
+                            dist = struct.unpack('<H', temp_buffer[offset:offset+2])[0]
+                            if 10 < dist < 12000:
+                                valid_points += 1
+                    temp_buffer = temp_buffer[packet_len:]
+                
+                if valid_points > 10:
+                    break
             
-            self.serial.dtr = False
-            self.serial.rts = False
-            time.sleep(0.2)
-            self.serial.dtr = True
-            self.serial.rts = False
-            time.sleep(0.2)
+            print(f"[LIDAR] Recovery check: {valid_points} valid points detected")
             
-            self.serial.reset_input_buffer()
-            self.serial.reset_output_buffer()
+            if valid_points > 10:
+                self.serial.reset_input_buffer()
+                self._consecutive_empty_reads = 0
+                self._last_valid_scan_time = time.time()
+                return True
             
-            self.serial.write(b'\xA5\x60')
-            time.sleep(1.0)
-            
-            bytes_waiting = self.serial.in_waiting
-            print(f"[LIDAR] Recovery: {bytes_waiting} bytes waiting after restart")
-            
-            self._consecutive_empty_reads = 0
-            self._last_valid_scan_time = time.time()
-            
-            return bytes_waiting > 0
+            return False
             
         except Exception as e:
             print(f"[LIDAR] Recovery failed: {e}")
@@ -166,18 +218,19 @@ class YDLidarDriver:
                 if time_since_last_scan > 5.0 and recovery_attempts < self._max_recovery_attempts:
                     recovery_attempts += 1
                     print(f"[LIDAR] No valid scans for {time_since_last_scan:.0f}s - recovery attempt {recovery_attempts}/{self._max_recovery_attempts}")
-                    if self._restart_scanning():
+                    if self._restart_scanning(recovery_attempts):
                         buffer = b''
                         last_end_angle = 0
-                        print(f"[LIDAR] Recovery successful")
+                        recovery_attempts = 0
+                        print(f"[LIDAR] Recovery successful - valid scan data confirmed")
                     else:
-                        print(f"[LIDAR] Recovery attempt {recovery_attempts} failed, waiting before retry...")
-                        time.sleep(3.0)
+                        print(f"[LIDAR] Recovery attempt {recovery_attempts} failed - no valid scan points")
+                        time.sleep(2.0)
                     continue
                 elif time_since_last_scan > 5.0 and recovery_attempts >= self._max_recovery_attempts:
-                    if int(time_since_last_scan) % 30 == 0:
-                        print(f"[LIDAR] Max recovery attempts reached. Unplug and replug LIDAR USB cable, then restart.")
-                    time.sleep(1.0)
+                    print(f"[LIDAR] All {self._max_recovery_attempts} recovery attempts failed. Waiting 30s before retrying...")
+                    time.sleep(30.0)
+                    recovery_attempts = 0
                     continue
                 
                 try:
