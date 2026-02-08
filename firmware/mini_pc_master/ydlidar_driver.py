@@ -49,6 +49,9 @@ class YDLidarDriver:
         
         self._lock = threading.Lock()
         self._read_thread: Optional[threading.Thread] = None
+        self._last_valid_scan_time = time.time()
+        self._consecutive_empty_reads = 0
+        self._max_recovery_attempts = 5
         
     def connect(self) -> bool:
         """Connect to LIDAR sensor"""
@@ -108,11 +111,48 @@ class YDLidarDriver:
         self.connected = False
         print("[LIDAR] Disconnected")
     
+    def _restart_scanning(self) -> bool:
+        """Restart LIDAR scanning without disconnecting USB"""
+        try:
+            if not self.serial or not self.serial.is_open:
+                return False
+            
+            print("[LIDAR] Attempting recovery - restarting scan...")
+            
+            self.serial.write(b'\xA5\x65')
+            time.sleep(0.3)
+            
+            self.serial.dtr = False
+            self.serial.rts = False
+            time.sleep(0.2)
+            self.serial.dtr = True
+            self.serial.rts = False
+            time.sleep(0.2)
+            
+            self.serial.reset_input_buffer()
+            self.serial.reset_output_buffer()
+            
+            self.serial.write(b'\xA5\x60')
+            time.sleep(1.0)
+            
+            bytes_waiting = self.serial.in_waiting
+            print(f"[LIDAR] Recovery: {bytes_waiting} bytes waiting after restart")
+            
+            self._consecutive_empty_reads = 0
+            self._last_valid_scan_time = time.time()
+            
+            return bytes_waiting > 0
+            
+        except Exception as e:
+            print(f"[LIDAR] Recovery failed: {e}")
+            return False
+    
     def _read_loop(self):
         """Background thread to read and parse LIDAR data"""
         buffer = b''
         last_end_angle = 0
         read_count = 0
+        recovery_attempts = 0
         
         while self.running:
             try:
@@ -122,12 +162,36 @@ class YDLidarDriver:
                     time.sleep(0.1)
                     continue
                 
+                time_since_last_scan = time.time() - self._last_valid_scan_time
+                if time_since_last_scan > 5.0 and recovery_attempts < self._max_recovery_attempts:
+                    recovery_attempts += 1
+                    print(f"[LIDAR] No valid scans for {time_since_last_scan:.0f}s - recovery attempt {recovery_attempts}/{self._max_recovery_attempts}")
+                    if self._restart_scanning():
+                        buffer = b''
+                        last_end_angle = 0
+                        print(f"[LIDAR] Recovery successful")
+                    else:
+                        print(f"[LIDAR] Recovery attempt {recovery_attempts} failed, waiting before retry...")
+                        time.sleep(3.0)
+                    continue
+                elif time_since_last_scan > 5.0 and recovery_attempts >= self._max_recovery_attempts:
+                    if int(time_since_last_scan) % 30 == 0:
+                        print(f"[LIDAR] Max recovery attempts reached. Unplug and replug LIDAR USB cable, then restart.")
+                    time.sleep(1.0)
+                    continue
+                
                 try:
                     chunk = self.serial.read(256)
                 except (OSError, TypeError):
                     break
                 if not chunk:
+                    self._consecutive_empty_reads += 1
+                    if self._consecutive_empty_reads > 50:
+                        self._last_valid_scan_time = 0
+                        self._consecutive_empty_reads = 0
                     continue
+                
+                self._consecutive_empty_reads = 0
                 
                 read_count += 1
                 if read_count % 100 == 1:
@@ -230,6 +294,8 @@ class YDLidarDriver:
                 )
                 
                 self.last_complete_scan = scan
+                self._last_valid_scan_time = now
+                self._consecutive_empty_reads = 0
                 print(f"[LIDAR] Complete scan: {len(scan.points)} points, {scan.scan_frequency:.1f} Hz")
                 
                 if self.scan_callback:
