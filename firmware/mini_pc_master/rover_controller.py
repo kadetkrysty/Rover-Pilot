@@ -10,6 +10,9 @@ Serves telemetry API and WebSocket to web dashboard
 ================================================================================
 """
 
+import eventlet
+eventlet.monkey_patch()
+
 import serial
 import serial.tools.list_ports
 import json
@@ -372,7 +375,7 @@ def stop_rover():
 # ===== FLASK WEB SERVER =====
 app = Flask(__name__)
 CORS(app)
-socketio = SocketIO(app, cors_allowed_origins="*")
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
 
 @app.route('/api/telemetry', methods=['GET'])
 def get_telemetry():
@@ -734,4 +737,4 @@ if __name__ == '__main__':
         print(f"[INIT] WebSocket: ws://{WEB_HOST}:{WS_PORT} (plain WebSocket for RoverOS)")
     print("[INIT] Press Ctrl+C to stop\n")
     
-    socketio.run(app, host=WEB_HOST, port=WEB_PORT, debug=False, allow_unsafe_werkzeug=True)
+    socketio.run(app, host=WEB_HOST, port=WEB_PORT, debug=False, log_output=True)
