@@ -133,8 +133,13 @@ export function SlamMapViewer({
           scans
         );
       } else {
-        const angularVel = (imuData && dt > 0) ? ((imuData.heading * Math.PI / 180 - ekf.getState().theta + Math.PI) % (2 * Math.PI) - Math.PI) / dt * 0.1 : 0;
-        ekf.predict(dt, angularVel, 0);
+        const hasImu = imuData && (imuData.heading !== 0 || imuData.pitch !== 0 || imuData.roll !== 0);
+        
+        if (hasImu) {
+          const angularVel = dt > 0 ? ((imuData!.heading * Math.PI / 180 - ekf.getState().theta + Math.PI) % (2 * Math.PI) - Math.PI) / dt * 0.1 : 0;
+          ekf.predict(dt, angularVel, 0);
+          ekf.updateWithIMU(imuData!.heading * Math.PI / 180);
+        }
 
         if (gpsData && gpsData.lat !== 0 && gpsData.lng !== 0) {
           const accuracy = gpsData.accuracy || 5;
@@ -143,23 +148,39 @@ export function SlamMapViewer({
           }
           const x = (gpsData.lng - gpsOriginRef.current.lng) * 111000 * Math.cos(gpsData.lat * Math.PI / 180);
           const y = (gpsData.lat - gpsOriginRef.current.lat) * 111000;
-          ekf.updateWithGPS(x, y, accuracy);
-        }
-
-        if (imuData) {
-          ekf.updateWithIMU(imuData.heading * Math.PI / 180);
+          if (hasImu) {
+            ekf.updateWithGPS(x, y, accuracy);
+          }
         }
 
         if (lidarScans.length > 0) {
-          const state = ekf.getState();
+          let roverX = 0;
+          let roverY = 0;
+          let roverTheta = 0;
+          
+          if (hasImu) {
+            const state = ekf.getState();
+            roverX = state.x;
+            roverY = state.y;
+            roverTheta = state.theta;
+          } else {
+            if (gpsData && gpsData.lat !== 0 && gpsData.lng !== 0) {
+              if (!gpsOriginRef.current) {
+                gpsOriginRef.current = { lat: gpsData.lat, lng: gpsData.lng };
+              }
+              roverX = (gpsData.lng - gpsOriginRef.current.lng) * 111000 * Math.cos(gpsData.lat * Math.PI / 180);
+              roverY = (gpsData.lat - gpsOriginRef.current.lat) * 111000;
+            }
+          }
+          
           const scansInMeters = lidarScans.map(s => ({
             ...s,
             distance: s.distance / 1000
           }));
           occupancyMap.updateWithLidarScan(
-            state.x,
-            state.y,
-            state.theta,
+            roverX,
+            roverY,
+            roverTheta,
             scansInMeters
           );
         }
