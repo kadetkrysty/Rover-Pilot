@@ -172,7 +172,7 @@ function renderRadar(
 
         const intensity = point.intensity || 100;
         const brightness = Math.min(255, intensity * 2);
-        ctx.fillStyle = `rgb(${brightness}, ${Math.floor(brightness * 0.8)}, 255)`;
+        ctx.fillStyle = `rgb(0, ${Math.floor(brightness * 0.8)}, ${brightness})`;
         
         ctx.beginPath();
         ctx.arc(pointX, pointY, 1.5, 0, Math.PI * 2);
@@ -271,23 +271,21 @@ export default function RadarScanner({ ultrasonicData, lidarDistance, lidarScan,
       }
     });
 
-    // Add LIDAR obstacles from 360° scan - group by 8 sectors and show closest in each
     if (lidarScan && lidarScan.length > 0) {
       const sectors: { [key: string]: { angle: number; distance: number; label: string } } = {};
       const sectorNames = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
       
       lidarScan.forEach(point => {
-        if (point.distance > 0 && point.distance < MAX_RANGE) {
-          // Determine sector (45° each)
+        const distCm = point.distance / 10;
+        if (distCm > 1 && distCm < MAX_RANGE) {
           const normalizedAngle = ((point.angle % 360) + 360) % 360;
           const sectorIndex = Math.floor(((normalizedAngle + 22.5) % 360) / 45);
           const sectorName = sectorNames[sectorIndex];
           
-          // Keep closest obstacle in each sector
-          if (!sectors[sectorName] || point.distance < sectors[sectorName].distance) {
+          if (!sectors[sectorName] || distCm < sectors[sectorName].distance) {
             sectors[sectorName] = {
               angle: normalizedAngle,
-              distance: point.distance,
+              distance: distCm,
               label: `LIDAR-${sectorName}`,
             };
           }
