@@ -173,19 +173,10 @@ export function SlamMapViewer({
   }, [isRunning, isSimulating, ekf, occupancyMap, simulateLidarSweep, simulationTime, gpsData, imuData, lidarScans]);
 
   useEffect(() => {
-    if (imuData && imuData.heading !== 0) {
+    if (imuData) {
       lidarHeadingRef.current = imuData.heading * Math.PI / 180;
-    } else if (lidarScans.length > 0) {
-      const forwardScans = lidarScans.filter(s => s.angle >= 350 || s.angle <= 10);
-      if (forwardScans.length > 0) {
-        const avgAngle = forwardScans.reduce((sum, s) => {
-          const a = s.angle > 180 ? s.angle - 360 : s.angle;
-          return sum + a;
-        }, 0) / forwardScans.length;
-        lidarHeadingRef.current = -avgAngle * Math.PI / 180;
-      }
     }
-  }, [imuData, lidarScans]);
+  }, [imuData]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -322,11 +313,8 @@ export function SlamMapViewer({
     ctx.fillText(`Scale: ${(1/zoom).toFixed(1)}m/div`, 10, displayHeight - 30);
     ctx.fillText(`Time: ${(simulationTime * 0.05).toFixed(1)}s`, 10, displayHeight - 15);
     
-    if (imuData && imuData.heading !== 0) {
-      ctx.fillText(`HDG: ${imuData.heading.toFixed(1)}° (IMU)`, 10, displayHeight - 45);
-    } else {
-      ctx.fillStyle = 'rgba(255, 200, 50, 0.6)';
-      ctx.fillText(`HDG: LIDAR REF (no IMU)`, 10, displayHeight - 45);
+    if (imuData) {
+      ctx.fillText(`HDG: ${imuData.heading.toFixed(1)}°`, 10, displayHeight - 45);
     }
 
   }, [fusionState, occupancyMap, zoom, simulationTime, canvasSize, imuData, isSimulating]);
