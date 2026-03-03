@@ -204,6 +204,29 @@ export default function GamepadControl() {
                 </>
               )}
             </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setViewMode('rover_cam')}
+                className={`px-2 py-1 rounded text-xs font-mono transition-colors ${viewMode === 'rover_cam' ? 'bg-accent text-black' : 'bg-black/50 text-muted-foreground hover:bg-black/70 border border-primary/20'}`}
+                data-testid="button-rover-cam"
+              >
+                ROVER CAM
+              </button>
+              <button
+                onClick={() => setViewMode('simulation')}
+                className={`px-2 py-1 rounded text-xs font-mono transition-colors ${viewMode === 'simulation' ? 'bg-accent text-black' : 'bg-black/50 text-muted-foreground hover:bg-black/70 border border-primary/20'}`}
+                data-testid="button-simulation"
+              >
+                3D SIMULATION
+              </button>
+              <button
+                onClick={() => setViewMode('device_cam')}
+                className={`px-2 py-1 rounded text-xs font-mono transition-colors ${viewMode === 'device_cam' ? 'bg-accent text-black' : 'bg-black/50 text-muted-foreground hover:bg-black/70 border border-primary/20'}`}
+                data-testid="button-device-cam"
+              >
+                DEVICE CAM
+              </button>
+            </div>
             {gamepadInput.isConnected && (
               <span className="font-mono text-xs text-muted-foreground">Index: {gamepadInput.gamepadIndex}</span>
             )}
@@ -250,30 +273,6 @@ export default function GamepadControl() {
                   </div>
                 )
               ) : null}
-              
-              <div className="absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-2 z-10">
-                <button
-                  onClick={() => setViewMode('rover_cam')}
-                  className={`px-2 py-1 rounded text-xs font-mono transition-colors ${viewMode === 'rover_cam' ? 'bg-accent text-black' : 'bg-black/50 text-muted-foreground hover:bg-black/70'}`}
-                  data-testid="button-rover-cam"
-                >
-                  ROVER CAM
-                </button>
-                <button
-                  onClick={() => setViewMode('simulation')}
-                  className={`px-2 py-1 rounded text-xs font-mono transition-colors ${viewMode === 'simulation' ? 'bg-accent text-black' : 'bg-black/50 text-muted-foreground hover:bg-black/70'}`}
-                  data-testid="button-simulation"
-                >
-                  3D SIMULATION
-                </button>
-                <button
-                  onClick={() => setViewMode('device_cam')}
-                  className={`px-2 py-1 rounded text-xs font-mono transition-colors ${viewMode === 'device_cam' ? 'bg-accent text-black' : 'bg-black/50 text-muted-foreground hover:bg-black/70'}`}
-                  data-testid="button-device-cam"
-                >
-                  DEVICE CAM
-                </button>
-              </div>
               
               {isRecording && (
                 <div className="absolute top-4 left-4 flex items-center gap-2 bg-black/70 px-3 py-2 rounded">
