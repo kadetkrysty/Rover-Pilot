@@ -345,10 +345,11 @@ export async function registerRoutes(
         rc_receiver: 'FlySky FS-IA10B (iBUS)',
         rc_transmitter: 'FlySky FS-I6x',
         sensors: {
-          lidar: 'TF Mini Pro',
-          camera: 'HuskyLens AI',
+          lidar: 'YDLIDAR T-mini Plus (360°)',
+          camera: 'Imou CELL GO (Wi-Fi)',
+          objectDetection: 'HuskyLens AI (I2C)',
           imu: 'MPU6050',
-          gps: 'Neo-6M',
+          gps: 'GY-NEO6MV2',
           ultrasonic: 5
         }
       });
@@ -417,6 +418,32 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error starting navigation:", error);
       res.status(500).json({ error: "Failed to start navigation" });
+    }
+  });
+
+  app.get("/api/camera/config", async (_req, res) => {
+    try {
+      const streamUrl = process.env.IMOU_CAMERA_STREAM_URL || '';
+      const snapshotUrl = process.env.IMOU_CAMERA_SNAPSHOT_URL || '';
+      const roverHost = process.env.ROVER_HOST || '';
+      
+      res.json({
+        camera: 'Imou CELL GO',
+        objectDetection: 'HuskyLens AI',
+        panTilt: 'SlushEngine (Raspberry Pi 3 B+)',
+        streamUrl: streamUrl || (roverHost ? `http://${roverHost}:8081/camera/stream` : ''),
+        snapshotUrl: snapshotUrl || (roverHost ? `http://${roverHost}:8081/camera/snapshot` : ''),
+        capabilities: {
+          resolution: '1080p',
+          wireless: true,
+          battery: true,
+          nightVision: true,
+          rtsp: true
+        }
+      });
+    } catch (error) {
+      console.error("Error fetching camera config:", error);
+      res.status(500).json({ error: "Failed to fetch camera config" });
     }
   });
 

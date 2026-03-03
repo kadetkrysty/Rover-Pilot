@@ -23,7 +23,7 @@ The frontend is a React 18 application with TypeScript, utilizing Wouter for rou
 
 ### Feature Specifications
 - **Telemetry Dashboard**: Displays live sensor data, rover status, and system diagnostics.
-- **Camera Feed**: Live visualization with pan/tilt control (Raspberry Pi 3 B+ based).
+- **Camera Feed**: Imou CELL GO Wi-Fi camera for live video (RTSP/MJPEG stream), mounted on SlushEngine pan/tilt (Raspberry Pi 3 B+). HuskyLens AI provides object detection overlay on the camera feed.
 - **Control Interfaces**: Manual driving via gamepad and RC transmitter (FlySky FS-I6x via iBUS protocol), and GPS waypoint navigation.
 - **SLAM Map Viewer**: Frontend component (`SlamMapViewer.tsx`) visualizes the occupancy grid, rover position, and uncertainty ellipse with real LIDAR data.
 - **360° Radar Scanner**: RadarScanner.tsx displays full 360° LIDAR point cloud with intensity-based coloring.

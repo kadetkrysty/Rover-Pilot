@@ -72,7 +72,13 @@ export default function SystemDiagnostics() {
         details: 'Front, FL, FR, RL, RR'
       },
       {
-        name: 'HuskyLens AI Camera',
+        name: 'Imou CELL GO Camera',
+        status: 'online',
+        value: 'Live Video Feed',
+        details: 'Wi-Fi | 1080p | Pan/Tilt'
+      },
+      {
+        name: 'HuskyLens AI',
         status: data.sensors.huskyLens ? 'online' : 'offline',
         value: 'Object Detection',
         details: 'I2C | Frame Rate: 30fps'
@@ -188,8 +194,9 @@ export default function SystemDiagnostics() {
         <div className="hud-panel p-4">
           <h3 className="text-sm font-display text-primary mb-3">SENSOR SUITE</h3>
           <div className="space-y-2 text-xs font-mono text-muted-foreground/80">
-            <div className="flex justify-between"><span>Vision</span><span className="text-foreground">HuskyLens AI Camera</span></div>
-            <div className="flex justify-between"><span>Range</span><span className="text-foreground">TF Mini Pro Lidar</span></div>
+            <div className="flex justify-between"><span>Camera</span><span className="text-foreground">Imou CELL GO (Wi-Fi)</span></div>
+            <div className="flex justify-between"><span>Obj Detection</span><span className="text-foreground">HuskyLens AI (I2C)</span></div>
+            <div className="flex justify-between"><span>LIDAR</span><span className="text-foreground">YDLIDAR T-mini Plus 360°</span></div>
             <div className="flex justify-between"><span>Proximity</span><span className="text-foreground">5x HC-SR04 Ultrasonic</span></div>
             <div className="flex justify-between"><span>Motion</span><span className="text-foreground">MPU6050 IMU</span></div>
           </div>

@@ -284,7 +284,7 @@ export default function ThreeRoverSimulation(props: SimulationProps) {
         </div>
         
         <div className="absolute bottom-4 left-4 bg-black/60 px-3 py-2 rounded text-xs font-mono space-y-1">
-          <div className="text-cyan-400">HUSKY LENS AI</div>
+          <div className="text-cyan-400">OBJ_DET: HUSKY_LENS</div>
           <div className="text-muted-foreground">OBJECTS: {detectedObstacles.length}</div>
           <div className="text-green-400">TRACKING ACTIVE</div>
         </div>

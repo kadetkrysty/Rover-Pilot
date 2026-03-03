@@ -17,9 +17,10 @@ interface HaloHudOverlayProps {
   isDemoMode: boolean;
   latitude?: number;
   longitude?: number;
+  cameraSource?: string;
 }
 
-export function HaloHudOverlay({ recordingTime, detectedObjects, isDemoMode, latitude = 34.0522, longitude = -118.2437 }: HaloHudOverlayProps) {
+export function HaloHudOverlay({ recordingTime, detectedObjects, isDemoMode, latitude = 34.0522, longitude = -118.2437, cameraSource = 'DEMO' }: HaloHudOverlayProps) {
   const formatTime = (seconds: number) => {
     const hrs = Math.floor(seconds / 3600);
     const mins = Math.floor((seconds % 3600) / 60);
@@ -277,7 +278,9 @@ export function HaloHudOverlay({ recordingTime, detectedObjects, isDemoMode, lat
             <span className="text-cyan-300">{formatTime(recordingTime)}</span>
           </div>
           <span className="text-cyan-400/40">|</span>
-          <span className="text-cyan-300/90">CAM: HUSKY_LENS</span>
+          <span className="text-cyan-300/90">CAM: {cameraSource === 'IMOU_CELL_GO' ? 'IMOU_CELL_GO' : 'SIMULATION'}</span>
+          <span className="text-cyan-400/40">|</span>
+          <span className="text-cyan-300/90">OBJ_DET: HUSKY_LENS</span>
           <span className="text-cyan-400/40">|</span>
           <span className="text-cyan-300/90">1080p</span>
         </div>

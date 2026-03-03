@@ -58,11 +58,11 @@ export default function SensorStatus({ sensors, systems }: SensorStatusProps) {
       
       <h3 className="text-[10px] font-display text-primary/80 mt-2 mb-1">SENSORS</h3>
       <div className="grid grid-cols-2 gap-1">
-        <StatusIndicator active={systemData.lidar} label="TF Mini" icon={Navigation} />
+        <StatusIndicator active={systemData.lidar} label="YDLIDAR" icon={Navigation} />
         <StatusIndicator active={systemData.imu} label="MPU6050" icon={Thermometer} />
         <StatusIndicator active={systemData.gps} label="Neo-6M" icon={Navigation} />
+        <StatusIndicator active={systemData.cameraPanTilt} label="Imou Cam" icon={Camera} />
         <StatusIndicator active={systemData.huskyLens} label="HuskyLens" icon={Eye} />
-        <StatusIndicator active={systemData.cameraPanTilt} label="Pan/Tilt" icon={Camera} />
         <StatusIndicator active={systemData.batteryMonitor} label="BMS" icon={Battery} />
       </div>
       

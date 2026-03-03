@@ -8,6 +8,8 @@ import { useWebSocket } from '@/lib/useWebSocket';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { usePerformanceSettings } from '@/lib/performanceSettings';
+import CameraFeed from '@/components/CameraFeed';
+import { AspectRatio } from '@/components/ui/aspect-ratio';
 
 const ThreeRoverSimulation = lazy(() => import('@/components/ThreeRoverSimulation'));
 
@@ -32,7 +34,7 @@ export default function GamepadControl() {
   const [hornActive, setHornActive] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const [showHelpModal, setShowHelpModal] = useState(false);
-  const [useDeviceCamera, setUseDeviceCamera] = useState(false);
+  const [viewMode, setViewMode] = useState<'rover_cam' | 'simulation' | 'device_cam'>('rover_cam');
   
   const prevInputRef = useRef<GamepadInput | null>(null);
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -209,47 +211,65 @@ export default function GamepadControl() {
 
           <div className="hud-panel p-0 overflow-hidden">
             <div className="aspect-video relative bg-black">
-              {useDeviceCamera ? (
+              {viewMode === 'rover_cam' ? (
+                <CameraFeed 
+                  className="h-full"
+                  showCameraControl={true}
+                  latitude={0}
+                  longitude={0}
+                />
+              ) : viewMode === 'device_cam' ? (
                 <DeviceCameraFeed 
                   zoom={cameraZoom}
                   pan={cameraPan}
                   tilt={cameraTilt}
                   isRecording={isRecording}
                 />
-              ) : performanceSettings.enable3DSimulation ? (
-                <Suspense fallback={
-                  <div className="w-full h-full bg-black flex items-center justify-center">
-                    <div className="w-16 h-16 border-4 border-primary/30 border-t-primary rounded-full animate-spin"></div>
+              ) : viewMode === 'simulation' ? (
+                performanceSettings.enable3DSimulation ? (
+                  <Suspense fallback={
+                    <div className="w-full h-full bg-black flex items-center justify-center">
+                      <div className="w-16 h-16 border-4 border-primary/30 border-t-primary rounded-full animate-spin"></div>
+                    </div>
+                  }>
+                    <ThreeRoverSimulation 
+                      throttle={throttle}
+                      direction={direction}
+                      steering={steering}
+                      cameraPan={cameraPan}
+                      cameraTilt={cameraTilt}
+                      zoom={cameraZoom}
+                    />
+                  </Suspense>
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
+                    <div className="text-center space-y-2">
+                      <div className="text-4xl font-mono text-primary/50">3D OFF</div>
+                      <div className="text-xs font-mono text-muted-foreground">Low power mode active</div>
+                    </div>
                   </div>
-                }>
-                  <ThreeRoverSimulation 
-                    throttle={throttle}
-                    direction={direction}
-                    steering={steering}
-                    cameraPan={cameraPan}
-                    cameraTilt={cameraTilt}
-                    zoom={cameraZoom}
-                  />
-                </Suspense>
-              ) : (
-                <div className="w-full h-full bg-gradient-to-br from-gray-900 to-black flex items-center justify-center">
-                  <div className="text-center space-y-2">
-                    <div className="text-4xl font-mono text-primary/50">3D OFF</div>
-                    <div className="text-xs font-mono text-muted-foreground">Low power mode active</div>
-                  </div>
-                </div>
-              )}
+                )
+              ) : null}
               
               <div className="absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-2 z-10">
                 <button
-                  onClick={() => setUseDeviceCamera(false)}
-                  className={`px-2 py-1 rounded text-xs font-mono transition-colors ${!useDeviceCamera ? 'bg-accent text-black' : 'bg-black/50 text-muted-foreground hover:bg-black/70'}`}
+                  onClick={() => setViewMode('rover_cam')}
+                  className={`px-2 py-1 rounded text-xs font-mono transition-colors ${viewMode === 'rover_cam' ? 'bg-accent text-black' : 'bg-black/50 text-muted-foreground hover:bg-black/70'}`}
+                  data-testid="button-rover-cam"
+                >
+                  ROVER CAM
+                </button>
+                <button
+                  onClick={() => setViewMode('simulation')}
+                  className={`px-2 py-1 rounded text-xs font-mono transition-colors ${viewMode === 'simulation' ? 'bg-accent text-black' : 'bg-black/50 text-muted-foreground hover:bg-black/70'}`}
+                  data-testid="button-simulation"
                 >
                   3D SIMULATION
                 </button>
                 <button
-                  onClick={() => setUseDeviceCamera(true)}
-                  className={`px-2 py-1 rounded text-xs font-mono transition-colors ${useDeviceCamera ? 'bg-accent text-black' : 'bg-black/50 text-muted-foreground hover:bg-black/70'}`}
+                  onClick={() => setViewMode('device_cam')}
+                  className={`px-2 py-1 rounded text-xs font-mono transition-colors ${viewMode === 'device_cam' ? 'bg-accent text-black' : 'bg-black/50 text-muted-foreground hover:bg-black/70'}`}
+                  data-testid="button-device-cam"
                 >
                   DEVICE CAM
                 </button>
