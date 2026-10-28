@@ -11,7 +11,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Check out repository
+        uses: actions/checkout@v4
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -23,7 +24,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
-          java-version: '11'
+          java-version: '17'
 
       - name: Install dependencies
         run: npm install
@@ -31,8 +32,17 @@ jobs:
       - name: Build web assets
         run: npm run build
 
+      - name: Rename existing Android folder
+        run: |
+          if [ -d android ]; then
+            mv android "android-backup-${GITHUB_RUN_ID}"
+          fi
+
       - name: Generate Android project
         run: npx cap add android
+
+      - name: Sync Capacitor
+        run: npx cap sync android
 
       - name: Build APK
         run: |
