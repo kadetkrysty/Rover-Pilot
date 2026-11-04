@@ -26,7 +26,8 @@ connected.
 - A 64-bit MiniPC running Ubuntu Server 24.04 LTS (recommended). Ubuntu 22.04
   LTS is also supported when PostgreSQL 16 is installed from the PostgreSQL
   package repository.
-- A stable wired or Wi-Fi connection and a DHCP reservation for the MiniPC.
+- A stable wired or Wi-Fi connection. RoverOS clients discover the MiniPC by
+  its network name; a DHCP reservation is still useful for administration.
 - Node.js **22.12.0 or later**. This matches the repository's `engines` setting
   and the Capacitor Android toolchain requirement of Node 22 or later.
 - PostgreSQL **16**.
@@ -36,15 +37,45 @@ connected.
 ## 1. Prepare Ubuntu and the LAN
 
 Install and update Ubuntu Server. Connect the MiniPC, Android phone, and Windows
-PC to the same trusted LAN. Create a DHCP reservation in your router so the
-MiniPC keeps the same address. This guide uses `192.168.1.40`; replace it with
-your MiniPC's real address.
+PC to the same trusted LAN. Set the MiniPC name to `RoverOS-Server`; clients
+will find it automatically without entering its IP.
 
 ```bash
 sudo apt update
 sudo apt upgrade -y
-sudo apt install -y ca-certificates curl git
+sudo apt install -y ca-certificates curl git avahi-daemon avahi-utils
+sudo hostnamectl set-hostname RoverOS-Server
+sudo systemctl enable --now avahi-daemon
 ```
+
+The MiniPC and clients must be on the same local network segment. If using a
+guest network, client isolation, or separate VLANs, multicast discovery may be
+blocked.
+
+### Optional: use the MiniPC as a Wi-Fi access point
+
+RoverOS advertises and discovers the server; it does not take control of the
+MiniPC's Wi-Fi adapter. For a direct connection without a router, the MiniPC
+must have an access-point-capable Wi-Fi adapter and an OS-managed hotspot.
+NetworkManager can create one when it already manages the Wi-Fi interface:
+
+```bash
+nmcli device status
+sudo nmcli device wifi hotspot ifname <WIFI_INTERFACE> con-name RoverOS-Server ssid RoverOS-Server
+```
+
+If no password is supplied, NetworkManager generates a WPA password and saves
+it in its protected connection profile; record the displayed password and use
+it to join the hotspot from Windows and Android. Run this at the MiniPC's local
+console: activating the hotspot can disconnect its existing Wi-Fi or SSH
+connection. Do not install or switch network managers remotely; Ubuntu Server
+installations using `systemd-networkd` need deliberate OS-level network
+configuration first. After both clients have joined the hotspot, RoverOS finds
+the MiniPC automatically.
+
+Bluetooth is not used for app-to-server traffic. RoverOS uses HTTP and
+WebSockets over IP; Bluetooth would require a separate Bluetooth-network
+adapter and is not a drop-in replacement for Wi-Fi.
 
 ## 2. Install Node.js 22
 
@@ -197,6 +228,18 @@ sudo journalctl -u roveros -n 100 --no-pager
 
 The MiniPC serves the site, API, and WebSocket on port `5000`.
 
+Install the repository's Avahi service record so Android can discover RoverOS:
+
+```bash
+sudo install -m 0644 /opt/roveros/app/deploy/avahi/roveros.service \
+  /etc/avahi/services/roveros.service
+sudo systemctl restart avahi-daemon
+sudo avahi-browse -rt _http._tcp
+```
+
+The output should include the `RoverOS-Server` service, port `5000`, and the
+`roveros=1` service marker.
+
 ## 9. Restrict access to your local network
 
 Replace `192.168.1.0/24` with your LAN subnet. If you administer this computer
@@ -206,8 +249,17 @@ over SSH, allow SSH before enabling the firewall:
 sudo apt install -y ufw
 sudo ufw allow OpenSSH
 sudo ufw allow from 192.168.1.0/24 to any port 5000 proto tcp
+sudo ufw allow from 192.168.1.0/24 to any port 5353 proto udp
 sudo ufw enable
 sudo ufw status verbose
+```
+
+If using NetworkManager's default hotspot subnet (`10.42.0.0/24`), allow both
+ports from that subnet instead of the router LAN subnet:
+
+```bash
+sudo ufw allow from 10.42.0.0/24 to any port 5000 proto tcp
+sudo ufw allow from 10.42.0.0/24 to any port 5353 proto udp
 ```
 
 Do **not** open PostgreSQL port `5432` to the LAN and do not configure public
@@ -218,14 +270,9 @@ if remote access is needed.
 
 ## 10. Connect Windows and Android clients
 
-Use this address format on both clients:
-
-```text
-http://192.168.1.40:5000
-```
-
-Use the reserved MiniPC IP (or a DNS name that resolves to it), not `localhost`
-and not the phone or Windows PC's own IP.
+Both clients search for the MiniPC named `RoverOS-Server`; no IP address needs
+to be typed. Discovery uses mDNS on the local network and the RoverOS HTTP
+service on port `5000`.
 
 ### Android
 
@@ -233,9 +280,9 @@ and not the phone or Windows PC's own IP.
 2. Install the signed APK from the GitHub Release produced by the Android app
    build workflow. For a temporary debug build, download the APK artifact from
    the corresponding Actions run.
-3. On first launch, enter the MiniPC address, tap **Test Connection**, then
-   **Save and Connect**.
-4. To change the saved address later, open **Config** in the app.
+3. Open the app. It searches the local network for `RoverOS-Server` and connects
+   automatically. If discovery times out, confirm the network and tap **Search
+   Again**.
 
 The Android app keeps its web interface on the phone and sends its API and
 WebSocket traffic to the MiniPC on port `5000`. It does not connect directly to
@@ -246,8 +293,9 @@ PostgreSQL.
 1. Join the same LAN as the MiniPC.
 2. Run the Windows app build workflow in GitHub Actions and download the
    `roveros-windows-installer` artifact.
-3. Install the `.exe`, launch RoverOS, and enter the same MiniPC address when
-   prompted.
+3. Install the `.exe` and launch RoverOS. It searches for
+   `RoverOS-Server.local` and connects automatically. If it is not found, check
+   that Windows is on the same private network and select **Search again**.
 
 ## 11. Back up and update the server
 
@@ -278,11 +326,15 @@ Store backups somewhere separate from the MiniPC as well.
 - **The MiniPC itself cannot reach the API:** run
   `curl -i http://127.0.0.1:5000/api/system/info`.
 - **The other devices cannot reach the MiniPC:** verify both are on the same
-  non-guest LAN, confirm the reserved IP, inspect `sudo ufw status`, and check
-  that `roveros` is active.
-- **Android reports a network error while the browser works:** update to the
-  Android build that includes MiniPC address setup, then check the saved URL
-  under Config.
+  non-guest LAN, inspect `sudo ufw status`, confirm Avahi is active, and check
+  `sudo avahi-browse -rt _http._tcp`.
+- **Discovery works on the router but not the MiniPC hotspot:** confirm the
+  clients joined the `RoverOS-Server` SSID and that the hotspot subnet is
+  allowed through UFW.
+- **Windows cannot find the MiniPC:** verify the Windows network is private and
+  that local multicast name resolution is not blocked by network policy.
+- **Android reports a discovery error:** update to the latest APK and ensure
+  the MiniPC's Avahi service record is installed and announcing port `5000`.
 
 ## Version references
 

@@ -144,6 +144,17 @@ export async function testRoverConnection(serverUrl: string): Promise<void> {
     if (!response.ok) {
       throw new Error(`MiniPC returned HTTP ${response.status}.`);
     }
+
+    const identity: unknown = await response.json();
+    if (
+      !identity ||
+      typeof identity !== "object" ||
+      !("rover_name" in identity) ||
+      typeof identity.rover_name !== "string" ||
+      !identity.rover_name.toLowerCase().startsWith("roveros")
+    ) {
+      throw new Error("The discovered device did not identify itself as RoverOS.");
+    }
   } finally {
     window.clearTimeout(timeout);
   }

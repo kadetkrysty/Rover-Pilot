@@ -1,5 +1,5 @@
 import { Switch, Route } from "wouter";
-import { lazy, Suspense, useMemo, useState } from "react";
+import { lazy, Suspense, useCallback, useMemo, useState } from "react";
 import { Capacitor } from "@capacitor/core";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -9,7 +9,6 @@ import AppLayout from "@/components/AppLayout";
 import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/Dashboard";
 import { PerformanceContext, getPerformanceSettings, detectPerformanceProfile } from "@/lib/performanceSettings";
-import { isRoverConfigured } from "@/lib/roverConnection";
 
 const Setup = lazy(() => import("@/pages/Setup"));
 const Documentation = lazy(() => import("@/pages/Documentation"));
@@ -60,7 +59,11 @@ function Router() {
 
 function App() {
   const [needsNativeConnection, setNeedsNativeConnection] = useState(
-    () => Capacitor.isNativePlatform() && !isRoverConfigured(),
+    () => Capacitor.isNativePlatform(),
+  );
+  const handleNativeConnected = useCallback(
+    () => setNeedsNativeConnection(false),
+    [],
   );
   const performanceSettings = useMemo(() => {
     const profile = detectPerformanceProfile();
@@ -77,7 +80,7 @@ function App() {
             <Suspense fallback={<LoadingFallback />}>
               <Setup
                 requiredConnection
-                onConnected={() => setNeedsNativeConnection(false)}
+                onConnected={handleNativeConnected}
               />
             </Suspense>
           ) : (

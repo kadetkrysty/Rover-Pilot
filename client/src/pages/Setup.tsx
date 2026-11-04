@@ -1,76 +1,155 @@
+import { useEffect, useState } from "react";
+import { Capacitor } from "@capacitor/core";
 import { Link } from "wouter";
+import { ArrowLeft, CheckCircle, Cpu, Search, Wifi, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Wifi, ArrowLeft, Cpu, CheckCircle, XCircle } from "lucide-react";
-import { useState } from "react";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   getRoverUrl,
-  normalizeRoverUrl,
   setRoverUrl,
   testRoverConnection,
 } from "@/lib/roverConnection";
+import { getDiscoveredRoverUrl } from "@/lib/discoveredServer";
+import { startRoverServerDiscovery } from "@/lib/roverDiscovery";
+
+type ConnectionState = "searching" | "checking" | "success" | "error";
 
 interface SetupProps {
   requiredConnection?: boolean;
   onConnected?: () => void;
 }
 
+const DISCOVERY_TIMEOUT_MS = 18000;
+
 export default function Setup({
   requiredConnection = false,
   onConnected,
 }: SetupProps) {
-  const [connecting, setConnecting] = useState(false);
-  const [serverAddress, setServerAddress] = useState(() => getRoverUrl());
-  const [testStatus, setTestStatus] = useState<"idle" | "testing" | "success" | "error">("idle");
-  const [statusMessage, setStatusMessage] = useState("");
+  const [retryCount, setRetryCount] = useState(0);
+  const [connectionState, setConnectionState] =
+    useState<ConnectionState>("searching");
+  const [statusMessage, setStatusMessage] = useState(
+    "Searching for RoverOS-Server on the local network…",
+  );
 
-  const checkConnection = async () => {
-    setTestStatus("testing");
-    setStatusMessage("");
-    try {
-      const normalized = normalizeRoverUrl(serverAddress);
-      await testRoverConnection(normalized);
-      setTestStatus("success");
-      setStatusMessage("RoverOS responded. You can connect now.");
-      return normalized;
-    } catch (error) {
-      setTestStatus("error");
+  useEffect(() => {
+    let active = true;
+    let connected = false;
+    let processing = false;
+    let stopDiscovery = () => {};
+    const queuedUrls: string[] = [];
+    const attemptedUrls = new Set<string>();
+
+    const discoveryTimer = window.setTimeout(() => {
+      if (!active || connected) return;
+      setConnectionState("error");
       setStatusMessage(
-        error instanceof Error
-          ? error.message
-          : "Could not reach RoverOS. Check the address and local network.",
+        "RoverOS-Server was not found. Join its Wi-Fi or the same local network, then search again.",
       );
-      return null;
-    }
-  };
+      stopDiscovery();
+    }, DISCOVERY_TIMEOUT_MS);
 
-  const handleTestConnection = async () => {
-    await checkConnection();
-  };
+    const processQueue = async () => {
+      if (processing || connected || !active) return;
+      processing = true;
 
-  const handleConnect = async () => {
-    setConnecting(true);
-    const normalized = await checkConnection();
-    if (normalized) {
-      try {
-        setRoverUrl(normalized);
-        if (onConnected) {
-          onConnected();
-        } else {
-          window.location.assign("/");
+      while (queuedUrls.length > 0 && active && !connected) {
+        const serverUrl = queuedUrls.shift();
+        if (!serverUrl) continue;
+
+        setConnectionState("checking");
+        setStatusMessage("RoverOS-Server found. Checking the connection…");
+
+        try {
+          await testRoverConnection(serverUrl);
+          if (!active) return;
+
+          setRoverUrl(serverUrl);
+          connected = true;
+          window.clearTimeout(discoveryTimer);
+          stopDiscovery();
+          setConnectionState("success");
+          setStatusMessage("Connected to RoverOS-Server.");
+
+          if (requiredConnection && onConnected) {
+            onConnected();
+          } else if (!requiredConnection) {
+            window.location.assign("/");
+          }
           return;
+        } catch {
+          if (!active) return;
+          setConnectionState("searching");
+          setStatusMessage(
+            "A device responded but did not pass the RoverOS check. Continuing to search…",
+          );
         }
-      } catch (error) {
-        setTestStatus("error");
-        setStatusMessage(
-          error instanceof Error ? error.message : "Could not save the MiniPC address.",
-        );
       }
-    }
-    setConnecting(false);
-  };
+
+      processing = false;
+    };
+
+    const enqueueServer = (serverUrl: string) => {
+      if (!active || attemptedUrls.has(serverUrl)) return;
+      attemptedUrls.add(serverUrl);
+      queuedUrls.push(serverUrl);
+      void processQueue();
+    };
+
+    const start = async () => {
+      if (!Capacitor.isNativePlatform()) {
+        setConnectionState("error");
+        setStatusMessage(
+          "Automatic discovery is available in the RoverOS Android app. Open the native app or return to the MiniPC-hosted web app.",
+        );
+        window.clearTimeout(discoveryTimer);
+        return;
+      }
+
+      const savedUrl = getRoverUrl();
+      if (savedUrl) enqueueServer(savedUrl);
+
+      try {
+        const stop = await startRoverServerDiscovery(
+          (candidate) => {
+            const serverUrl = getDiscoveredRoverUrl(candidate);
+            if (serverUrl) enqueueServer(serverUrl);
+          },
+          (message) => {
+            if (active && !connected) {
+              setConnectionState("error");
+              setStatusMessage(message);
+            }
+          },
+        );
+
+        if (!active || connected) {
+          stop();
+        } else {
+          stopDiscovery = stop;
+        }
+      } catch {
+        if (active && !connected) {
+          setConnectionState("error");
+          setStatusMessage(
+            "Android could not start network discovery. Check local-network access and try again.",
+          );
+          window.clearTimeout(discoveryTimer);
+        }
+      }
+    };
+
+    void start();
+
+    return () => {
+      active = false;
+      window.clearTimeout(discoveryTimer);
+      stopDiscovery();
+    };
+  }, [retryCount, requiredConnection, onConnected]);
+
+  const searching =
+    connectionState === "searching" || connectionState === "checking";
 
   return (
     <main
@@ -78,9 +157,15 @@ export default function Setup({
       data-testid="page-setup"
     >
       <div className="scanline" aria-hidden="true" />
-      <div className="absolute inset-0 bg-grid-pattern opacity-20 pointer-events-none" aria-hidden="true" />
+      <div
+        className="absolute inset-0 bg-grid-pattern opacity-20 pointer-events-none"
+        aria-hidden="true"
+      />
 
-      <Card className="w-full max-w-md border-primary/50 bg-black/80 backdrop-blur-xl shadow-[0_0_50px_rgba(var(--primary),0.2)]" data-testid="card-setup">
+      <Card
+        className="w-full max-w-md border-primary/50 bg-black/80 backdrop-blur-xl shadow-[0_0_50px_rgba(var(--primary),0.2)]"
+        data-testid="card-setup"
+      >
         <CardHeader>
           <div className="flex justify-center mb-6" aria-hidden="true">
             <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center border border-primary">
@@ -90,94 +175,80 @@ export default function Setup({
           <CardTitle className="text-center text-2xl font-display tracking-widest text-primary">
             CONNECT TO MINIPC
           </CardTitle>
-          <p className="text-center text-muted-foreground font-mono text-sm">
-            Enter the address of the MiniPC running RoverOS. Keep both devices on the same trusted network.
+          <p className="text-center text-muted-foreground font-mono text-sm leading-relaxed">
+            RoverOS searches for <strong>RoverOS-Server</strong> automatically.
+            Join its Wi-Fi or connect both devices to the same local network.
           </p>
         </CardHeader>
 
         <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="rover-server-address" className="text-xs font-mono uppercase text-primary/70">
-              MiniPC server address
-            </Label>
-            <Input
-              id="rover-server-address"
-              type="url"
-              inputMode="url"
-              autoComplete="url"
-              placeholder="http://192.168.1.40:5000"
-              value={serverAddress}
-              onChange={(event) => {
-                setServerAddress(event.target.value);
-                setTestStatus("idle");
-                setStatusMessage("");
-              }}
-              aria-describedby="rover-address-help rover-connection-status"
-              required
-              className="font-mono bg-background/50 border-primary/30 focus:border-primary text-base"
-              data-testid="input-rover-server-address"
-            />
-            <p id="rover-address-help" className="text-xs text-muted-foreground">
-              Include http:// or https:// and the port. The default port is 5000.
-            </p>
-          </div>
-
-          <div id="rover-connection-status" role="status" aria-live="polite" className="min-h-10 text-sm">
-            {testStatus === "success" && (
+          <div
+            id="rover-connection-status"
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+            className="min-h-12 text-sm"
+          >
+            {connectionState === "success" && (
               <p className="flex items-center gap-2 text-green-400">
-                <CheckCircle className="h-4 w-4" aria-hidden="true" />
+                <CheckCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
                 {statusMessage}
               </p>
             )}
-            {testStatus === "error" && (
-              <p className="flex items-center gap-2 text-red-400">
-                <XCircle className="h-4 w-4" aria-hidden="true" />
+            {connectionState === "error" && (
+              <p className="flex items-start gap-2 text-red-300">
+                <XCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
+                <span>{statusMessage}</span>
+              </p>
+            )}
+            {searching && (
+              <p className="flex items-center gap-2 text-muted-foreground">
+                <Search className="h-4 w-4 shrink-0" aria-hidden="true" />
                 {statusMessage}
               </p>
             )}
-            {testStatus === "testing" && <p className="text-muted-foreground">Checking the MiniPC…</p>}
           </div>
 
           <Button
             variant="outline"
-            className="w-full font-mono text-xs border-primary/50"
-            onClick={handleTestConnection}
-            disabled={testStatus === "testing" || connecting}
-            data-testid="button-test-connection"
+            className="w-full min-h-12 font-mono text-sm border-primary/50"
+            onClick={() => {
+              setConnectionState("searching");
+              setStatusMessage("Searching for RoverOS-Server…");
+              setRetryCount((count) => count + 1);
+            }}
+            disabled={searching}
+            data-testid="button-search-minipc"
           >
-            {testStatus === "testing" ? "TESTING…" : "TEST CONNECTION"}
+            {searching ? "SEARCHING…" : "SEARCH AGAIN"}
           </Button>
 
           <div className="p-4 rounded bg-primary/5 border border-primary/20 mt-6">
             <div className="flex items-center gap-2 text-primary text-sm font-bold mb-2">
               <Cpu className="w-4 h-4" aria-hidden="true" /> CLIENT / SERVER
             </div>
-            <ul className="text-xs font-mono text-muted-foreground space-y-1">
+            <ul className="text-sm leading-relaxed text-muted-foreground space-y-1">
               <li>• MiniPC: RoverOS web/API and database</li>
-              <li>• Android: this app connects over Wi-Fi</li>
-              <li>• Database credentials stay on the MiniPC</li>
+              <li>• Android and Windows: clients on the local Wi-Fi</li>
+              <li>• No IP address or database password is needed here</li>
             </ul>
           </div>
         </CardContent>
 
-        <CardFooter className="flex flex-col gap-3">
-          <Button
-            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-display tracking-widest h-12"
-            onClick={handleConnect}
-            disabled={connecting || testStatus === "testing"}
-            data-testid="button-connect"
-          >
-            {connecting ? "CONNECTING…" : "SAVE AND CONNECT"}
-          </Button>
-          {!requiredConnection && (
+        {!requiredConnection && (
+          <CardFooter>
             <Link href="/">
-              <Button variant="ghost" className="w-full font-mono text-xs" data-testid="button-skip-setup">
-                <ArrowLeft className="w-3 h-3 mr-2" aria-hidden="true" />
+              <Button
+                variant="ghost"
+                className="w-full min-h-11 font-mono text-sm"
+                data-testid="button-back-to-dashboard"
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" aria-hidden="true" />
                 BACK TO DASHBOARD
               </Button>
             </Link>
-          )}
-        </CardFooter>
+          </CardFooter>
+        )}
       </Card>
     </main>
   );

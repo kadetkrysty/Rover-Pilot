@@ -95,23 +95,54 @@ export default function MiniPcInstallGuide() {
         <ul className="list-disc space-y-2 pl-5 text-sm text-muted-foreground">
           <li>Install 64-bit Ubuntu Server 24.04 LTS and apply its updates.</li>
           <li>
-            Connect the MiniPC to the same trusted router or access point used by
-            the Android phone and Windows PC.
+            Name the device <code className="text-foreground">RoverOS-Server</code>.
+            Android and Windows will find it automatically; no IP entry is needed.
           </li>
           <li>
-            In the router, reserve a fixed DHCP address for the MiniPC. The example
-            below uses <code className="text-foreground">192.168.1.40</code>; use
-            the address and subnet for your own network.
+            Connect all devices to the same trusted Wi-Fi/LAN. A DHCP reservation
+            is useful for administration but is not required by the apps.
           </li>
           <li>
             Keep PostgreSQL on the MiniPC. Do not expose database port 5432 to
             other network devices.
           </li>
         </ul>
-        <CodeBlock title="Update Ubuntu and install basic tools">{`sudo apt update
+        <CodeBlock title="Set the network name and install mDNS">{`sudo apt update
 sudo apt upgrade -y
-sudo apt install -y ca-certificates curl git`}</CodeBlock>
+sudo apt install -y ca-certificates curl git avahi-daemon avahi-utils
+sudo hostnamectl set-hostname RoverOS-Server
+sudo systemctl enable --now avahi-daemon`}</CodeBlock>
+        <p className="text-sm leading-relaxed text-muted-foreground">
+          Discovery uses mDNS and works on the same local network segment. Guest
+          Wi-Fi, client isolation, or VLAN separation can block it.
+        </p>
       </GuideSection>
+
+      <aside
+        className="space-y-3 rounded-lg border border-blue-500/40 bg-blue-500/10 p-4 sm:p-6"
+        aria-labelledby="hotspot-title"
+      >
+        <h4 id="hotspot-title" className="font-display text-blue-200">
+          Optional: make the MiniPC a Wi-Fi hotspot
+        </h4>
+        <p className="text-sm leading-relaxed text-muted-foreground">
+          RoverOS discovery works over a MiniPC hotspot as well as a normal
+          router. The MiniPC needs an access-point-capable adapter. If
+          NetworkManager already manages its Wi-Fi, create the hotspot from the
+          MiniPC’s local console:
+        </p>
+        <CodeBlock title="NetworkManager hotspot">{`nmcli device status
+sudo nmcli device wifi hotspot ifname wlp2s0 con-name RoverOS-Server ssid RoverOS-Server`}</CodeBlock>
+        <p className="text-sm leading-relaxed text-muted-foreground">
+          Replace <code className="text-foreground">wlp2s0</code> with the
+          MiniPC’s Wi-Fi interface. NetworkManager generates a password when
+          omitted; record it and join from Windows and Android. This can replace
+          the MiniPC’s current Wi-Fi connection, so do not activate it over SSH.
+          Do not switch the network manager remotely on an Ubuntu Server using
+          systemd-networkd. Bluetooth is not supported as an app transport;
+          RoverOS uses HTTP and WebSockets over IP.
+        </p>
+      </aside>
 
       <GuideSection number="02" title="Install Node.js 22 and PostgreSQL 16">
         <p className="text-sm leading-relaxed text-muted-foreground">
@@ -170,9 +201,9 @@ sudo -u roveros npm ci`}</CodeBlock>
 
       <GuideSection number="05" title="Set the database connection securely">
         <p className="text-sm leading-relaxed text-muted-foreground">
-          Replace <code className="text-foreground">192.168.1.40</code> later
-          with the MiniPC address when connecting clients. The database URL below
-          remains local to the MiniPC. Use the password created in step 03.
+          Client apps discover <code className="text-foreground">RoverOS-Server</code>
+          automatically. The database URL below remains local to the MiniPC. Use
+          the password created in step 03.
         </p>
         <CodeBlock title="Create a root-owned environment file">{`sudo install -o root -g roveros -m 640 /dev/null /etc/roveros.env
 sudo nano /etc/roveros.env`}</CodeBlock>
@@ -228,6 +259,13 @@ sudo systemctl enable --now roveros
 sudo systemctl status roveros --no-pager
 curl -i http://127.0.0.1:5000/api/system/info
 sudo journalctl -u roveros -n 100 --no-pager`}</CodeBlock>
+        <p className="text-sm leading-relaxed text-muted-foreground">
+          Install the Avahi service record so Android can identify RoverOS among
+          other HTTP services on the network.
+        </p>
+        <CodeBlock title="Advertise RoverOS for automatic discovery">{`sudo install -m 0644 /opt/roveros/app/deploy/avahi/roveros.service /etc/avahi/services/roveros.service
+sudo systemctl restart avahi-daemon
+sudo avahi-browse -rt _http._tcp`}</CodeBlock>
       </GuideSection>
 
       <GuideSection number="08" title="Allow trusted local-network access only">
@@ -239,6 +277,7 @@ sudo journalctl -u roveros -n 100 --no-pager`}</CodeBlock>
         <CodeBlock title="Restrict the firewall to your LAN">{`sudo apt install -y ufw
 sudo ufw allow OpenSSH
 sudo ufw allow from 192.168.1.0/24 to any port 5000 proto tcp
+sudo ufw allow from 192.168.1.0/24 to any port 5353 proto udp
 sudo ufw enable
 sudo ufw status verbose
 

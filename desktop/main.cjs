@@ -1,10 +1,9 @@
 const { app, BrowserWindow, ipcMain, Menu, shell } = require("electron");
-const fs = require("node:fs/promises");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
-const { normalizeServerUrl } = require("./server-url.cjs");
 
-const settingsPath = () => path.join(app.getPath("userData"), "settings.json");
+const roverServerUrl = "http://roveros-server.local:5000";
+const roverHealthUrl = `${roverServerUrl}/api/system/info`;
 const setupPagePath = path.join(__dirname, "setup.html");
 const setupPageUrl = pathToFileURL(setupPagePath).href;
 const preloadPath = path.join(__dirname, "preload.cjs");
@@ -12,27 +11,6 @@ const preloadPath = path.join(__dirname, "preload.cjs");
 let mainWindow;
 let activeServerOrigin = null;
 let setupError = "";
-let setupServerUrl = "";
-
-async function readServerUrl() {
-  try {
-    const settings = JSON.parse(await fs.readFile(settingsPath(), "utf8"));
-    return normalizeServerUrl(settings.serverUrl);
-  } catch {
-    return "";
-  }
-}
-
-async function saveServerUrl(serverUrl) {
-  const normalized = normalizeServerUrl(serverUrl);
-  await fs.mkdir(path.dirname(settingsPath()), { recursive: true });
-  await fs.writeFile(
-    settingsPath(),
-    `${JSON.stringify({ serverUrl: normalized }, null, 2)}\n`,
-    { encoding: "utf8", mode: 0o600 },
-  );
-  return normalized;
-}
 
 function safeHttpUrl(value) {
   try {
@@ -96,62 +74,67 @@ function createWindow() {
   });
 }
 
-async function showSetup(error = "", serverUrl = "") {
+async function showSetup(error = "") {
   if (!mainWindow) return;
   activeServerOrigin = null;
   setupError = error;
-  setupServerUrl = serverUrl || (await readServerUrl());
   await mainWindow.loadFile(setupPagePath);
 }
 
-async function openRoverOS(serverUrl) {
-  const normalized = normalizeServerUrl(serverUrl);
-  activeServerOrigin = new URL(normalized).origin;
-  setupServerUrl = normalized;
-
+async function verifyRoverServer() {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 4000);
   try {
-    await mainWindow.loadURL(normalized);
-    setupError = "";
-    return { ok: true };
+    const response = await fetch(roverHealthUrl, {
+      signal: controller.signal,
+      cache: "no-store",
+    });
+    if (!response.ok) {
+      throw new Error(`MiniPC returned HTTP ${response.status}.`);
+    }
+
+    const info = await response.json();
+    if (
+      !info ||
+      typeof info.rover_name !== "string" ||
+      !info.rover_name.toLowerCase().startsWith("roveros")
+    ) {
+      throw new Error("The discovered device did not identify itself as RoverOS.");
+    }
   } catch {
-    await showSetup(
-      "Could not reach RoverOS. Check that the MiniPC is on and both devices are on the same network.",
-      normalized,
+    throw new Error(
+      "RoverOS-Server was not found. Join its Wi-Fi or the same local network, then search again.",
     );
-    return { ok: false, error: setupError };
+  } finally {
+    clearTimeout(timeout);
   }
 }
 
 ipcMain.handle("desktop:get-setup-state", async (event) => {
   if (!isSetupPageRequest(event)) {
-    return { serverUrl: "", error: "Open the MiniPC connection screen to change settings." };
+    return { error: "Open the MiniPC search screen to change settings." };
   }
-  return {
-    serverUrl: setupServerUrl || (await readServerUrl()),
-    error: setupError,
-  };
+  return { error: setupError };
 });
 
-ipcMain.handle("desktop:connect-to-server", async (event, serverUrl) => {
+ipcMain.handle("desktop:search-server", async (event) => {
   if (!isSetupPageRequest(event)) {
-    return { ok: false, error: "Open the MiniPC connection screen to change settings." };
-  }
-
-  let normalized;
-  try {
-    normalized = normalizeServerUrl(serverUrl);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Enter a valid MiniPC address.";
-    setupError = message;
-    return { ok: false, error: message };
+    return { ok: false, error: "Open the MiniPC search screen to continue." };
   }
 
   try {
-    await saveServerUrl(normalized);
-    return await openRoverOS(normalized);
+    await verifyRoverServer();
+    activeServerOrigin = new URL(roverServerUrl).origin;
+    await mainWindow.loadURL(roverServerUrl);
+    setupError = "";
+    return { ok: true };
   } catch {
-    const message = "Could not save the MiniPC address. Check Windows app permissions and try again.";
+    const message =
+      "RoverOS-Server was not found. Join its Wi-Fi or the same local network, then search again.";
     setupError = message;
+    if (mainWindow.webContents.getURL() !== setupPageUrl) {
+      await showSetup(message);
+    }
     return { ok: false, error: message };
   }
 });
@@ -163,7 +146,7 @@ function installAppMenu() {
         label: "RoverOS",
         submenu: [
           {
-            label: "Change MiniPC address…",
+            label: "Find MiniPC on the network…",
             click: () => void showSetup(),
           },
           { type: "separator" },
@@ -178,13 +161,7 @@ app.whenReady().then(async () => {
   app.setAppUserModelId("com.roverostech.rover.desktop");
   installAppMenu();
   createWindow();
-
-  const savedUrl = await readServerUrl();
-  if (savedUrl) {
-    await openRoverOS(savedUrl);
-  } else {
-    await showSetup();
-  }
+  await showSetup();
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) {

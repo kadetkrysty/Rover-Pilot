@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   getRoverApiUrl,
   normalizeRoverUrl,
+  testRoverConnection,
 } from "./roverConnection";
 
 test("normalizes a MiniPC address to port 5000 by default", () => {
@@ -40,4 +41,28 @@ test("builds API URLs on the configured MiniPC and blocks paths outside /api", (
     () => getRoverApiUrl("/api/../admin", "http://192.168.1.40:5000"),
     /under \/api\//,
   );
+});
+
+test("connection verification rejects a successful response from a non-RoverOS service", async () => {
+  const originalFetch = globalThis.fetch;
+  const originalWindow = globalThis.window;
+  globalThis.window = {
+    setTimeout,
+    clearTimeout,
+  } as unknown as Window & typeof globalThis;
+  globalThis.fetch = async () =>
+    new Response(JSON.stringify({ service: "unrelated" }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+
+  try {
+    await assert.rejects(
+      testRoverConnection("http://192.168.1.40:5000"),
+      /did not identify itself as RoverOS/,
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+    globalThis.window = originalWindow;
+  }
 });

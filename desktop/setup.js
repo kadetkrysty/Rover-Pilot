@@ -1,46 +1,35 @@
-const form = document.querySelector("#connection-form");
-const addressInput = document.querySelector("#server-address");
 const status = document.querySelector("#connection-status");
-const connectButton = document.querySelector("#connect-button");
+const searchButton = document.querySelector("#search-button");
 
-function showStatus(message) {
+function showStatus(message, state = "searching") {
   status.textContent = message;
+  status.dataset.state = state;
 }
 
-window.roverosDesktop.getSetupState().then((state) => {
-  if (state.serverUrl) {
-    addressInput.value = state.serverUrl;
-  }
-  if (state.error) {
-    showStatus(state.error);
-  }
-  addressInput.focus();
-});
-
-form.addEventListener("submit", async (event) => {
-  event.preventDefault();
-  showStatus("");
-
-  if (!addressInput.value.trim()) {
-    showStatus("Enter the MiniPC address to continue.");
-    addressInput.focus();
-    return;
-  }
-
-  connectButton.disabled = true;
-  connectButton.textContent = "Connecting…";
+async function searchForServer() {
+  searchButton.disabled = true;
+  searchButton.textContent = "Searching…";
+  showStatus("Searching for RoverOS-Server…");
 
   try {
-    const result = await window.roverosDesktop.connectToServer(addressInput.value);
+    const result = await window.roverosDesktop.searchForServer();
     if (!result.ok) {
-      showStatus(result.error || "Could not connect. Check the address and try again.");
-      addressInput.focus();
+      showStatus(result.error || "RoverOS-Server was not found.", "error");
     }
   } catch {
-    showStatus("Could not connect. Check the address and try again.");
-    addressInput.focus();
+    showStatus(
+      "RoverOS-Server was not found. Join its Wi-Fi or the same local network, then search again.",
+      "error",
+    );
   } finally {
-    connectButton.disabled = false;
-    connectButton.textContent = "Connect";
+    searchButton.disabled = false;
+    searchButton.textContent = "Search again";
   }
+}
+
+searchButton.addEventListener("click", searchForServer);
+
+window.roverosDesktop.getSetupState().then((state) => {
+  if (state.error) showStatus(state.error, "error");
+  void searchForServer();
 });

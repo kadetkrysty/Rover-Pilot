@@ -62,58 +62,22 @@ h1 {
   line-height: 1.6;
 }
 
-label {
-  display: block;
-  margin-bottom: 9px;
-  font-size: 0.95rem;
-  font-weight: 650;
-}
-
-input {
-  width: 100%;
-  min-height: 50px;
-  padding: 0 14px;
-  border: 1px solid #52647c;
-  border-radius: 10px;
-  outline: none;
-  background: #081321;
-  color: #f6f9ff;
-  font: inherit;
-  font-size: 1rem;
-}
-
-input::placeholder {
-  color: #9aa9bc;
-  opacity: 1;
-}
-
-input:focus-visible {
-  border-color: #71b2ff;
-  box-shadow: 0 0 0 3px rgb(59 147 255 / 32%);
-}
-
-.help,
 .offline-note {
   color: #b7c4d6;
   font-size: 0.88rem;
   line-height: 1.55;
 }
 
-.help {
-  margin: 9px 0 0;
-}
-
-.help span {
-  color: #e5efff;
-  overflow-wrap: anywhere;
-}
-
 .status {
-  min-height: 1.5em;
-  margin: 14px 0;
-  color: #ffb5a8;
+  min-height: 3em;
+  margin: 18px 0;
+  color: #b7c4d6;
   font-size: 0.9rem;
   line-height: 1.45;
+}
+
+.status[data-state="error"] {
+  color: #ffb5a8;
 }
 
 button {
