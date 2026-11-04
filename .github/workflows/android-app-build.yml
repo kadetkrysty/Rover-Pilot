@@ -117,3 +117,42 @@ jobs:
       - name: Remove temporary Android signing key
         if: ${{ always() && github.event_name == 'workflow_dispatch' && inputs.build_release }}
         run: rm -f "$RUNNER_TEMP/roveros-release.keystore"
+
+  publish-release:
+    name: Publish signed APK for testers
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.build_release }}
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download verified Android release APK
+        uses: actions/download-artifact@v7
+        with:
+          name: roveros-android-release
+          path: android-release
+
+      - name: Publish signed APK to GitHub Releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPOSITORY: ${{ github.repository }}
+          GH_SERVER_URL: ${{ github.server_url }}
+          GH_SHA: ${{ github.sha }}
+          GH_RUN_NUMBER: ${{ github.run_number }}
+        run: |
+          set -euo pipefail
+          tag="roveros-android-v1.0.${GH_RUN_NUMBER}"
+          version="1.0.${GH_RUN_NUMBER}"
+          apk="RoverOS-Android-v${version}.apk"
+          cp android-release/app-release.apk "$apk"
+
+          release_url="${GH_SERVER_URL}/${GH_REPOSITORY}/releases/latest"
+          gh release create "$tag" "$apk" \
+            --title "RoverOS Android Tester Release v${version}" \
+            --notes "Signed Android APK for testers. Download the APK from Assets below. Stable download page: ${release_url}" \
+            --latest \
+            --target "$GH_SHA"
+
+          printf '## RoverOS Android tester release\n\nDownload the latest signed release: [GitHub Releases](%s)\n' "$release_url" >> "$GITHUB_STEP_SUMMARY"
