@@ -133,6 +133,8 @@ jobs:
           ./gradlew --no-daemon clean assembleRelease \
             -PandroidVersionCode="$release_version_code" \
             -PandroidVersionName="$release_version_name"
+          cp "$RUNNER_TEMP/roveros-release-predecessor.apk" \
+            app/build/outputs/apk/release/app-release-predecessor.apk
 
       - name: Verify release APK identity, versions, and signatures
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.build_release }}
@@ -165,14 +167,48 @@ jobs:
           test -n "$predecessor_certificate"
           test "$predecessor_certificate" = "$release_certificate"
 
-      - name: Install release update on Android emulator
+      - name: Upload Android release APK
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.build_release }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: roveros-android-release
+          path: |
+            android/app/build/outputs/apk/release/app-release.apk
+            android/app/build/outputs/apk/release/app-release-predecessor.apk
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Remove temporary Android signing key
+        if: ${{ always() && github.event_name == 'workflow_dispatch' && inputs.build_release }}
+        run: rm -f "$RUNNER_TEMP/roveros-release.keystore"
+
+  verify-update:
+    name: Verify signed update on Android API ${{ matrix.api-level }}
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.build_release }}
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        api-level: [24, 36]
+
+    steps:
+      - name: Download signed Android APK pair
+        uses: actions/download-artifact@v7
+        with:
+          name: roveros-android-release
+          path: android-release
+
+      - name: Install and update on Android emulator
         uses: reactivecircus/android-emulator-runner@v2
         env:
-          ANDROID_RELEASE_APK: ${{ github.workspace }}/android/app/build/outputs/apk/release/app-release.apk
+          ANDROID_PREDECESSOR_APK: ${{ github.workspace }}/android-release/app-release-predecessor.apk
+          ANDROID_RELEASE_APK: ${{ github.workspace }}/android-release/app-release.apk
           ANDROID_RELEASE_RUN_NUMBER: ${{ github.run_number }}
+          EXPECTED_ANDROID_API: ${{ matrix.api-level }}
         with:
-          api-level: 35
+          api-level: ${{ matrix.api-level }}
           arch: x86_64
           profile: pixel_6
           disable-animations: true
@@ -182,7 +218,10 @@ jobs:
             data_dir="/sdcard/Android/data/${package_name}/files/update-install-check"
             marker="$data_dir/retained-data.txt"
 
-            adb install "$RUNNER_TEMP/roveros-release-predecessor.apk"
+            actual_api=$(adb shell getprop ro.build.version.sdk | tr -d '\r')
+            test "$actual_api" = "$EXPECTED_ANDROID_API"
+
+            adb install "$ANDROID_PREDECESSOR_APK"
             installed_predecessor_code=$(adb shell dumpsys package "$package_name" |
               sed -n 's/.*versionCode=\([0-9]*\).*/\1/p' | head -n 1 | tr -d '\r')
             test "$installed_predecessor_code" = "$ANDROID_RELEASE_RUN_NUMBER"
@@ -198,25 +237,12 @@ jobs:
             expected_version_code=$((ANDROID_RELEASE_RUN_NUMBER + 1))
             test "$installed_version_code" = "$expected_version_code"
             test "$(adb shell cat "$marker" | tr -d '\r')" = "release-update-data-retained"
-            echo "Android accepted the signed update and retained app-specific data."
-
-      - name: Upload Android release APK
-        if: ${{ github.event_name == 'workflow_dispatch' && inputs.build_release }}
-        uses: actions/upload-artifact@v7
-        with:
-          name: roveros-android-release
-          path: android/app/build/outputs/apk/release/app-release.apk
-          if-no-files-found: error
-          retention-days: 14
-
-      - name: Remove temporary Android signing key
-        if: ${{ always() && github.event_name == 'workflow_dispatch' && inputs.build_release }}
-        run: rm -f "$RUNNER_TEMP/roveros-release.keystore"
+            echo "Android API ${EXPECTED_ANDROID_API} accepted the signed update and retained app-specific data."
 
   publish-release:
     name: Publish signed APK for testers
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.build_release }}
-    needs: build
+    needs: [build, verify-update]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     concurrency:
