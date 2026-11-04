@@ -11,4 +11,5 @@ test("production requires signing while test installers have an isolated identit
   assert.match(testBuild.win.artifactName, /Test-UNSIGNED/);
   assert.match(testBuild.nsis.shortcutName, /Unsigned/);
   assert.ok(testBuild.files.includes("desktop/provisioning-request.cjs"));
+  assert.ok(testBuild.files.includes("dist/public/**/*"), "Offline demo assets must ship inside the installer");
 });

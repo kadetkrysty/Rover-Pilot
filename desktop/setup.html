@@ -14,14 +14,10 @@
   </head>
   <body>
     <main class="card">
-      <img class="brand-icon" src="assets/roveros.svg" alt="" />
-      <p class="eyebrow">WINDOWS CLIENT</p>
-      <h1>Connect to RoverOS</h1>
-      <p class="intro">
-        RoverOS searches automatically for the MiniPC named
-        <strong>RoverOS-Server</strong>. Join its Wi-Fi or connect to the same
-        local network.
-      </p>
+      <header class="card-header">
+        <p class="eyebrow">NETWORK LINK <span aria-hidden="true">/</span> 01</p>
+        <h1>Connect to MiniPC</h1>
+      </header>
 
       <p id="connection-status" class="status" role="status" aria-live="polite" aria-atomic="true">
         Looking for the MiniPC on your local network…
@@ -78,10 +74,13 @@
         </p>
       </section>
 
-      <p class="offline-note">
-        Windows discovers the MiniPC by its RoverOS-Server name. No IP address is
-        needed, and this client does not install server software on this PC.
-      </p>
+      <footer class="card-footer">
+        <div class="demo-copy">
+          <span class="footer-label">OFFLINE ACCESS</span>
+          <p>Explore RoverOS with sample data. No server connection required.</p>
+        </div>
+        <button id="demo-button" class="demo-button" type="button">DEMO MODE</button>
+      </footer>
     </main>
   </body>
 </html>

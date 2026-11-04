@@ -13,7 +13,7 @@
     "build": "tsx script/build.ts",
     "desktop:win": "electron-builder --win nsis --x64 --publish never",
     "test:desktop": "node --test desktop/server-url.test.cjs desktop/build-config.test.cjs desktop/secure-api-request.test.cjs scripts/normalize-github-npm-lock.test.mjs",
-    "test:client-connection": "node --import tsx --test client/src/lib/roverConnection.test.ts client/src/lib/discoveredServer.test.ts",
+    "test:client-connection": "node --import tsx --test client/src/lib/roverConnection.test.ts client/src/lib/discoveredServer.test.ts client/src/lib/demoMode.test.ts",
     "test:client-auth": "node --import tsx --test server/clientAuth.test.ts server/routes.auth.test.ts",
     "start": "NODE_ENV=production node dist/index.cjs",
     "check": "tsc",
@@ -166,6 +166,8 @@
       "desktop/setup.css",
       "desktop/setup.js",
       "desktop/assets/roveros.svg",
+      "desktop/assets/roveros.ico",
+      "dist/public/**/*",
       "package.json"
     ],
     "win": {

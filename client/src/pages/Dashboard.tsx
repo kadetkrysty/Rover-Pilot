@@ -10,6 +10,7 @@ import CameraPanTilt from '@/components/CameraPanTilt';
 import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Gauge, Compass, Activity } from 'lucide-react';
+import { isDemoMode } from '@/lib/demoMode';
 
 export default function Dashboard() {
   const data = useRoverData();
@@ -20,7 +21,7 @@ export default function Dashboard() {
   const roverLng = telemetry?.gps?.lng && telemetry.gps.lng !== 0 ? telemetry.gps.lng : null;
 
   return (
-    <div className="h-[calc(100dvh-56px)] bg-background text-foreground font-sans selection:bg-primary/30 overflow-hidden relative" data-testid="page-dashboard">
+    <div className={`${isDemoMode() ? "h-full" : "h-[calc(100dvh-56px)]"} bg-background text-foreground font-sans selection:bg-primary/30 overflow-hidden relative`} data-testid="page-dashboard">
       <div className="scanline"></div>
 
       {/* Desktop Layout (≥1024px): 3 columns - strict viewport fit, NO scrolling */}
@@ -230,7 +231,7 @@ export default function Dashboard() {
       </main>
 
       {/* Mobile Layout (<640px): Single column, scrollable */}
-      <main className="sm:hidden flex flex-col gap-2 p-2 h-full overflow-y-auto">
+      <main className="sm:hidden flex flex-col gap-2 p-2 h-full overflow-y-auto [&>*]:shrink-0">
         <div className="hud-panel overflow-hidden">
           <AspectRatio ratio={16 / 9}>
             <CameraFeed className="h-full" latitude={roverLat ?? 0} longitude={roverLng ?? 0} />

@@ -1,6 +1,8 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("roverosDesktop", {
+  startDemoMode: () => ipcRenderer.invoke("desktop:start-demo"),
+  exitDemoMode: () => ipcRenderer.invoke("desktop:exit-demo"),
   getSetupState: () => ipcRenderer.invoke("desktop:get-setup-state"),
   searchForServer: () => ipcRenderer.invoke("desktop:search-server"),
   getProvisioningStatus: () => ipcRenderer.invoke("desktop:get-provisioning-status"),

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { getRoverWsUrl } from './roverConnection';
 import { getRoverCredentials } from './roverConnection';
+import { demoTelemetry, isDemoMode } from './demoMode';
 
 export interface TelemetryData {
   timestamp: number;
@@ -69,6 +70,7 @@ export function useWebSocket(): UseWebSocketResult {
   const lastPingRef = useRef<number>(0);
 
   const connect = useCallback(() => {
+    if (isDemoMode()) return;
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       return;
     }
@@ -188,6 +190,7 @@ export function useWebSocket(): UseWebSocketResult {
   }, []);
 
   const sendCommand = useCallback((command: object) => {
+    if (isDemoMode()) return;
     if (wsRef.current?.readyState === WebSocket.OPEN && isAuthenticated && ['owner', 'operator'].includes(role)) {
       wsRef.current.send(JSON.stringify({ type: 'command', command }));
     } else if (!isAuthenticated || !['owner', 'operator'].includes(role)) {
@@ -216,6 +219,17 @@ export function useWebSocket(): UseWebSocketResult {
   }, [connect]);
 
   useEffect(() => {
+    if (isDemoMode()) {
+      const update = () => {
+        const sample = demoTelemetry();
+        setTelemetry(sample);
+        setLidarScans(sample.lidar.map(point => ({ ...point, timestamp: sample.timestamp })));
+      };
+      update();
+      setConnectionStatus(prev => ({ ...prev, state: 'disconnected', lastError: 'Offline demo — sample data' }));
+      const timer = window.setInterval(update, 1000);
+      return () => window.clearInterval(timer);
+    }
     connect();
 
     return () => {

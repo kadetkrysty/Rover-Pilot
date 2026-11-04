@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from '@/components/ui/button';
 import { Settings, CheckCircle } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
+import { exitDemoMode, isDemoMode } from '@/lib/demoMode';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -14,6 +15,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const [location] = useLocation();
 
   useEffect(() => {
+    if (isDemoMode() || window.location.pathname === "/setup") return;
     const hasSeenConfig = localStorage.getItem('roveros_config_seen');
     if (!hasSeenConfig) {
       setShowConfigModal(true);
@@ -28,8 +30,14 @@ export default function AppLayout({ children }: AppLayoutProps) {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <main className="pt-14">
-        {children}
+      <main className={isDemoMode() ? "pt-14 h-dvh flex flex-col" : "pt-14"}>
+      {isDemoMode() && (
+        <div role="status" className="shrink-0 flex items-center justify-between gap-3 border-b border-primary/40 bg-background px-3 py-2 font-mono text-xs text-primary" data-testid="demo-banner">
+          <span>DEMO MODE · Offline sample data · Rover controls disabled</span>
+          <Button variant="outline" className="shrink-0 min-h-11 text-xs" onClick={exitDemoMode}>EXIT DEMO</Button>
+        </div>
+      )}
+        <div className={isDemoMode() ? "flex-1 min-h-0" : ""}>{children}</div>
       </main>
 
       {/* First Launch Config Modal */}

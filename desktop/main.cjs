@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, Menu, shell } = require("electron");
+const { app, BrowserWindow, ipcMain, Menu, shell, protocol, net } = require("electron");
 const fs = require("node:fs");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
@@ -10,8 +10,14 @@ const roverHealthUrl = `${roverServerUrl}/api/system/info`;
 const setupPagePath = path.join(__dirname, "setup.html");
 const setupPageUrl = pathToFileURL(setupPagePath).href;
 const preloadPath = path.join(__dirname, "preload.cjs");
+const demoRoot = path.join(__dirname, "..", "dist", "public");
+protocol.registerSchemesAsPrivileged([
+  { scheme: "roveros-demo", privileges: { standard: true, secure: true, supportFetchAPI: true } },
+]);
 
 let mainWindow;
+let demoActive = false;
+let viewGeneration = 0;
 let activeServerOrigin = null;
 let setupError = "";
 let currentProvisioningStatus = null;
@@ -64,6 +70,12 @@ function createWindow() {
   });
 
   mainWindow.once("ready-to-show", () => mainWindow.show());
+  mainWindow.webContents.session.webRequest.onBeforeRequest(
+    { urls: ["http://*/*", "https://*/*", "ws://*/*", "wss://*/*"] },
+    (details, callback) => callback({
+      cancel: demoActive && details.webContentsId === mainWindow?.webContents.id,
+    }),
+  );
   mainWindow.webContents.on("will-navigate", handleNavigation);
   mainWindow.webContents.on("will-redirect", handleNavigation);
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
@@ -142,6 +154,8 @@ ipcMain.handle("desktop:secure-api-request", async (event, options) => {
 
 async function showSetup(error = "") {
   if (!mainWindow) return;
+  viewGeneration += 1;
+  demoActive = false;
   activeServerOrigin = null;
   setupError = error;
   await mainWindow.loadFile(setupPagePath);
@@ -206,8 +220,10 @@ ipcMain.handle("desktop:search-server", async (event) => {
     return { ok: false, error: "Open the MiniPC search screen to continue." };
   }
 
+  const generation = viewGeneration;
   try {
     const result = await verifyRoverServer();
+    if (generation !== viewGeneration) return { ok: false, error: "Search cancelled." };
     if (result.setupRequired) {
       currentProvisioningStatus = result.status;
       setupError = "";
@@ -219,6 +235,7 @@ ipcMain.handle("desktop:search-server", async (event) => {
     currentProvisioningStatus = null;
     return { ok: true };
   } catch {
+    if (generation !== viewGeneration) return { ok: false, error: "Search cancelled." };
     const message =
       "RoverOS-Server was not found. Join its Wi-Fi or the same local network, then search again.";
     setupError = message;
@@ -227,6 +244,29 @@ ipcMain.handle("desktop:search-server", async (event) => {
     }
     return { ok: false, error: message };
   }
+});
+
+ipcMain.handle("desktop:start-demo", async (event) => {
+  if (!isSetupPageRequest(event) && !isMainAppRequest(event)) throw new Error("Open RoverOS to start demo mode.");
+  if (!fs.existsSync(path.join(demoRoot, "index.html"))) {
+    throw new Error("Offline demo files are missing. Rebuild the Windows installer with web assets.");
+  }
+  viewGeneration += 1; // Discard any discovery response still in flight.
+  demoActive = true;
+  activeServerOrigin = null; // Demo pages must never access the secure API bridge.
+  await mainWindow.loadURL("roveros-demo://app/?demo=1");
+  return { ok: true };
+});
+
+ipcMain.handle("desktop:exit-demo", async (event) => {
+  const url = new URL(event.senderFrame?.url || "about:blank");
+  if (!demoActive || event.sender !== mainWindow?.webContents ||
+      event.senderFrame !== mainWindow.webContents.mainFrame ||
+      url.protocol !== "roveros-demo:" || url.host !== "app") {
+    throw new Error("Only the local offline demo can exit demo mode.");
+  }
+  await showSetup();
+  return { ok: true };
 });
 
 ipcMain.handle("desktop:get-provisioning-status", async (event) => {
@@ -311,6 +351,37 @@ function installAppMenu() {
 }
 
 app.whenReady().then(async () => {
+  protocol.handle("roveros-demo", async (request) => {
+    try {
+      const url = new URL(request.url);
+      if (url.host !== "app" || !["GET", "HEAD"].includes(request.method)) {
+        return new Response("Not allowed", { status: 403 });
+      }
+      const decoded = decodeURIComponent(url.pathname);
+      if (decoded.includes("\0") || decoded.includes("\\")) return new Response("Invalid path", { status: 400 });
+      let target = path.resolve(demoRoot, `.${decoded}`);
+      const relative = path.relative(demoRoot, target);
+      if (relative.startsWith("..") || path.isAbsolute(relative)) {
+        return new Response("Not allowed", { status: 403 });
+      }
+      if (!fs.existsSync(target) || fs.statSync(target).isDirectory()) {
+        if (path.extname(decoded)) return new Response("Not found", { status: 404 });
+        target = path.join(demoRoot, "index.html");
+      }
+      const response = await net.fetch(pathToFileURL(target).href);
+      if (target.endsWith("index.html")) {
+        return new Response(await response.text(), {
+          headers: {
+            "content-type": "text/html; charset=utf-8",
+            "Content-Security-Policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'none'; media-src 'self' blob:; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'",
+          },
+        });
+      }
+      return response;
+    } catch {
+      return new Response("Offline demo resource unavailable", { status: 404 });
+    }
+  });
   try {
     const savedFingerprint = fs.readFileSync(
       path.join(app.getPath("userData"), "server-certificate-fingerprint"),

@@ -11,6 +11,16 @@ const hiddenNetwork = document.querySelector("#hidden-network");
 const wifiForm = document.querySelector("#wifi-form");
 const setupProgress = document.querySelector("#setup-progress");
 const connectButton = document.querySelector("#connect-button");
+const demoButton = document.querySelector("#demo-button");
+demoButton.addEventListener("click", async () => {
+  demoButton.disabled = true;
+  try {
+    await window.roverosDesktop.startDemoMode();
+  } catch (error) {
+    showStatus(messageFrom(error, "Could not open offline demo."), "error");
+    demoButton.disabled = false;
+  }
+});
 
 const ACTIVE_STATES = new Set(["wifi_connecting", "installing"]);
 const VALID_STATES = new Set(["setup_required", "wifi_connecting", "installing", "failed", "ready"]);

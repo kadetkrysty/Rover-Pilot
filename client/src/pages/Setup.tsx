@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Capacitor } from "@capacitor/core";
 import { Link } from "wouter";
 import { ArrowLeft, CheckCircle, Cpu, Search, Wifi, XCircle } from "lucide-react";
@@ -12,6 +12,7 @@ import {
 import { getDiscoveredRoverUrl } from "@/lib/discoveredServer";
 import { startRoverServerDiscovery } from "@/lib/roverDiscovery";
 import ProvisioningWizard from "@/components/ProvisioningWizard";
+import { enterDemoMode } from "@/lib/demoMode";
 
 type ConnectionState = "searching" | "checking" | "success" | "error" | "provisioning";
 interface ProvisioningStatus {
@@ -33,6 +34,7 @@ export default function Setup({
   onConnected,
 }: SetupProps) {
   const [retryCount, setRetryCount] = useState(0);
+  const stopConnectionSearch = useRef(() => {});
   const [connectionState, setConnectionState] =
     useState<ConnectionState>("searching");
   const [statusMessage, setStatusMessage] = useState(
@@ -186,11 +188,13 @@ export default function Setup({
 
     void start();
 
-    return () => {
+    const cleanup = () => {
       active = false;
       window.clearTimeout(discoveryTimer);
       stopDiscovery();
     };
+    stopConnectionSearch.current = cleanup;
+    return cleanup;
   }, [retryCount, requiredConnection, onConnected]);
 
   const finishProvisioning = useCallback(async (serverUrl: string) => {
@@ -313,8 +317,25 @@ export default function Setup({
           </div>
         </CardContent>
 
+          <CardFooter className="flex-col gap-2 border-t border-primary/20 pt-5">
+            <Button
+              variant="outline"
+              className="w-full min-h-12 font-mono text-primary border-primary/50"
+              onClick={() => {
+                stopConnectionSearch.current();
+                void enterDemoMode().catch(() => {
+                  setConnectionState("error");
+                  setStatusMessage("Could not open the offline demo. Rebuild the client with its web assets.");
+                });
+              }}
+              data-testid="button-demo-mode"
+            >
+              DEMO MODE
+            </Button>
+            <p className="text-xs text-center text-muted-foreground font-mono">
+              Offline sample data. No rover connection or commands.
+            </p>
         {!requiredConnection && (
-          <CardFooter>
             <Button
               asChild
               variant="ghost"
@@ -325,8 +346,8 @@ export default function Setup({
                 BACK TO DASHBOARD
               </Link>
             </Button>
-          </CardFooter>
         )}
+          </CardFooter>
       </Card>
     </main>
   );

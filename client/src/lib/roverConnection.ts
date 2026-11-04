@@ -1,4 +1,5 @@
 import { Capacitor, registerPlugin } from "@capacitor/core";
+import { demoResponse, isDemoMode } from "./demoMode";
 
 const ROVER_URL_KEY = "rover_api_url";
 const ROVER_TOKEN_KEY = "rover_client_token";
@@ -20,6 +21,8 @@ const NativeSecureApi = registerPlugin<NativeSecureApiPlugin>("RoverProvisioning
 declare global {
   interface Window {
     roverosDesktop?: {
+      startDemoMode?: () => Promise<unknown>;
+      exitDemoMode?: () => Promise<unknown>;
       secureApiRequest: (options: {
         url: string;
         fingerprint: string;
@@ -179,6 +182,7 @@ export async function roverSecureFetch(
   credentialsOverride?: Partial<RoverCredentials>,
 ): Promise<Response> {
   const apiPath = normalizeApiPath(path);
+  if (isDemoMode()) return demoResponse(apiPath, init);
   const secureUrl = getRoverSecureApiUrl(apiPath, serverUrl);
 
   const saved = getRoverCredentials();

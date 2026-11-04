@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Geolocation, Position } from '@capacitor/geolocation';
 import { Capacitor } from '@capacitor/core';
+import { isDemoMode } from '@/lib/demoMode';
 
 type LocationPosition = {
   coords: Pick<Position['coords'], 'latitude' | 'longitude' | 'accuracy' | 'heading' | 'speed'>;
@@ -33,6 +34,7 @@ export function useLocation(watchPosition: boolean = false) {
   });
 
   const requestPermission = useCallback(async () => {
+    if (isDemoMode()) return false;
     try {
       if (Capacitor.isNativePlatform()) {
         const permission = await Geolocation.requestPermissions();
@@ -48,6 +50,7 @@ export function useLocation(watchPosition: boolean = false) {
   }, []);
 
   const getCurrentPosition = useCallback(async () => {
+    if (isDemoMode()) return;
     try {
       setLocation(prev => ({ ...prev, loading: true, error: null }));
 
@@ -100,6 +103,10 @@ export function useLocation(watchPosition: boolean = false) {
   }, []);
 
   useEffect(() => {
+    if (isDemoMode()) {
+      setLocation({ latitude: 34.0522, longitude: -118.2437, accuracy: 2, heading: 45, speed: 0.8, timestamp: Date.now(), error: null, loading: false, permissionGranted: false });
+      return;
+    }
     let watchId: string | null = null;
 
     const initLocation = async () => {

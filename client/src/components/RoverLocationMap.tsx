@@ -5,6 +5,7 @@ import { useLocation } from '@/hooks/useLocation';
 import { MapPin, Loader2, AlertCircle, LocateFixed } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useMemo, useState, useEffect } from 'react';
+import { isDemoMode } from '@/lib/demoMode';
 
 interface RoverLocationMapProps {
   roverLat?: number;
@@ -203,6 +204,21 @@ export default function RoverLocationMap({
   const lng = roverLng ?? location.longitude ?? -118.2437;
   const hasValidLocation = (roverLat !== undefined && roverLng !== undefined) || 
                            (location.latitude !== null && location.longitude !== null);
+
+  if (isDemoMode()) {
+    return (
+      <div style={{ height }} className="relative overflow-hidden bg-background border border-primary/20" data-testid="demo-offline-map">
+        <svg viewBox="0 0 300 200" className="w-full h-full" role="img" aria-label="Offline sample rover route, not a live map">
+          <defs><pattern id="demo-map-grid" width="25" height="25" patternUnits="userSpaceOnUse"><path d="M25 0H0V25" fill="none" stroke="#00ffff" strokeOpacity=".12" /></pattern></defs>
+          <rect width="300" height="200" fill="url(#demo-map-grid)" />
+          <path d="M40 150L90 130L115 75L190 95L245 45" fill="none" stroke="#00ffff" strokeWidth="2" strokeDasharray="6 5" />
+          <circle cx="115" cy="75" r="8" fill="#00ffff" />
+          <circle cx="115" cy="75" r="22" fill="none" stroke="#00ffff" strokeOpacity=".4" />
+          <text x="12" y="185" fill="#9faec3" fontSize="10" fontFamily="monospace">OFFLINE SAMPLE MAP · 34.0522, -118.2437</text>
+        </svg>
+      </div>
+    );
+  }
 
   if (apiKeyLoading || location.loading) {
     return (
