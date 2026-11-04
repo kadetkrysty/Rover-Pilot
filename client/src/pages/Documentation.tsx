@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { Code, FileText, Cpu, Download, Wifi, Radio, Settings, Wrench, Zap, AlertTriangle, Power, Video, Cloud, Shield, Camera } from 'lucide-react';
-import slushEngineImage from '@assets/slushengine_LT_-_Trans2_1024x1024_1767447433450.webp';
+import slushEngineImage from '@/assets/slushengine.webp';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import MiniPcInstallGuide from '@/pages/MiniPcInstallGuide';

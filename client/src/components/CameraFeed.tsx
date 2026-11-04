@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useWebSocket } from '@/lib/useWebSocket';
 import { useQuery } from '@tanstack/react-query';
 import { HaloHudOverlay, CircularCameraControl, ProximityRadar } from './HaloHudOverlay';
-import marsTerrainImage from '@assets/mars_terrain_1767567282694.jpg';
+import marsTerrainImage from '@/assets/mars-terrain.jpg';
 
 interface CameraFeedProps {
   showOverlay?: boolean;
