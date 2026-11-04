@@ -3,13 +3,16 @@
   "version": "1.0.0",
   "type": "module",
   "license": "MIT",
+  "main": "desktop/main.cjs",
   "engines": {
-    "node": ">=22.0.0"
+    "node": ">=22.12.0"
   },
   "scripts": {
     "dev:client": "vite dev --port 5000",
     "dev": "NODE_ENV=development tsx server/index.ts",
     "build": "tsx script/build.ts",
+    "desktop:win": "electron-builder --win nsis --x64 --publish never",
+    "test:desktop": "node --test desktop/server-url.test.cjs scripts/normalize-github-npm-lock.test.mjs",
     "start": "NODE_ENV=production node dist/index.cjs",
     "check": "tsc",
     "db:push": "drizzle-kit push"
@@ -113,6 +116,8 @@
     "@vitejs/plugin-react": "^5.2.0",
     "autoprefixer": "^10.6.2",
     "drizzle-kit": "^0.31.11",
+    "electron": "45.2.2",
+    "electron-builder": "26.18.0",
     "esbuild": "^0.25.12",
     "postcss": "^8.5.32",
     "tailwindcss": "^4.3.4",
@@ -134,6 +139,42 @@
     "rollup": "^4.67.4",
     "three-stdlib": {
       "fflate": "^0.6.11"
+    }
+  },
+  "build": {
+    "appId": "com.roverostech.rover.desktop",
+    "productName": "RoverOS",
+    "directories": {
+      "output": "release",
+      "buildResources": "desktop/assets"
+    },
+    "files": [
+      "desktop/main.cjs",
+      "desktop/preload.cjs",
+      "desktop/server-url.cjs",
+      "desktop/setup.html",
+      "desktop/setup.css",
+      "desktop/setup.js",
+      "desktop/assets/roveros.svg",
+      "package.json"
+    ],
+    "win": {
+      "icon": "desktop/assets/roveros.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ],
+      "artifactName": "RoverOS-Setup-${version}-${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "RoverOS"
     }
   }
 }

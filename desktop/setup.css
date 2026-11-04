@@ -1,0 +1,160 @@
+:root {
+  color-scheme: dark;
+  font-family:
+    Inter, "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  color: #e8eef8;
+  background: #07111f;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgb(20 93 176 / 24%), transparent 58%),
+    #07111f;
+}
+
+.card {
+  width: min(100%, 520px);
+  padding: clamp(24px, 6vw, 44px);
+  border: 1px solid #26374d;
+  border-radius: 22px;
+  background: #101c2c;
+  box-shadow: 0 24px 80px rgb(0 0 0 / 30%);
+}
+
+.brand-icon {
+  display: block;
+  width: 56px;
+  height: 56px;
+  margin-bottom: 24px;
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  color: #7fb8ff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+h1 {
+  margin: 0;
+  font-size: clamp(1.75rem, 7vw, 2.25rem);
+  line-height: 1.15;
+  letter-spacing: -0.035em;
+}
+
+.intro {
+  margin: 16px 0 28px;
+  color: #b7c4d6;
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+label {
+  display: block;
+  margin-bottom: 9px;
+  font-size: 0.95rem;
+  font-weight: 650;
+}
+
+input {
+  width: 100%;
+  min-height: 50px;
+  padding: 0 14px;
+  border: 1px solid #52647c;
+  border-radius: 10px;
+  outline: none;
+  background: #081321;
+  color: #f6f9ff;
+  font: inherit;
+  font-size: 1rem;
+}
+
+input::placeholder {
+  color: #9aa9bc;
+  opacity: 1;
+}
+
+input:focus-visible {
+  border-color: #71b2ff;
+  box-shadow: 0 0 0 3px rgb(59 147 255 / 32%);
+}
+
+.help,
+.offline-note {
+  color: #b7c4d6;
+  font-size: 0.88rem;
+  line-height: 1.55;
+}
+
+.help {
+  margin: 9px 0 0;
+}
+
+.help span {
+  color: #e5efff;
+  overflow-wrap: anywhere;
+}
+
+.status {
+  min-height: 1.5em;
+  margin: 14px 0;
+  color: #ffb5a8;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+button {
+  width: 100%;
+  min-height: 50px;
+  border: 0;
+  border-radius: 10px;
+  background: #1680f8;
+  color: #fff;
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+  background: #3292ff;
+}
+
+button:focus-visible {
+  outline: 3px solid #b9dbff;
+  outline-offset: 3px;
+}
+
+button:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.offline-note {
+  margin: 22px 0 0;
+  padding-top: 18px;
+  border-top: 1px solid #2b3b50;
+}
+
+@media (max-width: 480px) {
+  body {
+    padding: 14px;
+  }
+
+  .card {
+    border-radius: 16px;
+  }
+}

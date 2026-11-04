@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Connect to RoverOS</title>
+    <link rel="icon" href="assets/roveros.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="setup.css" />
+    <script src="setup.js" defer></script>
+  </head>
+  <body>
+    <main class="card">
+      <img class="brand-icon" src="assets/roveros.svg" alt="" />
+      <p class="eyebrow">WINDOWS CLIENT</p>
+      <h1>Connect to RoverOS</h1>
+      <p class="intro">
+        Enter the address of the MiniPC running RoverOS. This computer and the
+        MiniPC should be on the same network.
+      </p>
+
+      <form id="connection-form" novalidate>
+        <label for="server-address">MiniPC address</label>
+        <input
+          id="server-address"
+          name="server-address"
+          type="url"
+          inputmode="url"
+          autocomplete="url"
+          placeholder="http://192.168.1.40:5000"
+          aria-describedby="address-help connection-status"
+          required
+        />
+        <p id="address-help" class="help">
+          Include the protocol and port, for example
+          <span>http://192.168.1.40:5000</span>.
+        </p>
+        <p id="connection-status" class="status" role="status" aria-live="polite"></p>
+        <button id="connect-button" type="submit">Connect</button>
+      </form>
+
+      <p class="offline-note">
+        The MiniPC must be running RoverOS. This desktop app connects to it; it
+        does not install the server or database on this computer.
+      </p>
+    </main>
+  </body>
+</html>

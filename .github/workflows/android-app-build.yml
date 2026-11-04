@@ -47,8 +47,25 @@ jobs:
       - name: Install Android SDK platform
         run: sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
 
+      - name: Use public npm registry URLs in lockfile
+        run: node scripts/normalize-github-npm-lock.mjs
+
       - name: Install Node dependencies
-        run: npm ci
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3; do
+            if npm ci --no-audit --no-fund --fetch-retries=5 --fetch-timeout=120000; then
+              exit 0
+            fi
+            if [ "$attempt" -lt 3 ]; then
+              echo "npm ci failed; retrying after clearing npm's download cache (attempt $attempt of 3)."
+              npm cache clean --force
+              sleep $((attempt * 10))
+            fi
+          done
+          echo "::error::npm ci failed after three attempts."
+          exit 1
 
       - name: Build web assets
         run: npm run build
