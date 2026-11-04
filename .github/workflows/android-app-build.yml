@@ -4,6 +4,12 @@ on:
   push:
   pull_request:
   workflow_dispatch:
+    inputs:
+      build_release:
+        description: Build and upload a signed release APK
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -61,3 +67,48 @@ jobs:
           path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
+
+      - name: Prepare Android release signing key
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.build_release }}
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          for name in ANDROID_KEYSTORE_BASE64 ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD; do
+            if [[ -z "${!name}" ]]; then
+              echo "::error::Required GitHub Actions secret $name is not configured."
+              exit 1
+            fi
+          done
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/roveros-release.keystore"
+          test -s "$RUNNER_TEMP/roveros-release.keystore"
+
+      - name: Build signed Android release APK
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.build_release }}
+        working-directory: android
+        env:
+          ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/roveros-release.keystore
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: ./gradlew --no-daemon assembleRelease
+
+      - name: Verify Android release APK signature
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.build_release }}
+        run: $ANDROID_HOME/build-tools/36.0.0/apksigner verify --verbose android/app/build/outputs/apk/release/app-release.apk
+
+      - name: Upload Android release APK
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.build_release }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: roveros-android-release
+          path: android/app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Remove temporary Android signing key
+        if: ${{ always() && github.event_name == 'workflow_dispatch' && inputs.build_release }}
+        run: rm -f "$RUNNER_TEMP/roveros-release.keystore"

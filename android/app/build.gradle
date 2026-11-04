@@ -1,8 +1,27 @@
 apply plugin: 'com.android.application'
 
+def releaseSigning = [
+    storeFile: System.getenv('ANDROID_KEYSTORE_PATH'),
+    storePassword: System.getenv('ANDROID_KEYSTORE_PASSWORD'),
+    keyAlias: System.getenv('ANDROID_KEY_ALIAS'),
+    keyPassword: System.getenv('ANDROID_KEY_PASSWORD')
+]
+def releaseSigningConfigured = releaseSigning.values().every { it != null && !it.trim().isEmpty() }
+
 android {
     namespace 'com.roverostech.rover'
     compileSdk rootProject.ext.compileSdkVersion
+
+    signingConfigs {
+        release {
+            if (releaseSigningConfigured) {
+                storeFile file(releaseSigning.storeFile)
+                storePassword releaseSigning.storePassword
+                keyAlias releaseSigning.keyAlias
+                keyPassword releaseSigning.keyPassword
+            }
+        }
+    }
 
     defaultConfig {
         applicationId 'com.roverostech.rover'
@@ -18,6 +37,9 @@ android {
 
     buildTypes {
         release {
+            if (releaseSigningConfigured) {
+                signingConfig signingConfigs.release
+            }
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
