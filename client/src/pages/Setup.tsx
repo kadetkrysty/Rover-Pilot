@@ -193,23 +193,24 @@ export default function Setup({
     };
   }, [retryCount, requiredConnection, onConnected]);
 
-  const finishProvisioning = useCallback(async () => {
-    if (!provisioning) return;
+  const finishProvisioning = useCallback(async (serverUrl: string) => {
     try {
-      await testRoverConnection(provisioning.serverUrl);
-      setRoverUrl(provisioning.serverUrl);
+      await testRoverConnection(serverUrl);
+      setRoverUrl(serverUrl);
       setProvisioning(null);
       setConnectionState("success");
       setStatusMessage("Connected to RoverOS-Server.");
       if (requiredConnection && onConnected) onConnected();
       else if (!requiredConnection) window.location.assign("/");
+      return true;
     } catch {
-      setConnectionState("error");
-      setStatusMessage(
-        "Setup finished. Join the Wi-Fi network you selected, then search for RoverOS-Server again.",
-      );
+      return false;
     }
-  }, [onConnected, provisioning, requiredConnection]);
+  }, [onConnected, requiredConnection]);
+
+  const updateProvisioningUrl = useCallback((serverUrl: string) => {
+    setProvisioning((current) => current ? { ...current, serverUrl } : current);
+  }, []);
 
   if (provisioning) {
     return (
@@ -218,6 +219,8 @@ export default function Setup({
           serverUrl={provisioning.serverUrl}
           status={provisioning.status}
           onReady={finishProvisioning}
+          onServerUrlChange={updateProvisioningUrl}
+          onReconnect={() => setRetryCount((count) => count + 1)}
         />
       </main>
     );

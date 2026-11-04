@@ -3,6 +3,11 @@
 <service-group>
   <name replace-wildcards="yes">RoverOS-Server</name>
   <service>
+    <type>_http._tcp</type>
+    <port>5000</port>
+    <txt-record>roveros=1</txt-record>
+  </service>
+  <service>
     <type>_https._tcp</type>
     <port>5443</port>
     <txt-record>roveros=1</txt-record>

@@ -3,7 +3,7 @@ name: RoverOS MiniPC server release
 on:
   push:
     branches: [main]
-    tags: ["v*"]
+    tags: ["roveros-server-v*"]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -24,6 +24,20 @@ jobs:
       contents: read
       attestations: write
       id-token: write
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: roveros_ci
+          POSTGRES_PASSWORD: ci-only-not-a-deployment-password
+          POSTGRES_DB: roveros_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U roveros_ci"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
       - name: Check out repository
@@ -57,40 +71,52 @@ jobs:
           npm run check
           npm run test:client-connection
           npm run test:desktop
+          npm run test:provisioning
+          bash -n scripts/minipc/*.sh
 
       - name: Build production server and web assets
         run: npm run build
 
-      - name: Keep runtime dependencies only
-        run: npm prune --omit=dev --no-audit --no-fund
+      - name: Verify database migrations apply and can be rerun
+        env:
+          DATABASE_URL: postgresql://roveros_ci:ci-only-not-a-deployment-password@127.0.0.1:5432/roveros_ci
+        run: |
+          node dist/migrate.cjs
+          node dist/migrate.cjs
 
       - name: Assemble prebuilt Linux server bundle
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p release-bundle
-          cp -a dist node_modules package.json migrations scripts/minipc/migrate.cjs deploy/avahi/roveros.service release-bundle/
-          tar -C release-bundle -czf RoverOS-server-linux-x64.tar.gz .
-          sha256sum RoverOS-server-linux-x64.tar.gz > RoverOS-server-linux-x64.tar.gz.sha256
+        run: npm run package:server
+
+      - name: Test extracted server without Node dependencies
+        run: npm run test:server-bundle
 
       - name: Attest server bundle provenance
+        if: startsWith(github.ref, 'refs/tags/roveros-server-v')
+        id: attestation
         uses: actions/attest-build-provenance@v3
         with:
-          subject-path: RoverOS-server-linux-x64.tar.gz
+          subject-path: generated-artifacts/server-release/RoverOS-server-linux-x64.tar.gz
+
+      - name: Include signed provenance bundle
+        if: startsWith(github.ref, 'refs/tags/roveros-server-v')
+        env:
+          BUNDLE_PATH: ${{ steps.attestation.outputs.bundle-path }}
+        run: cp "$BUNDLE_PATH" generated-artifacts/server-release/RoverOS-server-linux-x64.intoto.jsonl
 
       - name: Upload server bundle
         uses: actions/upload-artifact@v7
         with:
           name: roveros-server-linux-x64
           path: |
-            RoverOS-server-linux-x64.tar.gz
-            RoverOS-server-linux-x64.tar.gz.sha256
+            generated-artifacts/server-release/RoverOS-server-linux-x64.tar.gz
+            generated-artifacts/server-release/RoverOS-server-linux-x64.tar.gz.sha256
+            generated-artifacts/server-release/RoverOS-server-linux-x64.intoto.jsonl
           if-no-files-found: error
           retention-days: 30
 
   publish:
     name: Attach bundle to GitHub Release
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/roveros-server-v')
     needs: build
     runs-on: ubuntu-24.04
     permissions:
@@ -109,9 +135,10 @@ jobs:
           RELEASE_TAG: ${{ github.ref_name }}
         run: |
           if ! gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
-            gh release create "$RELEASE_TAG" --generate-notes
+            gh release create "$RELEASE_TAG" --generate-notes --latest=false
           fi
           gh release upload "$RELEASE_TAG" \
             RoverOS-server-linux-x64.tar.gz \
             RoverOS-server-linux-x64.tar.gz.sha256 \
+            RoverOS-server-linux-x64.intoto.jsonl \
             --clobber

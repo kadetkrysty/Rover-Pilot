@@ -3,7 +3,7 @@ import Header from './Header';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Settings, CheckCircle } from 'lucide-react';
-import { Link } from 'wouter';
+import { Link, useLocation } from 'wouter';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -11,6 +11,7 @@ interface AppLayoutProps {
 
 export default function AppLayout({ children }: AppLayoutProps) {
   const [showConfigModal, setShowConfigModal] = useState(false);
+  const [location] = useLocation();
 
   useEffect(() => {
     const hasSeenConfig = localStorage.getItem('roveros_config_seen');
@@ -32,7 +33,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
       </main>
 
       {/* First Launch Config Modal */}
-      <Dialog open={showConfigModal} onOpenChange={setShowConfigModal}>
+      <Dialog open={showConfigModal && location !== "/docs"} onOpenChange={setShowConfigModal}>
         <DialogContent className="max-w-lg bg-card border-primary/30" data-testid="modal-first-config">
           <DialogHeader>
             <DialogTitle className="text-primary font-display text-2xl flex items-center gap-2">

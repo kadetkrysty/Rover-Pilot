@@ -1,373 +1,293 @@
-# RoverOS MiniPC installation
+# RoverOS installation on the ACEPC AK1
 
-This guide installs the RoverOS web app, API, WebSocket service, and PostgreSQL
-database on one MiniPC. Windows and Android devices connect to that MiniPC as
-clients over the same trusted local network. They do not install or connect
-directly to PostgreSQL.
+## Supported first target
 
-## Architecture
+- **MiniPC:** ACEPC AK1, **8 GB RAM configuration**, as specified by the owner.
+- **OS:** Ubuntu Server **24.04 LTS amd64**, latest 24.04 point release, minimal/headless; **not Ubuntu Core**.
+- **Runtime:** Node.js **22 LTS, 22.12 or newer within that major**.
+- **Database:** PostgreSQL **16**, listening locally on the MiniPC.
+- **Clients:** the updated RoverOS Android APK and Windows app on the same trusted network.
+- **Networking:** NetworkManager and Avahi; an AP-capable Wi-Fi adapter for the setup hotspot.
+
+The AK1 model has hardware variants. Do not assume a particular CPU, SSD size, or
+Wi-Fi chipset from the model name alone. The 8 GB RAM configuration meets our
+planned RAM target. Prefer an SSD with at least 64 GB, keep several GB free for
+updates/backups, and test the actual Wi-Fi radio. No AK1 physical test has been
+performed in the development workspace.
+
+The MiniPC hosts the web UI, API, WebSocket service, and database. Windows and
+Android are **clients**, not separate database servers:
 
 ```text
-Android RoverOS app ─┐
-                     ├── local network ──> MiniPC:5000
-Windows RoverOS app ─┘                     ├── RoverOS web app + API + WebSocket
-                                           └── PostgreSQL 16 (local to MiniPC)
+Android / Windows
+    └── discover RoverOS-Server
+         ├── before setup: public status on HTTP 5000
+         │                paired, certificate-pinned HTTPS setup on 5443
+         └── after setup: RoverOS web/API/WebSocket on 5000
+                              └── PostgreSQL 16 on MiniPC loopback only
 ```
 
-The steps below cover the Node.js service and database in this repository. They
-do **not** install Arduino firmware, motor-control daemons, camera streaming, or
-the separate FlyBaby service. The optional FlyBaby client expects its separate
-service on the configured MiniPC host at port `8080`. Some hardware-related API routes can show demo or
-status data until those hardware integrations are separately installed and
-connected.
+This installs the software represented by this repository. It does **not** flash
+Arduino firmware or install unspecified motor-control, camera-streaming, or
+FlyBaby services. Some existing hardware APIs still return demo/status data.
+Do not treat web/API readiness as proof that motors or sensors are operational.
 
-## Requirements
+## 1. Prepare Ubuntu once
 
-- A 64-bit MiniPC running Ubuntu Server 24.04 LTS (recommended). Ubuntu 22.04
-  LTS is also supported when PostgreSQL 16 is installed from the PostgreSQL
-  package repository.
-- A stable wired or Wi-Fi connection. RoverOS clients discover the MiniPC by
-  its network name; a DHCP reservation is still useful for administration.
-- Node.js **22.12.0 or later**. This matches the repository's `engines` setting
-  and the Capacitor Android toolchain requirement of Node 22 or later.
-- PostgreSQL **16**.
-- An HTTPS clone URL for this repository. For a private repository, configure
-  an approved deploy key; never place a GitHub token in a clone URL.
+Install Ubuntu Server 24.04 LTS amd64 without a desktop. Create an owner account,
+enable OpenSSH Server, and prefer SSH keys. Use Ethernet for the initial bench
+setup if available. Keep local keyboard/display access until networking is tested.
 
-## 1. Prepare Ubuntu and the LAN
-
-Install and update Ubuntu Server. Connect the MiniPC, Android phone, and Windows
-PC to the same trusted LAN. Set the MiniPC name to `RoverOS-Server`; clients
-will find it automatically without entering its IP.
+A completely bare Ubuntu install cannot advertise RoverOS or accept Wi-Fi
+credentials. The small bootstrap service below must be installed once, either
+on the bench or into a prepared image before shipping the MiniPC.
 
 ```bash
 sudo apt update
 sudo apt upgrade -y
-sudo apt install -y ca-certificates curl git avahi-daemon avahi-utils
-sudo hostnamectl set-hostname RoverOS-Server
-sudo systemctl enable --now avahi-daemon
+sudo apt install -y ca-certificates curl git openssl iw \
+  network-manager avahi-daemon avahi-utils
 ```
 
-The MiniPC and clients must be on the same local network segment. If using a
-guest network, client isolation, or separate VLANs, multicast discovery may be
-blocked.
+### NetworkManager ownership
 
-### Optional: use the MiniPC as a Wi-Fi access point
+Ubuntu Server commonly uses Netplan with `systemd-networkd`. The bootstrap does
+not silently replace the active network manager. Configure NetworkManager at
+the local MiniPC console **before relying on Wi-Fi SSH**.
 
-RoverOS advertises and discovers the server; it does not take control of the
-MiniPC's Wi-Fi adapter. For a direct connection without a router, the MiniPC
-must have an access-point-capable Wi-Fi adapter managed by NetworkManager. The
-included setup script checks both conditions and refuses to switch network
-managers. Run it from the MiniPC's local console, not over SSH:
+Review the existing configuration with `sudo netplan get`. Preserve any custom
+static addresses or Wi-Fi settings. At the local console, an administrator can
+select NetworkManager as the renderer and test it before accepting:
 
 ```bash
-cd /opt/roveros/app
-sudo apt install -y iw
-sudo bash scripts/setup-minipc-hotspot.sh
+sudo systemctl enable --now NetworkManager
+sudo netplan set network.renderer=NetworkManager
+sudo netplan try
+nmcli device status
 ```
 
-If `nmcli device status` lists multiple Wi-Fi interfaces, pass the intended
-interface name, for example:
+`netplan try` requires confirmation and attempts rollback if confirmation is
+not received. Do not do this as an unattended Wi-Fi SSH change. Confirm that
+the intended Wi-Fi interface is managed by NetworkManager.
+
+Collect the actual AK1 inventory:
 
 ```bash
-sudo bash scripts/setup-minipc-hotspot.sh wlp2s0
+lscpu
+free -h
+lsblk
+lspci -nn
+lsusb
+iw list
+nmcli device status
 ```
 
-The script checks for access-point mode and NetworkManager ownership before
-changing anything. It shows whether the selected interface is active and
-requires you to type a confirmation. If active, the hotspot can disconnect its
-current Wi-Fi connection; keep local-console access and another recovery path.
-The script creates a WPA2-Personal (AES/CCMP) profile with a randomly generated
-password, does not enable automatic hotspot startup, and displays the password
-once in the local terminal. Keep it private. It does not install or switch
-network managers; Ubuntu Server systems using `systemd-networkd` need deliberate
-OS-level network configuration first.
+`iw list` must show `AP` under supported interface modes to use the setup
+hotspot. AP/client concurrency is not assumed. With one radio, the setup AP
+may disappear when the MiniPC joins the selected home Wi-Fi.
 
-If UFW is installed, the script adds only inbound rules for TCP port `5000` and
-UDP port `5353` on the hotspot interface and its assigned subnet. It never
-enables UFW or opens PostgreSQL. If UFW is not installed, the script prints
-equivalently scoped commands rather than adding broad rules. For example, with
-the default `10.42.0.0/24` hotspot subnet:
+## 2. Publish the prebuilt server release from GitHub
+
+The new workflow is `.github/workflows/roveros-server-release.yml`. It builds
+on `ubuntu-24.04` using Node 22, checks the code/tests, applies the committed
+schema migrations twice against PostgreSQL 16, and smoke-tests the extracted
+server outside the checkout without `node_modules`.
+
+Branch/PR/manual runs produce a downloadable test artifact. **Installable,
+signed-provenance releases require a server version tag**:
 
 ```bash
-sudo ufw allow in on wlp2s0 from 10.42.0.0/24 to any port 5000 proto tcp
-sudo ufw allow in on wlp2s0 from 10.42.0.0/24 to any port 5353 proto udp
+git tag roveros-server-v1.0.1
+git push origin roveros-server-v1.0.1
 ```
 
-Use the interface and subnet reported by the script if they differ from this
-example. On Android and Windows, join the `RoverOS-Server` Wi-Fi network in the
-device's Wi-Fi settings and enter the password shown in the MiniPC terminal.
-Then open RoverOS; it discovers the MiniPC automatically. To turn the hotspot
-off, run `sudo nmcli connection down RoverOS-Hotspot` from the MiniPC.
+Use a new version for subsequent server releases. Wait for **RoverOS MiniPC
+server release** to finish. It attaches three files to that GitHub Release:
 
-Bluetooth is not used for app-to-server traffic. RoverOS uses HTTP and
-WebSockets over IP; Bluetooth would require a separate Bluetooth-network
-adapter and is not a drop-in replacement for Wi-Fi.
+1. `RoverOS-server-linux-x64.tar.gz`
+2. `RoverOS-server-linux-x64.tar.gz.sha256`
+3. `RoverOS-server-linux-x64.intoto.jsonl` — cryptographically signed GitHub build provenance
 
-## 2. Install Node.js 22
+The tarball contains the compiled web/server/migration bundles, SQL migrations,
+Avahi record, and compatibility manifest. It contains **no npm dependencies,
+development toolchain, database credentials, or device-specific secrets**.
+The MiniPC does not run `npm ci` or compile the app.
 
-Use NodeSource's Node 22 setup, then check the installed version. The project
-requires at least `v22.12.0`.
+The installer selects the newest stable `roveros-server-vMAJOR.MINOR.PATCH`
+release that contains all three assets. It ignores Android/Windows releases,
+rejects off-repository asset URLs, and rejects incompatible/older server
+manifests. It verifies the checksum and GitHub provenance for this repository,
+this exact workflow, and the selected tag before extracting executable code.
+An unsigned branch artifact is deliberately not installable through onboarding.
+
+The default source is the public `kadetkrysty/Rover-Pilot` repository. A private
+release repository requires a separate approved access mechanism; do not put
+GitHub tokens in URLs, the client UI, or source files.
+
+## 3. Install the bootstrap on the MiniPC
+
+Make sure the versioned server release above exists first. From the owner’s
+SSH session or MiniPC console:
 
 ```bash
-curl -fsSL https://deb.nodesource.com/setup_22.x -o /tmp/nodesource_setup.sh
-sudo -E bash /tmp/nodesource_setup.sh
-sudo apt install -y nodejs
-node --version
-npm --version
+git clone https://github.com/kadetkrysty/Rover-Pilot.git ~/Rover-Pilot
+cd ~/Rover-Pilot
+sudo bash scripts/minipc/install-bootstrap.sh kadetkrysty/Rover-Pilot
 ```
 
-If `node --version` is older than `v22.12.0`, stop and install a supported
-version before continuing.
+This does not build RoverOS. It:
 
-## 3. Install PostgreSQL 16
+- Checks Ubuntu 24.04 amd64, NetworkManager ownership, and Wi-Fi AP support.
+- Installs Node 22 if required, plus the small networking/bootstrap prerequisites.
+- Names the device `RoverOS-Server`.
+- Generates a per-device self-signed HTTPS certificate and random pairing code.
+- Creates a WPA2 setup profile with a random password and SSID `RoverOS-Server`.
+- Installs the bootstrap service and HTTP/HTTPS DNS-SD records.
+- Starts the AP if Wi-Fi is not already connected. It leaves an active Wi-Fi
+  connection alone, so clients can use that existing LAN instead.
 
-Ubuntu 24.04 includes PostgreSQL 16. To install and pin that major version on
-Ubuntu 22.04 as well, use the PostgreSQL project's APT repository:
+The terminal displays:
+
+- The setup Wi-Fi password.
+- The 32-character pairing code.
+- The 64-character SHA-256 certificate fingerprint.
+
+Save the pairing information securely or put it on a per-device owner label.
+Do not post it in support logs. Re-running bootstrap on an unfinished device
+preserves its certificate, pairing code, and AP password. It refuses to reset
+an already-completed installation.
+
+If the adapter cannot provide AP mode, prepare its existing Wi-Fi/LAN locally
+and use the explicit LAN-only mode instead:
 
 ```bash
-sudo apt install -y postgresql-common ca-certificates
-sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh
-sudo apt update
-sudo apt install -y postgresql-16 postgresql-client-16
-sudo systemctl enable --now postgresql
-psql --version
+sudo bash scripts/minipc/install-bootstrap.sh kadetkrysty/Rover-Pilot --lan-only
 ```
 
-Keep PostgreSQL bound to the MiniPC itself. Do not open port `5432` to the LAN.
+This skips hotspot creation; clients must already share a reachable LAN with
+the MiniPC. The Wi-Fi onboarding operation still requires a usable Wi-Fi adapter.
 
-## 4. Create the application database
+## 4. First connection from Android or Windows
 
-Generate a password and keep it in a password manager. The hexadecimal output
-can be copied into the database URL later without URL-encoding.
+Install client builds containing these onboarding changes.
+
+1. Join **RoverOS-Server** in the phone/PC Wi-Fi settings using the printed AP
+   password, or join the MiniPC’s existing LAN.
+2. Open RoverOS. Android uses DNS-SD; Windows resolves `RoverOS-Server.local`.
+   Neither app asks for the MiniPC IP.
+3. The app checks `/api/provisioning/status`. A ready device opens normally;
+   an unfinished device shows first-time setup.
+4. Enter the certificate fingerprint and pairing code from the owner terminal.
+   A mismatching certificate is rejected; the app does not just ignore HTTPS errors.
+5. Scan or type the home Wi-Fi SSID and password. If scanning is unavailable
+   while the radio is in AP mode, type the SSID. Hidden networks are supported.
+6. Select **Connect and install RoverOS**.
+7. If the AP disappears, join the selected home Wi-Fi through the client OS.
+   Android rediscovery updates the changed MiniPC address; Windows retries
+   the stable `.local` hostname. **Search again** remains available for recovery.
+
+The current network-authentication scope is **WPA2-Personal** with an 8–63-byte
+passphrase or 64 hexadecimal PSK. Enterprise Wi-Fi and pure WPA3-SAE are not
+implemented; use a compatible network rather than weakening its security.
+Bluetooth is not the RoverOS IP transport.
+
+Passwords and pairing codes are not written to client storage. Wi-Fi submissions
+use native certificate-pinned HTTPS on 5443. The MiniPC writes the network
+credential only to a root-owned `0600` NetworkManager profile; it never inserts
+it into a shell command. Public HTTP status contains no credentials.
+
+## 5. Installation, health checks, and normal reboot
+
+After Wi-Fi connects, the MiniPC downloads the verified prebuilt release,
+installs PostgreSQL 16, creates the non-superuser database role and database,
+applies the versioned SQL migrations, and installs the non-root RoverOS service.
+
+The database URL is generated on-device and saved in `/etc/roveros.env`,
+readable only by root/the service group. PostgreSQL remains local-only; the
+installer does not expose port 5432.
+
+A separate handoff job stops the temporary port-5000 setup listener, starts
+RoverOS, and verifies the web assets, system identity, API/database health,
+database schema, and Avahi service. **Only then** does it save `ready` and enable
+normal startup. The pairing code is revoked and setup HTTPS stops listening.
+The bootstrap remains only as a boot dispatcher; it does not reopen setup on
+a completed device.
+
+Inspect from SSH:
 
 ```bash
-openssl rand -hex 32
-sudo -u postgres psql
-```
-
-At the PostgreSQL prompt, create a non-superuser account and database. When
-`\password roveros` prompts, enter the generated password twice.
-
-```sql
-CREATE ROLE roveros LOGIN;
-CREATE DATABASE roveros OWNER roveros;
-\password roveros
-\q
-```
-
-## 5. Download the RoverOS application
-
-Create a restricted service account, clone the repository, normalize npm lock
-file URLs for a public GitHub runner/server, and install dependencies:
-
-```bash
-sudo useradd --system --create-home --user-group \
-  --home-dir /opt/roveros --shell /usr/sbin/nologin roveros
-sudo -u roveros git clone https://github.com/OWNER/REPOSITORY.git /opt/roveros/app
-cd /opt/roveros/app
-sudo -u roveros node scripts/normalize-github-npm-lock.mjs
-sudo -u roveros npm ci
-```
-
-Replace `OWNER/REPOSITORY` with the actual GitHub repository path. The lockfile
-normalizer removes Replit-only package download URLs so `npm ci` can resolve
-packages through the public npm registry.
-
-## 6. Configure the database URL privately
-
-Create a root-owned file that only root and the application service group can
-read:
-
-```bash
-sudo install -o root -g roveros -m 640 /dev/null /etc/roveros.env
-sudo nano /etc/roveros.env
-```
-
-Enter the following, replacing the placeholder with the generated password:
-
-```ini
-NODE_ENV=production
-PORT=5000
-DATABASE_URL=postgresql://roveros:PASTE_YOUR_PASSWORD_HERE@127.0.0.1:5432/roveros
-```
-
-Save the file and check its permissions:
-
-```bash
-sudo ls -l /etc/roveros.env
-```
-
-Do not commit `/etc/roveros.env`, paste it into a support request, or put the
-database password in a command-line argument.
-
-## 7. Build RoverOS and initialize the schema
-
-Build the production server and browser assets. Then load the protected
-environment file for the initial schema setup:
-
-```bash
-cd /opt/roveros/app
-sudo -u roveros npm run build
-sudo -u roveros bash -c 'set -a; . /etc/roveros.env; set +a; cd /opt/roveros/app; npm run db:push'
-sudo -u roveros npm prune --omit=dev
-```
-
-Run `npm run db:push` against a new, empty RoverOS database for the first
-installation. For later schema updates, back up the database first and review
-any schema prompts before confirming changes.
-
-## 8. Start RoverOS with systemd
-
-Create `/etc/systemd/system/roveros.service`:
-
-```ini
-[Unit]
-Description=RoverOS web and API service
-After=network-online.target postgresql.service
-Wants=network-online.target
-
-[Service]
-Type=simple
-User=roveros
-Group=roveros
-WorkingDirectory=/opt/roveros/app
-EnvironmentFile=/etc/roveros.env
-ExecStart=/usr/bin/node /opt/roveros/app/dist/index.cjs
-Restart=on-failure
-RestartSec=5
-NoNewPrivileges=true
-PrivateTmp=true
-
-[Install]
-WantedBy=multi-user.target
-```
-
-Enable the service and verify the local API responds:
-
-```bash
-sudo systemctl daemon-reload
-sudo systemctl enable --now roveros
 sudo systemctl status roveros --no-pager
-curl -i http://127.0.0.1:5000/api/system/info
+sudo systemctl status postgresql --no-pager
+curl -f http://127.0.0.1:5000/api/system/info
+curl -f http://127.0.0.1:5000/api/system/health
+curl -f http://127.0.0.1:5000/api/provisioning/status
+avahi-browse -rt _http._tcp
 sudo journalctl -u roveros -n 100 --no-pager
 ```
 
-The MiniPC serves the site, API, and WebSocket on port `5000`.
+## 6. Recovery and backups
 
-Install the repository's Avahi service record so Android can discover RoverOS:
+- **Wrong Wi-Fi password:** setup reports failure and attempts to restore the
+  setup AP. Rejoin it and enter the credentials again.
+- **Network switched:** join the same home Wi-Fi on the client, then use
+  **Search again**. Guest networks/VLAN isolation can prevent discovery.
+- **Download, signature, or package failure:** no unverified code is executed.
+  Existing Wi-Fi is retained when it connected successfully. Retry onboarding
+  or investigate through owner SSH.
+- **Interrupted installation/reboot:** the public state becomes a recoverable
+  interrupted-setup failure. Retry resumes through idempotent package/migration
+  operations; installation is not falsely reported ready.
+- **Startup health failure:** handoff stops the failed application, restores
+  the setup service/advertisement, and reports failure.
+- **Legacy database:** an installation previously created with `db:push` needs
+  a reviewed migration baseline. The installer refuses to apply the new baseline
+  blindly over that data. It does not delete or recreate it.
+
+Useful recovery commands:
 
 ```bash
-sudo install -m 0644 /opt/roveros/app/deploy/avahi/roveros.service \
-  /etc/avahi/services/roveros.service
-sudo systemctl restart avahi-daemon
-sudo avahi-browse -rt _http._tcp
+sudo systemctl status roveros-provisioner --no-pager
+sudo journalctl -u roveros-provisioner -u roveros-handoff -n 100 --no-pager
+nmcli device status
+sudo nmcli connection up id RoverOS-Hotspot
 ```
 
-The output should include the `RoverOS-Server` service, port `5000`, and the
-`roveros=1` service marker.
-
-## 9. Restrict access to your local network
-
-For a normal router-based LAN, replace `192.168.1.0/24` with your LAN subnet.
-If you administer this computer over SSH, allow SSH before enabling the
-firewall:
-
-```bash
-sudo apt install -y ufw
-sudo ufw allow OpenSSH
-sudo ufw allow from 192.168.1.0/24 to any port 5000 proto tcp
-sudo ufw allow from 192.168.1.0/24 to any port 5353 proto udp
-sudo ufw enable
-sudo ufw status verbose
-```
-
-When using the MiniPC hotspot, do not substitute a broad network rule here.
-The hotspot setup script adds port `5000`/TCP and `5353`/UDP rules scoped to
-the hotspot's Wi-Fi interface and the subnet NetworkManager assigned. If UFW
-was not installed when the hotspot was configured, install it and use the
-interface/subnet-specific commands printed by the script. The script never
-enables UFW, so review the SSH rule and your intended firewall policy before
-enabling it.
-
-Do **not** open PostgreSQL port `5432` to the LAN and do not configure public
-router port forwarding for RoverOS. The current rover-control API does not
-require user authentication, so port `5000` must remain limited to a trusted
-network. Do not expose it directly to the internet. Use a properly secured VPN
-if remote access is needed.
-
-## 10. Connect Windows and Android clients
-
-Both clients search for the MiniPC named `RoverOS-Server`; no IP address needs
-to be typed. Discovery uses mDNS on the local network and the RoverOS HTTP
-service on port `5000`.
-
-### Android
-
-1. Join the same Wi-Fi/LAN as the MiniPC.
-2. Install the signed APK from the GitHub Release produced by the Android app
-   build workflow. For a temporary debug build, download the APK artifact from
-   the corresponding Actions run.
-3. Open the app. It searches the local network for `RoverOS-Server` and connects
-   automatically. If discovery times out, confirm the network and tap **Search
-   Again**.
-
-The Android app keeps its web interface on the phone and sends its API and
-WebSocket traffic to the MiniPC on port `5000`. It does not connect directly to
-PostgreSQL.
-
-### Windows
-
-1. Join the same LAN as the MiniPC.
-2. Run the Windows app build workflow in GitHub Actions and download the
-   `roveros-windows-installer` artifact.
-3. Install the `.exe` and launch RoverOS. It searches for
-   `RoverOS-Server.local` and connects automatically. If it is not found, check
-   that Windows is on the same private network and select **Search again**.
-
-## 11. Back up and update the server
-
-Before updating, make a database backup, stop the service, update the source,
-rebuild, and restart:
+Before any future server update, back up the database and copy the backup off
+the MiniPC:
 
 ```bash
 sudo -u postgres pg_dump -Fc roveros > "$HOME/roveros-$(date +%F).dump"
-sudo systemctl stop roveros
-cd /opt/roveros/app
-sudo -u roveros git pull --ff-only
-sudo -u roveros node scripts/normalize-github-npm-lock.mjs
-sudo -u roveros npm ci
-sudo -u roveros npm run build
-sudo -u roveros bash -c 'set -a; . /etc/roveros.env; set +a; cd /opt/roveros/app; npm run db:push'
-sudo -u roveros npm prune --omit=dev
-sudo systemctl start roveros
-sudo systemctl status roveros --no-pager
 ```
 
-Store backups somewhere separate from the MiniPC as well.
+The initial installer backs up a recognized existing database before migrations
+and will not replace a running server. It is **not an unattended updater or a
+factory-reset feature**. Preserve `/etc/roveros.env` privately when restoring.
 
-## Troubleshooting
+## 7. Network security and hardware qualification
 
-- **Service fails to start:** run `sudo journalctl -u roveros -n 100 --no-pager`.
-- **Database connection fails:** check that PostgreSQL is active and the URL in
-  `/etc/roveros.env` has the correct role, password, database, and local address.
-- **The MiniPC itself cannot reach the API:** run
-  `curl -i http://127.0.0.1:5000/api/system/info`.
-- **The other devices cannot reach the MiniPC:** verify both are on the same
-  non-guest LAN, inspect `sudo ufw status`, confirm Avahi is active, and check
-  `sudo avahi-browse -rt _http._tcp`.
-- **Discovery works on the router but not the MiniPC hotspot:** confirm the
-  clients joined the `RoverOS-Server` SSID and that the hotspot's assigned
-  subnet is allowed on its Wi-Fi interface through UFW.
-- **Windows cannot find the MiniPC:** verify the Windows network is private and
-  that local multicast name resolution is not blocked by network policy.
-- **Android reports a discovery error:** update to the latest APK and ensure
-  the MiniPC's Avahi service record is installed and announcing port `5000`.
+Do not publicly forward RoverOS ports. The existing normal control API is for a
+trusted LAN, not an unauthenticated public service. Keep SSH owner-only and
+PostgreSQL local. The scripts do not disable antivirus/firewalls or guarantee
+that third-party security software will permit traffic.
 
-## Version references
+If UFW is already active, setup adds inbound app TCP 5000, setup TCP 5443, and
+mDNS UDP 5353 rules scoped to actual private IPv4 subnets/interfaces. It does not
+enable UFW or open PostgreSQL. A dedicated temporary DHCP/DNS profile is allowed
+only on the active setup AP interface so clients can obtain addresses. The setup
+HTTPS and hotspot DHCP/DNS rules for the active interface are removed
+after success. Review your firewall policy separately before enabling it, and
+allow owner SSH before doing so.
 
-- [NodeSource Node.js distributions](https://github.com/nodesource/distributions)
-- [PostgreSQL packages for Ubuntu](https://www.postgresql.org/download/linux/ubuntu/)
-- [Capacitor configuration](https://capacitorjs.com/docs/config) — Android's
-  bundled WebView origin defaults to `https://localhost`; the RoverOS server
-  allows that exact origin for the Android client.
+Before using this with the rover, test on the actual AK1: AP availability, Wi-Fi
+handoff, wrong-password recovery, interrupted power, reboot, backup/restore,
+and sustained CPU/RAM/disk use. The development workspace cannot validate its
+radio, thermal limits, firmware, or attached rover hardware.
+
+## References
+
+- [Ubuntu Server installation](https://documentation.ubuntu.com/server/how-to/installation/)
+- [Ubuntu release support](https://ubuntu.com/about/release-cycle)
+- [GitHub artifact attestation verification](https://cli.github.com/manual/gh_attestation_verify)
+- [Official GitHub CLI Linux installation](https://github.com/cli/cli/blob/trunk/docs/install_linux.md)
+- [NodeSource Node.js packages](https://github.com/nodesource/distributions)
+- [PostgreSQL Ubuntu packages](https://www.postgresql.org/download/linux/ubuntu/)

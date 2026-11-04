@@ -18,7 +18,10 @@
     "check": "tsc",
     "db:push": "drizzle-kit push",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "node scripts/minipc/migrate.cjs"
+    "db:migrate": "node scripts/minipc/migrate.cjs",
+    "package:server": "node scripts/minipc/package-release.mjs",
+    "test:provisioning": "node --test scripts/minipc/*.test.cjs desktop/provisioning-request.test.cjs",
+    "test:server-bundle": "node scripts/minipc/test-bundle.mjs"
   },
   "dependencies": {
     "@capacitor/android": "8.6.0",
@@ -155,6 +158,7 @@
       "desktop/main.cjs",
       "desktop/preload.cjs",
       "desktop/server-url.cjs",
+      "desktop/provisioning-request.cjs",
       "desktop/setup.html",
       "desktop/setup.css",
       "desktop/setup.js",

@@ -24,6 +24,7 @@ const allowlist = [
   "passport",
   "passport-local",
   "pg",
+  "postgres",
   "stripe",
   "uuid",
   "ws",
@@ -57,6 +58,18 @@ async function buildAll() {
     },
     minify: true,
     external: externals,
+    logLevel: "info",
+  });
+
+  // The MiniPC receives runnable bundles, not npm or native build toolchains.
+  await esbuild({
+    entryPoints: ["scripts/minipc/migrate.cjs"],
+    platform: "node",
+    bundle: true,
+    format: "cjs",
+    target: "node22",
+    outfile: "dist/migrate.cjs",
+    external: ["pg-native"],
     logLevel: "info",
   });
 }

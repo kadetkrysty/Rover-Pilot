@@ -1,8 +1,9 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
-import { storage } from "./storage";
+import { storage, db } from "./storage";
 import { getProvisioningStatus } from "./provisioningState";
+import { sql } from "drizzle-orm";
 import { 
   insertRouteSchema, 
   insertWaypointSchema,
@@ -47,6 +48,15 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+  app.get("/api/system/health", async (_req, res) => {
+    res.setHeader("Cache-Control", "no-store");
+    try {
+      await db.execute(sql`select 1 from rover_config limit 1`);
+      res.json({ service: "RoverOS", status: "ready", database: "ready" });
+    } catch {
+      res.status(503).json({ service: "RoverOS", status: "unavailable", database: "unavailable" });
+    }
+  });
 
   app.get("/api/provisioning/status", async (_req, res) => {
     try {

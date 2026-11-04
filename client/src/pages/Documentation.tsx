@@ -7,14 +7,14 @@ import MiniPcInstallGuide from '@/pages/MiniPcInstallGuide';
 
 export default function Documentation() {
   return (
-    <div className="min-h-screen bg-background text-foreground font-sans p-6" data-testid="page-documentation">
+    <div className="min-h-screen min-w-0 bg-background text-foreground font-sans p-4 sm:p-6" data-testid="page-documentation">
       <div className="mb-6">
-        <h1 className="text-3xl font-display font-bold text-primary">SYSTEM DOCUMENTATION</h1>
+        <h1 className="text-2xl sm:text-3xl font-display font-bold text-primary">SYSTEM DOCUMENTATION</h1>
         <p className="text-muted-foreground font-mono mt-1">MiniPC-hosted web/API service with Windows and Android LAN clients</p>
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:h-[calc(100vh-10rem)]">
-        <div className="space-y-4 lg:col-span-3 lg:max-h-full lg:overflow-y-auto">
+        <div className="order-2 min-w-0 space-y-4 lg:order-1 lg:col-span-3 lg:max-h-full lg:overflow-y-auto">
              <div className="hud-panel p-4">
                 <h3 className="font-display text-lg mb-4 text-primary">COMPONENT LIST</h3>
                 <ul className="space-y-2 text-sm font-mono text-muted-foreground">
@@ -43,10 +43,11 @@ export default function Documentation() {
              </div>
         </div>
 
-        <div className="hud-panel col-span-12 min-w-0 h-[70vh] min-h-[32rem] overflow-hidden p-0 flex flex-col lg:col-span-9 lg:h-full">
-            <Tabs defaultValue="overview" className="h-full flex flex-col">
-                <div className="bg-card border-b border-border p-2 overflow-x-auto">
+        <div className="hud-panel order-1 col-span-1 min-w-0 h-[70vh] min-h-[32rem] overflow-hidden p-0 flex flex-col lg:order-2 lg:col-span-9 lg:h-full">
+            <Tabs defaultValue="minipc" className="h-full flex flex-col">
+                <div className="shrink-0 bg-card border-b border-border p-2 overflow-x-auto">
                     <TabsList className="bg-background/50 w-max">
+                        <TabsTrigger value="minipc" className="font-mono text-xs" data-testid="tab-minipc">MINIPC SETUP</TabsTrigger>
                         <TabsTrigger value="overview" className="font-mono text-xs" data-testid="tab-overview">OVERVIEW</TabsTrigger>
                         <TabsTrigger value="pantilt" className="font-mono text-xs" data-testid="tab-pantilt">PAN/TILT</TabsTrigger>
                         <TabsTrigger value="estop" className="font-mono text-xs" data-testid="tab-estop">E-STOP</TabsTrigger>
@@ -56,7 +57,6 @@ export default function Documentation() {
                         <TabsTrigger value="wiring" className="font-mono text-xs" data-testid="tab-wiring">WIRING</TabsTrigger>
                         <TabsTrigger value="ibus" className="font-mono text-xs" data-testid="tab-ibus">iBUS / RC</TabsTrigger>
                         <TabsTrigger value="troubleshoot" className="font-mono text-xs" data-testid="tab-troubleshoot">TROUBLESHOOT</TabsTrigger>
-                        <TabsTrigger value="minipc" className="font-mono text-xs" data-testid="tab-minipc">MINIPC SETUP</TabsTrigger>
                     </TabsList>
                 </div>
                 
@@ -90,9 +90,9 @@ export default function Documentation() {
                                         <Cpu className="w-4 h-4" /> MINI PC
                                     </h4>
                                     <ul className="text-xs font-mono space-y-1 text-muted-foreground">
-                                        <li>• Intel Celeron J3455 / N5105</li>
-                                        <li>• 8GB RAM minimum</li>
-                                        <li>• Ubuntu 22.04 or 24.04 LTS</li>
+                                     <li>• ACEPC AK1 (verify actual CPU/Wi-Fi revision)</li>
+                                     <li>• 8GB RAM configuration</li>
+                                     <li>• Ubuntu Server 24.04 LTS amd64, headless</li>
                                         <li>• Node.js 22.12.0 or later</li>
                                         <li>• RoverOS web/API and WebSocket</li>
                                         <li>• PostgreSQL database</li>
@@ -768,10 +768,8 @@ Arduino Pin 11 (TX) → Level Shifter → Hoverboard RX (3.3V)`}
                     </ScrollArea>
                 </TabsContent>
 
-                <TabsContent value="minipc" className="flex-1 p-0 m-0 relative overflow-hidden">
-                    <ScrollArea className="h-full w-full">
-                        <MiniPcInstallGuide />
-                    </ScrollArea>
+                <TabsContent value="minipc" className="min-h-0 min-w-0 flex-1 p-0 m-0 overflow-auto">
+                    <MiniPcInstallGuide />
                 </TabsContent>
 
                 <TabsContent value="ibus" className="flex-1 p-0 m-0 relative overflow-hidden">

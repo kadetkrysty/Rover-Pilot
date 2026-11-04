@@ -85,12 +85,12 @@ sudo systemctl enable --now NetworkManager avahi-daemon`}</CodeBlock>
           The AK1 downloads this prebuilt bundle; it does not compile the app or install development packages.
           Push the project to GitHub, then create and push a version tag to publish a release.
         </p>
-        <CodeBlock title="Publish a versioned server release from a developer computer">{`git tag v1.0.1
-git push origin v1.0.1`}</CodeBlock>
+        <CodeBlock title="Publish a versioned server release from a developer computer">{`git tag roveros-server-v1.0.1
+git push origin roveros-server-v1.0.1`}</CodeBlock>
         <p className="text-sm leading-relaxed text-muted-foreground">
           Check the <strong>RoverOS MiniPC server release</strong> workflow in GitHub Actions.
           A successful tag build publishes <code>RoverOS-server-linux-x64.tar.gz</code> and its
-          SHA-256 checksum. The bootstrap expects the repository to be reachable through public
+          SHA-256 checksum and signed GitHub provenance bundle. The bootstrap expects the repository to be reachable through public
           GitHub Releases; private repositories need an approved release-access design before use.
         </p>
       </Section>
@@ -113,7 +113,7 @@ sudo bash scripts/minipc/install-bootstrap.sh kadetkrysty/Rover-Pilot`}</CodeBlo
         </p>
         <p className="text-sm leading-relaxed text-muted-foreground">
           If the Wi-Fi adapter cannot create an AP, install through a wired LAN and use clients on that
-          same LAN. The bootstrap fails rather than taking over another network manager or changing the
+          same LAN with the explicit <code>--lan-only</code> bootstrap option. The bootstrap fails rather than taking over another network manager or changing the
           active Wi-Fi connection unexpectedly.
         </p>
       </Section>
@@ -142,8 +142,9 @@ sudo bash scripts/minipc/install-bootstrap.sh kadetkrysty/Rover-Pilot`}</CodeBlo
           <li>Avahi discovery as <code>RoverOS-Server</code>; PostgreSQL port 5432 is not opened to the LAN.</li>
         </ul>
         <p className="text-sm leading-relaxed text-muted-foreground">
-          Setup reports ready after the installer completes. This release checks the downloaded bundle
-          against the SHA-256 checksum published with the GitHub release. Keep the RoverOS API limited
+          Setup reports ready only after the web, API, database, and discovery checks pass. The installer checks
+          the SHA-256 checksum and cryptographically signed GitHub provenance for the repository, workflow,
+          and selected server tag before extracting the bundle. Keep the RoverOS API limited
           to a trusted LAN; it is not intended for public internet exposure.
         </p>
       </Section>
@@ -152,6 +153,7 @@ sudo bash scripts/minipc/install-bootstrap.sh kadetkrysty/Rover-Pilot`}</CodeBlo
         <CodeBlock title="Check the service from SSH">{`sudo systemctl status roveros --no-pager
 sudo journalctl -u roveros -n 100 --no-pager
 curl -i http://127.0.0.1:5000/api/system/info
+curl -i http://127.0.0.1:5000/api/system/health
 curl -i http://127.0.0.1:5000/api/provisioning/status
 sudo avahi-browse -rt _http._tcp`}</CodeBlock>
         <ul className="list-disc space-y-2 pl-5 text-sm text-muted-foreground">

@@ -20,7 +20,7 @@ async function main() {
 
   try {
     await migrate(drizzle(pool), {
-      migrationsFolder: path.resolve(__dirname, "../../migrations"),
+      migrationsFolder: process.env.ROVEROS_MIGRATIONS_DIR || path.resolve(process.cwd(), "migrations"),
     });
   } finally {
     await pool.end();

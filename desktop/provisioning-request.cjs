@@ -16,7 +16,8 @@ function normalizeFingerprint(value) {
   return /^[a-f0-9]{64}$/.test(normalized) ? normalized : null;
 }
 
-function requestProvisioning({ fingerprint, pairingCode, path, method = "GET", body }) {
+// The transport override is for local TLS tests; renderer IPC never supplies it.
+function requestProvisioning({ fingerprint, pairingCode, path, method = "GET", body }, transport = {}) {
   const expectedFingerprint = normalizeFingerprint(fingerprint);
   if (!expectedFingerprint || !/^[a-f0-9]{32}$/i.test(pairingCode || "") ||
       !PATHS.has(path) || !["GET", "POST"].includes(method)) {
@@ -31,10 +32,11 @@ function requestProvisioning({ fingerprint, pairingCode, path, method = "GET", b
   return new Promise((resolve, reject) => {
     let verified = false;
     const request = https.request({
-      hostname: HOST,
-      port: PORT,
+      hostname: transport.hostname || HOST,
+      port: transport.port || PORT,
       path,
       method,
+      agent: false,
       rejectUnauthorized: false,
       headers: {
         accept: "application/json",
@@ -65,6 +67,9 @@ function requestProvisioning({ fingerprint, pairingCode, path, method = "GET", b
         let parsed = {};
         try {
           parsed = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+          if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+            throw new Error("Invalid setup response.");
+          }
         } catch {
           reject(new Error("MiniPC returned an invalid setup response."));
           return;
@@ -75,6 +80,7 @@ function requestProvisioning({ fingerprint, pairingCode, path, method = "GET", b
         }
         resolve(parsed);
       });
+      response.on("error", () => reject(new Error("MiniPC setup response was interrupted.")));
     });
 
     request.on("socket", (socket) => {

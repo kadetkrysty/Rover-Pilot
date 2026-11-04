@@ -1,7 +1,5 @@
 package com.roverostech.rover;
 
-import android.util.Base64;
-
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
@@ -106,10 +104,13 @@ public class RoverProvisioningPlugin extends Plugin {
                 connection.setRequestProperty("Accept", "application/json");
                 connection.setRequestProperty("Authorization", "Bearer " + pairingCode);
                 connection.setUseCaches(false);
+                connection.setInstanceFollowRedirects(false);
                 if ("POST".equals(method)) {
                     connection.setDoOutput(true);
                     connection.setRequestProperty("Content-Type", "application/json");
-                    connection.getOutputStream().write(body.getBytes("UTF-8"));
+                    try (java.io.OutputStream output = connection.getOutputStream()) {
+                        output.write(body.getBytes("UTF-8"));
+                    }
                 }
 
                 int status = connection.getResponseCode();
@@ -145,6 +146,7 @@ public class RoverProvisioningPlugin extends Plugin {
     private static boolean isAllowedHost(String host) {
         if ("roveros-server.local".equalsIgnoreCase(host) ||
             "roveros-server".equalsIgnoreCase(host)) return true;
+        if (!host.matches("^[0-9]{1,3}(\\.[0-9]{1,3}){3}$")) return false;
         try {
             java.net.InetAddress address = java.net.InetAddress.getByName(host);
             if (!(address instanceof Inet4Address)) return false;
@@ -169,5 +171,11 @@ public class RoverProvisioningPlugin extends Plugin {
             }
             return output.toString("UTF-8");
         }
+    }
+
+    @Override
+    protected void handleOnDestroy() {
+        executor.shutdownNow();
+        super.handleOnDestroy();
     }
 }

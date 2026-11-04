@@ -23,24 +23,37 @@
         local network.
       </p>
 
-      <p id="connection-status" class="status" role="status" aria-live="polite" aria-atomic="true"></p>
+      <p id="connection-status" class="status" role="status" aria-live="polite" aria-atomic="true">
+        Looking for the MiniPC on your local network…
+      </p>
       <button id="search-button" type="button">Search again</button>
 
       <section id="provisioning-panel" class="provisioning" hidden>
-        <h2>First-time MiniPC setup</h2>
+        <div class="section-heading">
+          <span class="step-mark" aria-hidden="true">01</span>
+          <div>
+            <p class="eyebrow">MINIPC / INITIAL SETUP</p>
+            <h2>Bring RoverOS online</h2>
+          </div>
+        </div>
         <p class="hint">
-          Enter the certificate fingerprint and one-time pairing code printed by
-          the MiniPC bootstrap installer. Wi-Fi credentials are sent only over
-          the fingerprint-verified encrypted setup connection and are not saved
-          on this computer.
+          Use the SHA-256 certificate fingerprint and one-time pairing code shown
+          by the local or SSH bootstrap output. Your Wi-Fi password is sent over
+          the fingerprint-verified setup connection and cleared after the attempt.
         </p>
         <label for="fingerprint">HTTPS certificate SHA-256 fingerprint</label>
         <input id="fingerprint" autocomplete="off" spellcheck="false"
+          inputmode="text" aria-describedby="fingerprint-help"
           placeholder="64 hexadecimal characters" />
+        <p id="fingerprint-help" class="field-help">Paste the full 64-character hexadecimal value.</p>
         <label for="pairing-code">One-time pairing code</label>
         <input id="pairing-code" autocomplete="off" spellcheck="false"
+          inputmode="text" aria-describedby="pairing-help"
           placeholder="32 hexadecimal characters" />
-        <button id="scan-button" class="secondary" type="button">Scan Wi-Fi</button>
+        <p id="pairing-help" class="field-help">This code is unique to this MiniPC setup session.</p>
+        <button id="scan-button" class="secondary" type="button" aria-label="Scan nearby Wi-Fi networks">
+          Scan Wi-Fi
+        </button>
         <form id="wifi-form">
           <label for="network-select">Nearby Wi-Fi networks</label>
           <select id="network-select">
@@ -57,13 +70,17 @@
           </label>
           <button id="connect-button" type="submit">Connect and install RoverOS</button>
         </form>
-        <p id="setup-progress" class="status" role="status" aria-live="polite"></p>
+        <p id="setup-progress" class="status setup-status" role="status" aria-live="polite" aria-atomic="true"></p>
+        <p class="recovery-note">
+          The MiniPC can restart its Wi-Fi during setup. If this computer disconnects,
+          join the selected network and use Search again. Installation can continue in
+          the background while this window stays open.
+        </p>
       </section>
 
       <p class="offline-note">
-        The MiniPC must be running RoverOS. This desktop app connects to it; it
-        does not install the server or database on this computer. No IP address
-        is required.
+        Windows discovers the MiniPC by its RoverOS-Server name. No IP address is
+        needed, and this client does not install server software on this PC.
       </p>
     </main>
   </body>

@@ -1,6 +1,6 @@
 # RoverOS MiniPC First-Run Provisioning Plan
 
-**Status:** Proposal for review. No application code or runtime configuration was changed for this plan.
+**Status:** Approved for implementation. Server release packaging, bootstrap/installer, secure client onboarding, and installation documentation are implemented in the repository. Physical AK1/network qualification remains required before field use.
 
 ## Summary
 
@@ -10,13 +10,25 @@ The operating-system clarification is that the MiniPC needs a **headless Ubuntu 
 
 Ubuntu 26.04 LTS is newer and has a longer support window, but the project has not been qualified on it and the default package versions differ from the current Node/PostgreSQL targets. Debian 13 is also a viable headless server OS, but its current default PostgreSQL version and the project’s Ubuntu-specific guide create extra work. Neither is the easiest first implementation. The plan keeps Ubuntu 26.04 and Debian as later qualification options rather than mixing operating systems in the first release.
 
-## Current project baseline
+## Implementation decisions after approval
+
+- Target the owner's **ACEPC AK1, 8 GB RAM configuration**. The supplied Google share link did not expose a usable hardware specification; actual storage, CPU revision, Wi-Fi chipset/driver and AP/client behavior must be checked on the unit, not inferred from the model name.
+- Keep Ubuntu Server 24.04 LTS amd64 without a desktop. The 8 GB configuration meets the planned RAM target; prefer at least 64 GB SSD capacity and maintain update/backup headroom.
+- Build a self-contained Node 22 server and migration bundle in GitHub Actions. No compilation, npm dependency install, Electron, or Android toolchain runs on the AK1.
+- Publish separate `roveros-server-vMAJOR.MINOR.PATCH` releases with checksums and signed GitHub provenance. Verify repository, signer workflow, source tag, artifact hash, and OS/architecture/runtime manifest before extraction.
+- A one-time bench/SSH bootstrap generates per-device AP credentials, pairing code, and TLS certificate. Android and Windows use native certificate-pinned HTTPS for sensitive setup; plain HTTP exposes only public progress.
+- Use WPA2-Personal for the first implementation. Hidden SSIDs and manual entry are supported; pure WPA3-SAE/enterprise authentication is not implemented.
+- Keep the bootstrap enabled as a boot dispatcher after completion, but do not open its setup listeners or accept credentials again. A separate handoff validates the actual API, web assets, database/schema and discovery before recording ready.
+- Preserve completed stages and handle interruption as a recoverable retry; package installation and SQL migrations can be rerun. This is first-run installation, not an unattended updater or a factory-reset API.
+- The full owner tutorial is `docs/MINIPC_INSTALLATION.md` and the in-app Docs → MiniPC Setup section. Firmware, motor-control, camera streaming and FlyBaby remain separately qualified integrations, not falsely reported as installed.
+
+## Original project baseline at planning time
 
 - Android and Windows already find the MiniPC named `RoverOS-Server` on the local network. Android uses DNS-SD discovery; Windows checks `RoverOS-Server.local`.
 - The clients verify `/api/system/info`, but there is no provisioning state or Wi-Fi onboarding API yet. Android currently treats any verified RoverOS server as ready.
 - The existing install guide installs Node.js 22, PostgreSQL 16, Avahi, the production RoverOS build, and a systemd service on Ubuntu Server.
 - `scripts/setup-minipc-hotspot.sh` is an optional, interactive Ubuntu Server/NetworkManager tool. It checks the Wi-Fi adapter and NetworkManager, refuses to run over SSH, creates a WPA2 hotspot with a random password, and adds scoped firewall rules. It does not start the hotspot automatically on first boot, so the first-run service must safely replace or extend this manual flow.
-- Project documentation identifies an Intel Celeron MiniPC and 64-bit architecture, but does not record the exact CPU model, RAM, SSD, or Wi-Fi adapter. Hardware-specific compatibility cannot be claimed until those are measured.
+- The owner has now specified ACEPC AK1 with 8 GB RAM. The exact CPU revision, SSD and Wi-Fi adapter still need measurement; hardware-specific compatibility is not yet claimed.
 - Current documentation excludes Arduino firmware, motor-control services, camera streaming, and the separate FlyBaby service from the MiniPC install. These need to be classified as required or optional before “install everything” can be defined.
 
 ## Proposed first-run experience
@@ -105,7 +117,7 @@ To reduce CPU, RAM, and disk pressure, build the production RoverOS release in G
 | Ubuntu Server 26.04 LTS amd64 | Best candidate if a fresh five-year support window through May 2031 is more important than minimizing initial changes. It was released in April 2026; qualify the exact MiniPC, Node.js 22, PostgreSQL 16, NetworkManager, and installation scripts before switching. |
 | Debian 13 “trixie” amd64 | Technically suitable and lean, with Debian LTS through June 2030. Not the easiest option: the current guide is Ubuntu-specific and Debian 13 defaults to PostgreSQL 17, so retaining PostgreSQL 16 and the required Node.js runtime needs extra repository/version work. |
 
-The codebase does not identify the MiniPC's exact model or Wi-Fi chipset. Before claiming hardware support, collect `lscpu`, `free -h`, `lsblk`, `lspci -nn`, `lsusb`, and `iw list` output locally or over the owner's SSH session, then test the selected OS on that device. Do not request or store SSH passwords or private keys in the app or plan.
+The MiniPC model is ACEPC AK1 with 8 GB RAM; its exact storage and Wi-Fi chipset remain unverified. Before claiming hardware support, collect `lscpu`, `free -h`, `lsblk`, `lspci -nn`, `lsusb`, and `iw list` output locally or over the owner's SSH session, then test the selected OS on that device. Do not request or store SSH passwords or private keys in the app or plan.
 
 ## Credential and installation security
 
@@ -148,7 +160,7 @@ The completed inventory should include versions, supported CPU architecture, dis
 - Measure idle and peak memory, disk use, database growth, and update/rollback space with the complete software inventory.
 - Approve the required-vs-optional software inventory and signed release source.
 
-**Exit gate:** no app implementation until the OS, resource budget, and Wi-Fi topology are proven on the target hardware.
+**Field-use gate:** implementation has been authorized by the owner; do not claim hardware qualification until the OS, resource budget, and Wi-Fi topology are proven on the actual AK1.
 
 ### Phase 1 — Headless Ubuntu bootstrap
 
@@ -191,9 +203,9 @@ The completed inventory should include versions, supported CPU architecture, dis
 8. The installer does not expose PostgreSQL to Wi-Fi clients or the public internet, and cannot execute client-supplied commands.
 9. Required and optional rover hardware software is explicitly listed; the UI does not claim unconnected hardware is ready.
 
-## Decisions needed for approval
+## Remaining hardware and integration checks
 
-1. **Hardware qualification:** What exact MiniPC model, RAM, SSD, and Wi-Fi adapter are in use? If unknown, collect the inventory listed above over SSH or locally.
+1. **Hardware qualification:** ACEPC AK1, 8 GB RAM is confirmed by the owner. Collect its exact storage and Wi-Fi adapter/driver over SSH or locally.
 2. **Wi-Fi topology:** Can its adapter host an AP and join the home network simultaneously? If not, is Ethernet or a second adapter available, and may the client need to reconnect manually?
 3. **Factory access:** How will the owner obtain each device's unique AP password and pairing identity—printed QR/label, local console, or another method?
 4. **Network support:** Should the first version support personal WPA2/WPA3 networks only, or enterprise Wi-Fi as well?
