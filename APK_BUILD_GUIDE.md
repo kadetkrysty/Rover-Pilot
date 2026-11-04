@@ -1,17 +1,16 @@
 # RoverOS APK Build Guide
 
 ## Prerequisites
-- Node.js 18+ and npm
-- Android Studio or Android SDK (API 31+)
-- Java Development Kit (JDK) 11+
+- Node.js 22+ and npm
+- Android SDK Platform 36 and Build Tools 36.0.0
+- Java Development Kit (JDK) 21
 - Capacitor CLI
 
 ## Build Steps
 
 ### 1. Install Dependencies
 ```bash
-npm install
-npm install --save-dev @capacitor/cli @capacitor/android
+npm ci
 ```
 
 ### 2. Build Web Assets
@@ -19,28 +18,17 @@ npm install --save-dev @capacitor/cli @capacitor/android
 npm run build
 ```
 
-### 3. Initialize Capacitor (first time only)
+### 3. Sync Android
 ```bash
-npx cap init "RoverOS" "com.roverostech.rover"
+npx cap sync android
 ```
 
-### 4. Add Android Platform
+### 4. Build a debug APK
 ```bash
-npx cap add android
+cd android && ./gradlew assembleDebug
 ```
 
-### 5. Sync Project
-```bash
-npx cap sync
-```
-
-### 6. Build APK
-```bash
-cd android
-./gradlew assembleRelease
-```
-
-### 7. Signed APK (for production)
+### 5. Signed APK (for production)
 - Generate signing key:
   ```bash
   keytool -genkey -v -keystore rover-release.jks -keyalg RSA -keysize 2048 -validity 10000 -alias rover
@@ -53,7 +41,10 @@ cd android
   ```
 
 ## Output
-APK file: `android/app/build/outputs/apk/release/app-release.apk`
+APK file: `android/app/build/outputs/apk/debug/app-debug.apk`
+
+GitHub Actions runs the same build on pushes, pull requests, or manual dispatch.
+Download the `roveros-android-debug` artifact from the completed workflow run.
 
 ## Permissions Included
 - ✓ Internet access
