@@ -4,3 +4,4 @@
 - [Preview browser testing](preview-browser-testing.md) — direct Chromium/CDP navigation may abort despite working curl and preview screenshots.
 - [RoverOS provisioning and discovery](roveros-server-discovery.md) — use headless Ubuntu Server 24.04 LTS; clients check setup state and discover RoverOS-Server without IP entry.
 - [Owner client pairing](owner-client-pairing.md) — keep first-run setup credentials separate from the normal-operation owner enrollment credential.
+- [MiniPC updater privilege boundary](minipc-update-privilege-boundary.md) — retain `NoNewPrivileges` on the app and use a restricted systemd socket to trigger root-only maintenance.

@@ -225,7 +225,42 @@ avahi-browse -rt _http._tcp
 sudo journalctl -u roveros -n 100 --no-pager
 ```
 
-## 6. Recovery and backups
+## 6. Owner-authorized server updates
+
+On a completed installation, pair an owner client and open **Security → Owner
+controls → MiniPC software update**. Review the installed and available
+versions, then confirm the update. The server downloads only the latest
+versioned RoverOS server release from the configured repository. It checks
+release metadata, the archive checksum, the release manifest and GitHub
+artifact provenance before running the code. It does not compile on the
+ACEPC AK1.
+
+Before changing the database, the updater checks available disk space and saves
+a PostgreSQL custom-format backup under `/var/backups/roveros/`. It applies the
+release migrations, installs the verified app in a separate version directory,
+and atomically switches `/opt/roveros/current`. If the new app fails its
+startup/health checks, the previous app release is restored and restarted.
+
+The backup is retained for owner recovery. App rollback does **not** reverse
+database migrations; additive schema changes or data written after the backup
+may require a separate recovery decision. Do not delete the backup until the
+updated service and rover settings have been checked.
+
+For a MiniPC installed before the owner update feature was added, use owner SSH
+once to transfer this project's reviewed source tree, then run:
+
+```bash
+sudo bash scripts/minipc/enable-updates.sh --install-latest
+sudo systemctl status roveros-update.service --no-pager
+sudo journalctl -u roveros-update.service -n 100 --no-pager
+```
+
+This installs the restricted update service and immediately installs the
+latest verified server release. It does not rerun setup or replace Wi-Fi,
+certificate, owner-pairing, or PostgreSQL settings. Subsequent releases can be
+installed from the owner client.
+
+## 7. Recovery and backups
 
 - **Wrong Wi-Fi password:** setup reports failure and attempts to restore the
   setup AP. Rejoin it and enter the credentials again.
@@ -239,6 +274,38 @@ sudo journalctl -u roveros -n 100 --no-pager
   operations; installation is not falsely reported ready.
 - **Startup health failure:** handoff stops the failed application, restores
   the setup service/advertisement, and reports failure.
+- **Interrupted update:** check `sudo systemctl status roveros-update.service
+  --no-pager` and `sudo journalctl -u roveros-update.service -n 100 --no-pager`.
+  The update status remains visible to the owner client as interrupted. If the
+  app is healthy, select **Retry update**. The updater backs up the database
+  again, reapplies idempotent migrations, and keeps the active release until
+  it is ready to switch.
+- **Update health-check failure:** the updater restores the previous app
+  symlink and restarts it. Inspect the update and app logs before retrying:
+
+  ```bash
+  sudo journalctl -u roveros-update.service -u roveros -n 150 --no-pager
+  readlink -f /opt/roveros/current
+  ls -lh /var/backups/roveros/
+  ```
+
+- **Manual app rollback:** if the updater reports that recovery is required,
+  stop the service and point `current` at a previously verified release
+  directory shown under `/opt/roveros/releases/`, then start and check it:
+
+  ```bash
+  sudo systemctl stop roveros
+  sudo ln -sfn /opt/roveros/releases/<verified-version> /opt/roveros/current.rollback
+  sudo mv -Tf /opt/roveros/current.rollback /opt/roveros/current
+  sudo systemctl start roveros
+  curl -f http://127.0.0.1:5000/api/system/health
+  ```
+
+- **Database restore:** database restore is a separate, owner-directed action.
+  First stop RoverOS and save a second dump of the current database. Restoring
+  the pre-update dump replaces the current database and discards changes made
+  after that dump; do not proceed unless that data loss is acceptable. Keep
+  `/etc/roveros.env` private and unchanged.
 - **Legacy database:** an installation previously created with `db:push` needs
   a reviewed migration baseline. The installer refuses to apply the new baseline
   blindly over that data. It does not delete or recreate it.
@@ -252,18 +319,12 @@ nmcli device status
 sudo nmcli connection up id RoverOS-Hotspot
 ```
 
-Before any future server update, back up the database and copy the backup off
-the MiniPC:
-
-```bash
-sudo -u postgres pg_dump -Fc roveros > "$HOME/roveros-$(date +%F).dump"
-```
-
 The initial installer backs up a recognized existing database before migrations
-and will not replace a running server. It is **not an unattended updater or a
-factory-reset feature**. Preserve `/etc/roveros.env` privately when restoring.
+and will not replace a running server. Updates are owner-authorized; they are
+not unattended, and are not a factory-reset feature. Copy important backups
+off the MiniPC after confirming they are usable.
 
-## 7. Network security and hardware qualification
+## 8. Network security and hardware qualification
 
 Do not publicly forward RoverOS ports. The existing normal control API is for a
 trusted LAN, not an unauthenticated public service. Keep SSH owner-only and

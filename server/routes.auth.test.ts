@@ -5,6 +5,7 @@ import { createServer } from "node:http";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import net from "node:net";
 import { hashClientToken, type ClientAuthState } from "./clientAuth";
 
 process.env.DATABASE_URL ||= "postgres://roveros:roveros@127.0.0.1:5432/roveros_test";
@@ -25,6 +26,7 @@ const originalSetConfig = storage.setConfig;
 const ownerCode = "d".repeat(32);
 const ownerCodeDir = fs.mkdtempSync(path.join(os.tmpdir(), "roveros-owner-code-"));
 const ownerCodePath = path.join(ownerCodeDir, "owner-pairing-code");
+let ownerAccessToken = "";
 
 before(async () => {
   fs.writeFileSync(ownerCodePath, `${ownerCode}\n`, { mode: 0o600 });
@@ -178,6 +180,7 @@ test("owner enrollment, invitation, and revocation use separate one-time client 
   });
   assert.equal(pairResponse.status, 201);
   const owner = await pairResponse.json() as { clientId: string; token: string };
+  ownerAccessToken = owner.token;
   assert.equal(fs.existsSync(ownerCodePath), false);
   assert.equal(authState.clients.find((client) => client.id === owner.clientId)?.tokenHash, hashClientToken(owner.token));
 
@@ -215,4 +218,95 @@ test("owner enrollment, invitation, and revocation use separate one-time client 
     headers: { authorization: `Bearer ${paired.token}` },
   });
   assert.equal(revokedRead.status, 401);
+});
+
+test("only the owner can inspect available updates and updater status", async () => {
+  const viewerHeaders = { authorization: `Bearer ${VIEWER_TOKEN}` };
+  assert.equal((await fetch(`${origin}/api/system/update`, { headers: viewerHeaders })).status, 403);
+  assert.equal((await fetch(`${origin}/api/system/update/status`, { headers: viewerHeaders })).status, 403);
+  assert.equal((await fetch(`${origin}/api/system/update`, { method: "POST", headers: viewerHeaders })).status, 403);
+
+  const manifestPath = path.join(ownerCodeDir, "current-release.json");
+  fs.writeFileSync(manifestPath, JSON.stringify({ version: "1.0.0" }));
+  process.env.ROVEROS_CURRENT_RELEASE_MANIFEST = manifestPath;
+  const updateStatusPath = path.join(ownerCodeDir, "update-status.json");
+  const systemctlPath = path.join(ownerCodeDir, "systemctl");
+  fs.writeFileSync(systemctlPath, '#!/bin/sh\nprintf "%s\\n" "$UPDATE_TEST_SYSTEMD_STATE"\n', { mode: 0o755 });
+  process.env.ROVEROS_UPDATE_STATUS_FILE = updateStatusPath;
+  process.env.ROVEROS_GITHUB_REPOSITORY = "example/rover";
+  const updateSocketPath = path.join(ownerCodeDir, "update-trigger.sock");
+  process.env.ROVEROS_UPDATE_SOCKET_PATH = updateSocketPath;
+  process.env.ROVEROS_UPDATE_SYSTEMCTL_PATH = systemctlPath;
+  process.env.UPDATE_TEST_SYSTEMD_STATE = "inactive";
+  const triggerServer = net.createServer((socket) => {
+    let request = "";
+    socket.on("data", (chunk) => {
+      request += chunk.toString("utf8");
+      if (request.includes("\n")) socket.end(request === "START\n" ? "STARTED\n" : "REJECTED\n");
+    });
+  });
+  await new Promise<void>((resolve, reject) => {
+    triggerServer.once("error", reject);
+    triggerServer.listen(updateSocketPath, resolve);
+  });
+  const savedFetch = globalThis.fetch;
+  const requestApi = savedFetch;
+  const assetNames = [
+    "RoverOS-server-linux-x64.tar.gz",
+    "RoverOS-server-linux-x64.tar.gz.sha256",
+    "RoverOS-server-linux-x64.intoto.jsonl",
+  ];
+  globalThis.fetch = (async () => new Response(JSON.stringify([{
+    tag_name: "roveros-server-v1.1.0",
+    draft: false,
+    prerelease: false,
+    assets: assetNames.map((name) => ({
+      name,
+      browser_download_url: `https://github.com/example/rover/releases/download/roveros-server-v1.1.0/${name}`,
+    })),
+  }]), { status: 200 })) as typeof fetch;
+  try {
+    const ownerHeaders = { authorization: `Bearer ${ownerAccessToken}` };
+    const updateResponse = await requestApi(`${origin}/api/system/update`, { headers: ownerHeaders });
+    assert.equal(updateResponse.status, 200);
+    assert.deepEqual(await updateResponse.json(), {
+      currentVersion: "1.0.0",
+      availableVersion: "1.1.0",
+      updateAvailable: true,
+      updateStatus: { state: "idle", progress: 0 },
+    });
+    const statusResponse = await requestApi(`${origin}/api/system/update/status`, { headers: ownerHeaders });
+    assert.equal((await statusResponse.json() as { state: string }).state, "idle");
+
+    fs.writeFileSync(updateStatusPath, JSON.stringify({ state: "running", progress: 2 }));
+    process.env.UPDATE_TEST_SYSTEMD_STATE = "activating";
+    const startingStatus = await requestApi(`${origin}/api/system/update/status`, { headers: ownerHeaders });
+    assert.equal((await startingStatus.json() as { state: string }).state, "running");
+    const duplicateStart = await requestApi(`${origin}/api/system/update`, {
+      method: "POST",
+      headers: ownerHeaders,
+    });
+    assert.equal(duplicateStart.status, 409);
+
+    process.env.UPDATE_TEST_SYSTEMD_STATE = "inactive";
+    const interruptedStatus = await requestApi(`${origin}/api/system/update/status`, { headers: ownerHeaders });
+    assert.equal((await interruptedStatus.json() as { state: string }).state, "interrupted");
+    fs.rmSync(updateStatusPath, { force: true });
+    const startResponse = await requestApi(`${origin}/api/system/update`, {
+      method: "POST",
+      headers: ownerHeaders,
+    });
+    assert.equal(startResponse.status, 202);
+    assert.deepEqual(await startResponse.json(), { state: "started" });
+  } finally {
+    globalThis.fetch = savedFetch;
+    await new Promise<void>((resolve) => triggerServer.close(() => resolve()));
+    fs.rmSync(updateSocketPath, { force: true });
+    delete process.env.ROVEROS_CURRENT_RELEASE_MANIFEST;
+    delete process.env.ROVEROS_UPDATE_STATUS_FILE;
+    delete process.env.ROVEROS_GITHUB_REPOSITORY;
+    delete process.env.ROVEROS_UPDATE_SOCKET_PATH;
+    delete process.env.ROVEROS_UPDATE_SYSTEMCTL_PATH;
+    delete process.env.UPDATE_TEST_SYSTEMD_STATE;
+  }
 });

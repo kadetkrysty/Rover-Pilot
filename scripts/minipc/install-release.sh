@@ -130,7 +130,8 @@ fi
 [[ "$database_exists" == "1" ]] || runuser -u postgres -- createdb --owner=roveros roveros
 printf 'NODE_ENV=production\nDATABASE_URL=postgresql://roveros:%s@127.0.0.1:5432/roveros\nROVEROS_PROVISIONING_STATE_FILE=/var/lib/roveros-provisioner/state.json\n' \
   "$database_password" >"$WORK_DIR/roveros.env"
-printf 'ROVEROS_TLS_CERT=/etc/roveros-provisioner/server.crt\nROVEROS_TLS_KEY=/etc/roveros-provisioner/server.key\nROVEROS_OWNER_PAIRING_CODE_FILE=/etc/roveros-provisioner/owner-pairing-code\nROVEROS_TLS_PORT=5443\n' \
+printf 'ROVEROS_TLS_CERT=/etc/roveros-provisioner/server.crt\nROVEROS_TLS_KEY=/etc/roveros-provisioner/server.key\nROVEROS_OWNER_PAIRING_CODE_FILE=/etc/roveros-provisioner/owner-pairing-code\nROVEROS_TLS_PORT=5443\nROVEROS_GITHUB_REPOSITORY=%s\n' \
+  "$REPO" \
   >>"$WORK_DIR/roveros.env"
 if [[ ! -f /etc/roveros-provisioner/owner-pairing-code ]]; then
   openssl rand -hex 16 >/etc/roveros-provisioner/owner-pairing-code
@@ -182,4 +183,5 @@ StateDirectory=roveros
 WantedBy=multi-user.target
 UNIT
 systemctl daemon-reload
+systemctl enable --now roveros-update-trigger.socket
 systemd-run --unit=roveros-handoff --collect --no-block "$SERVICE_DIR/handoff.sh"

@@ -3,6 +3,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   clearRoverCredentials,
   getRoverCredentials,
   getRoverUrl,
@@ -32,6 +42,22 @@ interface CurrentClient {
   role: PairedClient["role"];
 }
 
+interface MiniPcUpdateStatus {
+  state: "idle" | "running" | "interrupted" | "complete" | "failed" | "rolled_back" | "recovery_required";
+  stage?: string;
+  progress?: number;
+  message?: string;
+  updatedAt?: string;
+  databaseBackup?: string;
+}
+
+interface MiniPcUpdateInfo {
+  currentVersion: string;
+  availableVersion: string;
+  updateAvailable: boolean;
+  updateStatus: MiniPcUpdateStatus;
+}
+
 const deviceLabel = () => {
   const platform = /Android/i.test(navigator.userAgent) ? "Android" : "RoverOS client";
   return `${platform} device`;
@@ -50,6 +76,9 @@ export default function SecuritySettings() {
   const [clients, setClients] = useState<PairedClient[]>([]);
   const [currentClient, setCurrentClient] = useState<CurrentClient | null>(null);
   const [checkingPairing, setCheckingPairing] = useState(false);
+  const [updateInfo, setUpdateInfo] = useState<MiniPcUpdateInfo | null>(null);
+  const [checkingUpdates, setCheckingUpdates] = useState(false);
+  const [confirmUpdateOpen, setConfirmUpdateOpen] = useState(false);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const hasCredentials = !!getRoverCredentials();
@@ -91,6 +120,20 @@ export default function SecuritySettings() {
     }
   }, [currentClient?.role, hasCredentials, request]);
 
+  const refreshUpdateInfo = useCallback(async () => {
+    if (!hasCredentials || currentClient?.role !== "owner") return;
+    setCheckingUpdates(true);
+    try {
+      const result = await request("/api/system/update") as MiniPcUpdateInfo;
+      setUpdateInfo(result);
+    } catch (error) {
+      setUpdateInfo(null);
+      setMessage(error instanceof Error ? error.message : "Could not check for MiniPC updates.");
+    } finally {
+      setCheckingUpdates(false);
+    }
+  }, [currentClient?.role, hasCredentials, request]);
+
   useEffect(() => {
     if (!hasCredentials) {
       setCurrentClient(null);
@@ -121,6 +164,26 @@ export default function SecuritySettings() {
   useEffect(() => {
     if (currentClient?.role === "owner") void refreshClients();
   }, [currentClient?.role, refreshClients]);
+
+  useEffect(() => {
+    if (currentClient?.role === "owner") void refreshUpdateInfo();
+  }, [currentClient?.role, refreshUpdateInfo]);
+
+  useEffect(() => {
+    if (updateInfo?.updateStatus.state !== "running") return;
+    const timer = window.setInterval(() => {
+      void request("/api/system/update/status")
+        .then((result) => {
+          const status = result as MiniPcUpdateStatus;
+          setUpdateInfo((current) => current ? { ...current, updateStatus: status } : current);
+          if (status.state !== "running") void refreshUpdateInfo();
+        })
+        .catch(() => {
+          // The service briefly restarts while switching releases; the next poll reconnects.
+        });
+    }, 3000);
+    return () => window.clearInterval(timer);
+  }, [refreshUpdateInfo, request, updateInfo?.updateStatus.state]);
 
   const withBusy = async (operation: () => Promise<void>) => {
     setBusy(true);
@@ -178,6 +241,22 @@ export default function SecuritySettings() {
       await request(`/api/clients/${encodeURIComponent(client.id)}`, "DELETE");
       setMessage(`${client.name} was revoked.`);
       await refreshClients();
+    });
+  };
+
+  const handleStartUpdate = () => {
+    void withBusy(async () => {
+      await request("/api/system/update", "POST");
+      setUpdateInfo((current) => current ? {
+        ...current,
+        updateStatus: {
+          state: "running",
+          stage: "starting",
+          progress: 0,
+          message: "The MiniPC is preparing the verified update.",
+        },
+      } : current);
+      setConfirmUpdateOpen(false);
     });
   };
 
@@ -316,10 +395,91 @@ export default function SecuritySettings() {
                   </div>
                 ))}
               </div>
+              <section className="space-y-3 border-t border-border pt-4" aria-labelledby="minipc-update-heading">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <h3 id="minipc-update-heading" className="font-medium">MiniPC software update</h3>
+                  <Button type="button" variant="outline" size="sm" disabled={checkingUpdates || busy} onClick={() => void refreshUpdateInfo()}>
+                    {checkingUpdates ? "Checking…" : "Check for updates"}
+                  </Button>
+                </div>
+                {updateInfo ? (
+                  <>
+                    <dl className="grid gap-2 text-sm sm:grid-cols-2">
+                      <div>
+                        <dt className="text-muted-foreground">Installed version</dt>
+                        <dd className="font-mono">{updateInfo.currentVersion}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-muted-foreground">Latest available</dt>
+                        <dd className="font-mono">{updateInfo.availableVersion}</dd>
+                      </div>
+                    </dl>
+                    <p className="text-sm text-muted-foreground">
+                      Before installation, the MiniPC checks free disk space and backs up PostgreSQL. Additive database migrations may not be automatically reversible if the app release is rolled back.
+                    </p>
+                    {updateInfo.updateStatus.message && (
+                      <p role="status" className="text-sm text-muted-foreground">
+                        {updateInfo.updateStatus.message}
+                        {updateInfo.updateStatus.databaseBackup && (
+                          <span className="mt-1 block break-all font-mono text-xs">
+                            Database backup: {updateInfo.updateStatus.databaseBackup}
+                          </span>
+                        )}
+                      </p>
+                    )}
+                    {updateInfo.updateStatus.state === "running" && (
+                      <p className="text-sm" role="status">
+                        Update in progress{typeof updateInfo.updateStatus.progress === "number"
+                          ? ` — ${updateInfo.updateStatus.progress}%`
+                          : ""}.
+                      </p>
+                    )}
+                    {updateInfo.updateStatus.state === "interrupted" && (
+                      <p className="text-sm text-amber-600" role="status">
+                        The previous update was interrupted. Check the recovery instructions if retrying does not restore service.
+                      </p>
+                    )}
+                    <Button
+                      type="button"
+                      disabled={busy || updateInfo.updateStatus.state === "running" || !updateInfo.updateAvailable}
+                      onClick={() => setConfirmUpdateOpen(true)}
+                    >
+                      {updateInfo.updateAvailable
+                        ? ["interrupted", "failed", "rolled_back", "recovery_required"].includes(updateInfo.updateStatus.state)
+                          ? "Retry update"
+                          : "Install update"
+                        : "Up to date"}
+                    </Button>
+                  </>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    {checkingUpdates ? "Checking the signed server release list…" : "Update information is not available. Check the MiniPC connection and try again."}
+                  </p>
+                )}
+              </section>
             </>
           )}
         </Card>
       )}
+      <AlertDialog open={confirmUpdateOpen} onOpenChange={setConfirmUpdateOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Install the MiniPC update?</AlertDialogTitle>
+            <AlertDialogDescription>
+              RoverOS will download and verify version {updateInfo?.availableVersion}, back up PostgreSQL, apply its migrations, then restart. Controls may be unavailable briefly. If startup health checks fail, RoverOS restores the previous app release, but it does not automatically reverse database changes.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={busy}>Cancel</AlertDialogCancel>
+            <AlertDialogAction disabled={busy} onClick={(event) => {
+              event.preventDefault();
+              handleStartUpdate();
+            }}>
+              Confirm update
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </main>
   );
 }

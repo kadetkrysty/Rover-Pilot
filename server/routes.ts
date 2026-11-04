@@ -13,6 +13,10 @@ import {
 import { z } from "zod";
 import { randomUUID, timingSafeEqual } from "node:crypto";
 import { readFileSync, unlinkSync } from "node:fs";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
+import { createConnection } from "node:net";
+import { compareVersions, selectRelease } from "../scripts/minipc/release-metadata.cjs";
 import {
   CLIENT_AUTH_CONFIG_KEY,
   createClientToken,
@@ -49,6 +53,60 @@ interface AuthenticatedClient {
 
 const connectedClients = new Map<WebSocket, AuthenticatedClient>();
 let latestTelemetry: TelemetryData | null = null;
+const execFileAsync = promisify(execFile);
+
+async function updateUnitActiveState(): Promise<string> {
+  const systemctl = process.env.ROVEROS_UPDATE_SYSTEMCTL_PATH || "/usr/bin/systemctl";
+  const { stdout } = await execFileAsync(systemctl, [
+    "show", "--property=ActiveState", "--value", "roveros-update.service",
+  ]);
+  return stdout.trim();
+}
+
+async function readMiniPcUpdateStatus(): Promise<Record<string, unknown>> {
+  const statusPath = process.env.ROVEROS_UPDATE_STATUS_FILE ||
+    "/var/lib/roveros-provisioner/update-status.json";
+  let status: Record<string, unknown>;
+  try {
+    status = JSON.parse(readFileSync(statusPath, "utf8")) as Record<string, unknown>;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return { state: "idle", progress: 0 };
+    throw error;
+  }
+  if (status.state === "running") {
+    try {
+      const activeState = await updateUnitActiveState();
+      if (activeState === "active" || activeState === "activating") return status;
+    } catch {
+      // An unavailable service manager means the saved running state cannot be confirmed.
+    }
+    return {
+      ...status,
+      state: "interrupted",
+      message: "The update stopped before finishing. Retry it or use owner SSH for recovery.",
+    };
+  }
+  return status;
+}
+
+function requestMiniPcUpdateStart(): Promise<void> {
+  const socketPath = process.env.ROVEROS_UPDATE_SOCKET_PATH || "/run/roveros-update.sock";
+  return new Promise((resolve, reject) => {
+    const socket = createConnection(socketPath);
+    let response = "";
+    socket.setTimeout(5000, () => socket.destroy(new Error("Update service did not respond.")));
+    socket.on("connect", () => socket.end("START\n"));
+    socket.on("data", (chunk: Buffer) => {
+      response += chunk.toString("utf8");
+      if (response.length > 64) socket.destroy(new Error("Update service returned an invalid response."));
+    });
+    socket.on("error", reject);
+    socket.on("end", () => {
+      if (response.trim() === "STARTED") resolve();
+      else reject(new Error("Update service did not accept the request."));
+    });
+  });
+}
 
 let ownerEnrollmentInProgress = false;
 let clientAuthMutationQueue: Promise<void> = Promise.resolve();
@@ -179,6 +237,74 @@ export async function registerRoutes(
     }
     return client;
   };
+
+  app.get("/api/system/update", async (req, res) => {
+    res.setHeader("Cache-Control", "no-store");
+    const owner = await requireOwner(req, res);
+    if (!owner) return;
+    try {
+      const manifestPath = process.env.ROVEROS_CURRENT_RELEASE_MANIFEST ||
+        "/opt/roveros/current/release-manifest.json";
+      const current = JSON.parse(readFileSync(manifestPath, "utf8")) as { version?: string };
+      if (typeof current.version !== "string") throw new Error("Installed release version is missing.");
+      compareVersions(current.version, current.version);
+
+      const repository = process.env.ROVEROS_GITHUB_REPOSITORY || "";
+      const releaseResponse = await fetch(
+        `https://api.github.com/repos/${repository}/releases?per_page=100`,
+        {
+          headers: { accept: "application/vnd.github+json", "user-agent": "RoverOS-MiniPC" },
+          signal: AbortSignal.timeout(10_000),
+        },
+      );
+      if (!releaseResponse.ok) throw new Error("Release service did not return a release list.");
+      const releases = await releaseResponse.json() as unknown;
+      const available = selectRelease(releases, repository);
+      res.json({
+        currentVersion: current.version,
+        availableVersion: available.version,
+        updateAvailable: compareVersions(available.version, current.version) > 0,
+        updateStatus: await readMiniPcUpdateStatus(),
+      });
+    } catch (error) {
+      console.error("MiniPC update check failed:", error);
+      res.status(503).json({ error: "Could not check for updates. No changes were made." });
+    }
+  });
+
+  app.get("/api/system/update/status", async (req, res) => {
+    res.setHeader("Cache-Control", "no-store");
+    const owner = await requireOwner(req, res);
+    if (!owner) return;
+    try {
+      res.json(await readMiniPcUpdateStatus());
+    } catch {
+      res.status(503).json({ error: "Update status is unavailable. Use owner SSH to check the MiniPC." });
+    }
+  });
+
+  app.post("/api/system/update", async (req, res) => {
+    res.setHeader("Cache-Control", "no-store");
+    const owner = await requireOwner(req, res);
+    if (!owner) return;
+    try {
+      const activeState = await updateUnitActiveState();
+      if (activeState === "active" || activeState === "activating") {
+        return res.status(409).json({ error: "A MiniPC update is already running." });
+      }
+    } catch {
+      // An inactive or not-yet-installed unit is handled by the restricted launcher below.
+    }
+    try {
+      await requestMiniPcUpdateStart();
+      res.status(202).json({ state: "started" });
+    } catch (error) {
+      console.error("Could not start MiniPC update:", error);
+      res.status(503).json({
+        error: "The update service is unavailable. Use owner SSH to check the installation.",
+      });
+    }
+  });
 
   app.post("/api/clients/pair-owner", async (req, res) => {
     res.setHeader("Cache-Control", "no-store");

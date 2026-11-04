@@ -80,8 +80,11 @@ ports=67/udp|53/tcp|53/udp
 FIREWALL
 chmod 644 /etc/ufw/applications.d/roveros-setup
 install -m 0755 "$PROJECT_ROOT/scripts/minipc/provisioner.cjs" "$SERVICE_DIR/provisioner.cjs"
-for helper in install-release.sh handoff.sh ensure-network.sh configure-firewall.sh release-metadata.cjs; do
+for helper in install-release.sh update-release.sh start-update.sh enable-updates.sh handoff.sh ensure-network.sh configure-firewall.sh release-metadata.cjs; do
   install -m 0755 "$PROJECT_ROOT/scripts/minipc/$helper" "$SERVICE_DIR/$helper"
+done
+for unit in roveros-update.service roveros-update-trigger.socket roveros-update-trigger@.service; do
+  install -m 0644 "$PROJECT_ROOT/deploy/systemd/$unit" "/etc/systemd/system/$unit"
 done
 install -m 0644 "$PROJECT_ROOT/deploy/avahi/roveros-provisioning.service" "$SERVICE_DIR/roveros-provisioning.service"
 

@@ -1,0 +1,14 @@
+[Unit]
+Description=Local trigger for the owner-authorized RoverOS update service
+
+[Socket]
+ListenStream=/run/roveros-update.sock
+SocketUser=root
+SocketGroup=roveros
+SocketMode=0660
+Accept=yes
+Service=roveros-update-trigger@.service
+RemoveOnStop=true
+
+[Install]
+WantedBy=sockets.target
