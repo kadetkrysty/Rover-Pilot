@@ -54,10 +54,59 @@ jobs:
       - name: Build RoverOS web app
         run: npm run build
 
+      - name: Require Windows code-signing certificate
+        if: ${{ github.event_name != 'pull_request' }}
+        shell: pwsh
+        env:
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:WIN_CSC_LINK)) {
+            throw "Add WIN_CSC_LINK to GitHub Actions secrets as a base64-encoded trusted code-signing PFX certificate."
+          }
+          if ([string]::IsNullOrWhiteSpace($env:WIN_CSC_KEY_PASSWORD)) {
+            throw "Add WIN_CSC_KEY_PASSWORD to GitHub Actions secrets as the PFX password."
+          }
+
       - name: Package Windows installer
+        if: ${{ github.event_name != 'pull_request' }}
+        env:
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
         run: npm run desktop:win
 
+      - name: Verify signed app and installer
+        if: ${{ github.event_name != 'pull_request' }}
+        shell: pwsh
+        run: |
+          $appExecutable = "release/win-unpacked/RoverOS.exe"
+          if (-not (Test-Path -LiteralPath $appExecutable)) {
+            throw "Packaged RoverOS.exe was not found at $appExecutable."
+          }
+
+          $installers = @(Get-ChildItem -Path "release" -Filter "RoverOS-Setup-*.exe" -File)
+          if ($installers.Count -ne 1) {
+            throw "Expected exactly one RoverOS setup installer; found $($installers.Count)."
+          }
+
+          $filesToVerify = @((Get-Item -LiteralPath $appExecutable)) + $installers
+          foreach ($file in $filesToVerify) {
+            $signature = Get-AuthenticodeSignature -LiteralPath $file.FullName
+            if ($signature.Status -ne "Valid") {
+              throw "Authenticode validation failed for $($file.Name): $($signature.Status) $($signature.StatusMessage)"
+            }
+            if (-not $signature.SignerCertificate) {
+              throw "No signing certificate was found on $($file.Name)."
+            }
+            if (-not $signature.TimeStamperCertificate) {
+              throw "No trusted timestamp was found on $($file.Name)."
+            }
+
+            Write-Host "Verified $($file.Name) signed by $($signature.SignerCertificate.Subject)"
+          }
+
       - name: Upload Windows installer
+        if: ${{ github.event_name != 'pull_request' }}
         uses: actions/upload-artifact@v7
         with:
           name: roveros-windows-installer

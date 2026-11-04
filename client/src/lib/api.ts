@@ -1,20 +1,21 @@
 import type { Route, Waypoint, InsertRoute, InsertWaypoint, TelemetryLog, InsertTelemetryLog, RoverConfig, InsertRoverConfig } from "@shared/schema";
+import { roverFetch } from "@/lib/roverConnection";
 
 // Routes API
 export async function getRoutes(): Promise<Route[]> {
-  const res = await fetch('/api/routes');
+  const res = await roverFetch('/api/routes');
   if (!res.ok) throw new Error('Failed to fetch routes');
   return res.json();
 }
 
 export async function getRoute(id: number): Promise<Route> {
-  const res = await fetch(`/api/routes/${id}`);
+  const res = await roverFetch(`/api/routes/${id}`);
   if (!res.ok) throw new Error('Failed to fetch route');
   return res.json();
 }
 
 export async function createRoute(route: InsertRoute): Promise<Route> {
-  const res = await fetch('/api/routes', {
+  const res = await roverFetch('/api/routes', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(route),
@@ -24,7 +25,7 @@ export async function createRoute(route: InsertRoute): Promise<Route> {
 }
 
 export async function updateRoute(id: number, route: Partial<InsertRoute>): Promise<Route> {
-  const res = await fetch(`/api/routes/${id}`, {
+  const res = await roverFetch(`/api/routes/${id}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(route),
@@ -34,7 +35,7 @@ export async function updateRoute(id: number, route: Partial<InsertRoute>): Prom
 }
 
 export async function deleteRoute(id: number): Promise<void> {
-  const res = await fetch(`/api/routes/${id}`, {
+  const res = await roverFetch(`/api/routes/${id}`, {
     method: 'DELETE',
   });
   if (!res.ok) throw new Error('Failed to delete route');
@@ -42,13 +43,13 @@ export async function deleteRoute(id: number): Promise<void> {
 
 // Waypoints API
 export async function getWaypoints(routeId: number): Promise<Waypoint[]> {
-  const res = await fetch(`/api/routes/${routeId}/waypoints`);
+  const res = await roverFetch(`/api/routes/${routeId}/waypoints`);
   if (!res.ok) throw new Error('Failed to fetch waypoints');
   return res.json();
 }
 
 export async function createWaypoint(waypoint: InsertWaypoint): Promise<Waypoint> {
-  const res = await fetch(`/api/routes/${waypoint.routeId}/waypoints`, {
+  const res = await roverFetch(`/api/routes/${waypoint.routeId}/waypoints`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(waypoint),
@@ -59,7 +60,7 @@ export async function createWaypoint(waypoint: InsertWaypoint): Promise<Waypoint
 
 export async function createWaypoints(waypoints: InsertWaypoint[]): Promise<Waypoint[]> {
   if (waypoints.length === 0) return [];
-  const res = await fetch(`/api/routes/${waypoints[0].routeId}/waypoints`, {
+  const res = await roverFetch(`/api/routes/${waypoints[0].routeId}/waypoints`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(waypoints),
@@ -69,7 +70,7 @@ export async function createWaypoints(waypoints: InsertWaypoint[]): Promise<Wayp
 }
 
 export async function updateWaypoint(id: number, waypoint: Partial<InsertWaypoint>): Promise<Waypoint> {
-  const res = await fetch(`/api/waypoints/${id}`, {
+  const res = await roverFetch(`/api/waypoints/${id}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(waypoint),
@@ -79,7 +80,7 @@ export async function updateWaypoint(id: number, waypoint: Partial<InsertWaypoin
 }
 
 export async function deleteWaypoint(id: number): Promise<void> {
-  const res = await fetch(`/api/waypoints/${id}`, {
+  const res = await roverFetch(`/api/waypoints/${id}`, {
     method: 'DELETE',
   });
   if (!res.ok) throw new Error('Failed to delete waypoint');
@@ -87,7 +88,7 @@ export async function deleteWaypoint(id: number): Promise<void> {
 
 // Telemetry API
 export async function createTelemetryLog(log: InsertTelemetryLog): Promise<TelemetryLog> {
-  const res = await fetch('/api/telemetry', {
+  const res = await roverFetch('/api/telemetry', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(log),
@@ -98,26 +99,26 @@ export async function createTelemetryLog(log: InsertTelemetryLog): Promise<Telem
 
 export async function getTelemetryLogs(limit?: number): Promise<TelemetryLog[]> {
   const url = limit ? `/api/telemetry?limit=${limit}` : '/api/telemetry';
-  const res = await fetch(url);
+  const res = await roverFetch(url);
   if (!res.ok) throw new Error('Failed to fetch telemetry logs');
   return res.json();
 }
 
 export async function getLatestTelemetry(): Promise<TelemetryLog> {
-  const res = await fetch('/api/telemetry/latest');
+  const res = await roverFetch('/api/telemetry/latest');
   if (!res.ok) throw new Error('Failed to fetch latest telemetry');
   return res.json();
 }
 
 // Config API
 export async function getConfig(key: string): Promise<RoverConfig> {
-  const res = await fetch(`/api/config/${key}`);
+  const res = await roverFetch(`/api/config/${key}`);
   if (!res.ok) throw new Error('Failed to fetch config');
   return res.json();
 }
 
 export async function setConfig(config: InsertRoverConfig): Promise<RoverConfig> {
-  const res = await fetch('/api/config', {
+  const res = await roverFetch('/api/config', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(config),
@@ -127,14 +128,14 @@ export async function setConfig(config: InsertRoverConfig): Promise<RoverConfig>
 }
 
 export async function getAllConfig(): Promise<RoverConfig[]> {
-  const res = await fetch('/api/config');
+  const res = await roverFetch('/api/config');
   if (!res.ok) throw new Error('Failed to fetch all config');
   return res.json();
 }
 
 // Rover Control API
 export async function setRoverMode(mode: 'manual' | 'autonomous' | 'emergency_stop'): Promise<{ mode: string; status: string }> {
-  const res = await fetch('/api/rover/mode', {
+  const res = await roverFetch('/api/rover/mode', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ mode }),
@@ -144,7 +145,7 @@ export async function setRoverMode(mode: 'manual' | 'autonomous' | 'emergency_st
 }
 
 export async function moveRover(direction: 'forward' | 'backward' | 'left' | 'right' | 'stop', speed?: number): Promise<{ direction: string; speed: number; status: string }> {
-  const res = await fetch('/api/rover/move', {
+  const res = await roverFetch('/api/rover/move', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ direction, speed }),
@@ -154,7 +155,7 @@ export async function moveRover(direction: 'forward' | 'backward' | 'left' | 'ri
 }
 
 export async function startNavigation(routeId: number): Promise<{ routeId: number; waypoints: number; status: string }> {
-  const res = await fetch('/api/rover/navigate', {
+  const res = await roverFetch('/api/rover/navigate', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ routeId }),

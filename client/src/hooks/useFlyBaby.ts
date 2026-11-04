@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { getRoverServiceUrl } from '@/lib/roverConnection';
 
 export interface FlyBabyInput {
   // Channels 1-6 (PWM values: 1000-2000us)
@@ -65,9 +66,8 @@ export const useFlyBaby = () => {
   const pollFlyBaby = async () => {
     try {
       // Fetch FlyBaby data from Raspberry Pi API
-      const response = await fetch('http://localhost:8080/api/flybaby/input', {
+      const response = await fetch(getRoverServiceUrl('/api/flybaby/input', 8080), {
         method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
       });
 
       if (!response.ok) {

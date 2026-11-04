@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { getRoverWsUrl } from './roverConnection';
 
 export interface TelemetryData {
   timestamp: number;
@@ -71,21 +72,7 @@ export function useWebSocket(): UseWebSocketResult {
       return;
     }
 
-    // Check for custom rover URL in localStorage
-    const roverUrl = localStorage.getItem('rover_api_url');
-    let wsUrl: string;
-    
-    if (roverUrl) {
-      // For remote rover, connect to WebSocket on port 5001
-      const wsProtocol = roverUrl.startsWith('https') ? 'wss:' : 'ws:';
-      const hostMatch = roverUrl.match(/^https?:\/\/([^:\/]+)/);
-      const host = hostMatch ? hostMatch[1] : 'localhost';
-      wsUrl = `${wsProtocol}//${host}:5001`;
-    } else {
-      // For local development, use same host
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      wsUrl = `${protocol}//${window.location.host}/ws/telemetry`;
-    }
+    const wsUrl = getRoverWsUrl();
 
     try {
       console.log('Connecting to WebSocket:', wsUrl);

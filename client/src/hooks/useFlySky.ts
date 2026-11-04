@@ -1,3 +1,5 @@
+import { roverFetch } from "@/lib/roverConnection";
+
 import { useState, useEffect, useRef } from 'react';
 
 export interface FlySkyInput {
@@ -84,7 +86,7 @@ export const useFlySky = () => {
     try {
       // Fetch iBUS data from Mini PC controller API
       // iBUS data is now received via Arduino Serial1 and forwarded to API
-      const response = await fetch('/api/ibus', {
+      const response = await roverFetch('/api/ibus', {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
       });

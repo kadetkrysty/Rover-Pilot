@@ -1,5 +1,6 @@
 import { Switch, Route } from "wouter";
-import { lazy, Suspense, useMemo } from "react";
+import { lazy, Suspense, useMemo, useState } from "react";
+import { Capacitor } from "@capacitor/core";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -8,6 +9,7 @@ import AppLayout from "@/components/AppLayout";
 import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/Dashboard";
 import { PerformanceContext, getPerformanceSettings, detectPerformanceProfile } from "@/lib/performanceSettings";
+import { isRoverConfigured } from "@/lib/roverConnection";
 
 const Setup = lazy(() => import("@/pages/Setup"));
 const Documentation = lazy(() => import("@/pages/Documentation"));
@@ -18,6 +20,10 @@ const SystemDiagnostics = lazy(() => import("@/pages/SystemDiagnostics"));
 const Mapping = lazy(() => import("@/pages/Mapping"));
 const VideoRecordings = lazy(() => import("@/pages/VideoRecordings"));
 const CloudSync = lazy(() => import("@/pages/CloudSync"));
+
+function SetupRoute() {
+  return <Setup />;
+}
 
 function LoadingFallback() {
   return (
@@ -36,7 +42,7 @@ function Router() {
       <Suspense fallback={<LoadingFallback />}>
         <Switch>
           <Route path="/" component={Dashboard} />
-          <Route path="/setup" component={Setup} />
+          <Route path="/setup" component={SetupRoute} />
           <Route path="/docs" component={Documentation} />
           <Route path="/navigation" component={Navigation} />
           <Route path="/gamepad" component={GamepadControl} />
@@ -53,6 +59,9 @@ function Router() {
 }
 
 function App() {
+  const [needsNativeConnection, setNeedsNativeConnection] = useState(
+    () => Capacitor.isNativePlatform() && !isRoverConfigured(),
+  );
   const performanceSettings = useMemo(() => {
     const profile = detectPerformanceProfile();
     console.log(`[PERFORMANCE] Detected profile: ${profile}`);
@@ -64,7 +73,16 @@ function App() {
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
           <Toaster />
-          <Router />
+          {needsNativeConnection ? (
+            <Suspense fallback={<LoadingFallback />}>
+              <Setup
+                requiredConnection
+                onConnected={() => setNeedsNativeConnection(false)}
+              />
+            </Suspense>
+          ) : (
+            <Router />
+          )}
         </TooltipProvider>
       </QueryClientProvider>
     </PerformanceContext.Provider>

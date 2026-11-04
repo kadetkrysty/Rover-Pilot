@@ -6,6 +6,7 @@ import {
   CheckCircle, AlertCircle, Clock, Database, Map, Activity
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { roverFetch } from '@/lib/roverConnection';
 
 interface SyncItem {
   id: string;
@@ -107,7 +108,7 @@ export default function CloudSync() {
 
   const handleExport = async () => {
     try {
-      const response = await fetch('/api/export/all');
+      const response = await roverFetch('/api/export/all');
       const data = await response.json();
       
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -134,7 +135,7 @@ export default function CloudSync() {
           try {
             const parsedBackup = JSON.parse(event.target?.result as string);
             // Wrap the data object as expected by the server
-            await fetch('/api/import', {
+            await roverFetch('/api/import', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ data: parsedBackup.data })

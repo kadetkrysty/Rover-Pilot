@@ -6,6 +6,33 @@ import { createServer } from "http";
 const app = express();
 const httpServer = createServer(app);
 
+// Capacitor Android serves the bundled UI from https://localhost. Allow that
+// exact origin to call the MiniPC API; do not use a wildcard for rover controls.
+const nativeClientOrigins = new Set(["https://localhost"]);
+app.use((req, res, next) => {
+  const origin = req.get("origin");
+  const isNativeClient = origin !== undefined && nativeClientOrigins.has(origin);
+
+  if (isNativeClient) {
+    res.vary("Origin");
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    res.setHeader("Access-Control-Max-Age", "600");
+
+    if (req.get("access-control-request-private-network") === "true") {
+      res.setHeader("Access-Control-Allow-Private-Network", "true");
+    }
+  }
+
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(isNativeClient ? 204 : 403);
+  }
+
+  next();
+});
+
 declare module "http" {
   interface IncomingMessage {
     rawBody: unknown;

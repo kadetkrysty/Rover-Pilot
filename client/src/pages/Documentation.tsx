@@ -3,17 +3,18 @@ import { Code, FileText, Cpu, Download, Wifi, Radio, Settings, Wrench, Zap, Aler
 import slushEngineImage from '@assets/slushengine_LT_-_Trans2_1024x1024_1767447433450.webp';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import MiniPcInstallGuide from '@/pages/MiniPcInstallGuide';
 
 export default function Documentation() {
   return (
     <div className="min-h-screen bg-background text-foreground font-sans p-6" data-testid="page-documentation">
       <div className="mb-6">
         <h1 className="text-3xl font-display font-bold text-primary">SYSTEM DOCUMENTATION</h1>
-        <p className="text-muted-foreground font-mono mt-1">RoverOS v3.0 - Mini PC + Arduino + iBUS Architecture</p>
+        <p className="text-muted-foreground font-mono mt-1">MiniPC-hosted web/API service with Windows and Android LAN clients</p>
       </div>
 
-      <div className="grid grid-cols-12 gap-6 h-[calc(100vh-10rem)]">
-        <div className="col-span-3 space-y-4">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:h-[calc(100vh-10rem)]">
+        <div className="space-y-4 lg:col-span-3 lg:max-h-full lg:overflow-y-auto">
              <div className="hud-panel p-4">
                 <h3 className="font-display text-lg mb-4 text-primary">COMPONENT LIST</h3>
                 <ul className="space-y-2 text-sm font-mono text-muted-foreground">
@@ -34,7 +35,7 @@ export default function Documentation() {
              <div className="hud-panel p-4 border-accent/50">
                 <h3 className="font-display text-lg mb-2 text-accent">v3.0 CHANGES</h3>
                 <ul className="space-y-1 text-xs font-mono text-muted-foreground">
-                    <li>✓ Raspberry Pi → Mini PC</li>
+                    <li>✓ MiniPC hosts the web/API service</li>
                     <li>✓ GPIO PWM → iBUS Protocol</li>
                     <li>✓ 10 wires → 1 wire for RC</li>
                     <li>✓ Auto port detection</li>
@@ -42,7 +43,7 @@ export default function Documentation() {
              </div>
         </div>
 
-        <div className="col-span-9 hud-panel p-0 overflow-hidden flex flex-col">
+        <div className="hud-panel h-[70vh] min-h-[32rem] overflow-hidden p-0 flex flex-col lg:col-span-9 lg:h-full">
             <Tabs defaultValue="overview" className="h-full flex flex-col">
                 <div className="bg-card border-b border-border p-2 overflow-x-auto">
                     <TabsList className="bg-background/50 w-max">
@@ -55,6 +56,7 @@ export default function Documentation() {
                         <TabsTrigger value="wiring" className="font-mono text-xs" data-testid="tab-wiring">WIRING</TabsTrigger>
                         <TabsTrigger value="ibus" className="font-mono text-xs" data-testid="tab-ibus">iBUS / RC</TabsTrigger>
                         <TabsTrigger value="troubleshoot" className="font-mono text-xs" data-testid="tab-troubleshoot">TROUBLESHOOT</TabsTrigger>
+                        <TabsTrigger value="minipc" className="font-mono text-xs" data-testid="tab-minipc">MINIPC SETUP</TabsTrigger>
                     </TabsList>
                 </div>
                 
@@ -62,39 +64,23 @@ export default function Documentation() {
                     <ScrollArea className="h-full w-full">
                         <div className="p-6 space-y-6 pr-4">
                             <div>
-                                <h3 className="text-xl text-primary font-display mb-4">SYSTEM ARCHITECTURE v3.0</h3>
+                                <h3 className="text-xl text-primary font-display mb-4">ROVEROS HOST AND CLIENTS</h3>
                                 <pre className="bg-black/50 p-4 border border-border rounded-lg text-xs overflow-x-auto text-green-300" style={{ fontFamily: "'Courier New', Courier, monospace", letterSpacing: '0' }}>
-{`+---------------------------------------------------------------------+
-|                         ROVER SYSTEM v3.0                           |
-+---------------------------------------------------------------------+
-|                                                                     |
-|  +---------------------+    USB Serial    +---------------------+   |
-|  |  MINI PC            |<--------------->|  ARDUINO MEGA       |   |
-|  |  Intel Celeron      |   115200 baud   |  2560               |   |
-|  |  8GB RAM            |                 |                     |   |
-|  |  Ubuntu OS          |                 |  Sensors:           |   |
-|  |                     |                 |  - TF Mini Pro      |   |
-|  |  Runs:              |                 |  - MPU6050 IMU      |   |
-|  |  - Web Server       |                 |  - Neo-6M GPS       |   |
-|  |  - WebSocket        |                 |  - 5x Ultrasonic    |   |
-|  |  - SLAM/EKF         |                 |  - HuskyLens        |   |
-|  |                     |                 |                     |   |
-|  +---------+-----------+                 |  RC Control:        |   |
-|            |                             |  - iBUS (Serial1)   |   |
-|            | WiFi                        +---------+-----------+   |
-|            v                                       |               |
-|  +---------------------+                 +---------v-----------+   |
-|  |  WEB DASHBOARD      |                 |  FLYSKY FS-IA10B    |   |
-|  |  React + Vite       |                 |  (iBUS Protocol)    |   |
-|  |  Mobile/Desktop     |                 +---------------------+   |
-|  +---------------------+                           ^               |
-|                                                    | 2.4GHz        |
-|  +---------------------+                 +---------+-----------+   |
-|  |  HOVERBOARD         |<-- UART --------|  FLYSKY FS-I6x     |   |
-|  |  FOC Controller     |     Arduino     |  Transmitter        |   |
-|  +---------------------+                 +---------------------+   |
-|                                                                     |
-+---------------------------------------------------------------------+`}
+{`+---------------------------------------------------------------+
+|                         ROVEROS                                 |
++---------------------------------------------------------------+
+|                                                               |
+|  ANDROID APP                         WINDOWS APP               |
+|       \\                                  /                    |
+|        \\--------- trusted LAN ----------/                     |
+|                         |                                     |
+|                         v                                     |
+|  MINIPC: Ubuntu LTS, Node.js 22, RoverOS web/API + WebSocket   |
+|         PostgreSQL 16, HTTP and WebSocket on port 5000          |
+|                         |                                     |
+|                  optional hardware services                    |
+|                                                               |
++---------------------------------------------------------------+`}
                                 </pre>
                             </div>
 
@@ -106,10 +92,11 @@ export default function Documentation() {
                                     <ul className="text-xs font-mono space-y-1 text-muted-foreground">
                                         <li>• Intel Celeron J3455 / N5105</li>
                                         <li>• 8GB RAM minimum</li>
-                                        <li>• Ubuntu 22.04 LTS</li>
-                                        <li>• Runs Python Flask server</li>
-                                        <li>• Handles SLAM/EKF processing</li>
-                                        <li>• Serves web dashboard</li>
+                                        <li>• Ubuntu 22.04 or 24.04 LTS</li>
+                                        <li>• Node.js 22.12.0 or later</li>
+                                        <li>• RoverOS web/API and WebSocket</li>
+                                        <li>• PostgreSQL database</li>
+                                        <li>• Serves clients on port 5000</li>
                                     </ul>
                                 </div>
 
@@ -118,12 +105,10 @@ export default function Documentation() {
                                         <Cpu className="w-4 h-4" /> ARDUINO MEGA
                                     </h4>
                                     <ul className="text-xs font-mono space-y-1 text-muted-foreground">
-                                        <li>• ATmega2560 processor</li>
-                                        <li>• 4 hardware serial ports</li>
-                                        <li>• All sensors connected here</li>
-                                        <li>• iBUS RC receiver decoding</li>
-                                        <li>• Motor control via UART</li>
-                                        <li>• 20Hz telemetry to Mini PC</li>
+                                        <li>• Optional ATmega2560 hardware controller</li>
+                                        <li>• Requires separate firmware and wiring</li>
+                                        <li>• Sensor, iBUS, and motor links are hardware-specific</li>
+                                        <li>• The MiniPC install does not program this board</li>
                                     </ul>
                                 </div>
                             </div>
@@ -785,106 +770,7 @@ Arduino Pin 11 (TX) → Level Shifter → Hoverboard RX (3.3V)`}
 
                 <TabsContent value="minipc" className="flex-1 p-0 m-0 relative overflow-hidden">
                     <ScrollArea className="h-full w-full">
-                        <div className="p-6 space-y-6 pr-4">
-                            <h3 className="text-xl text-primary font-display">MINI PC HOST SETUP</h3>
-                            
-                            <div className="bg-primary/10 border border-primary/30 p-4 rounded">
-                                <h4 className="font-display text-primary mb-2">RECOMMENDED HARDWARE</h4>
-                                <ul className="text-xs font-mono space-y-1 text-muted-foreground">
-                                    <li>• Intel Celeron J3455 / N5095 / N5105</li>
-                                    <li>• 8GB RAM (minimum 4GB)</li>
-                                    <li>• 64GB SSD / eMMC</li>
-                                    <li>• USB ports for Arduino</li>
-                                    <li>• WiFi for dashboard access</li>
-                                </ul>
-                            </div>
-
-                            <div className="bg-secondary/10 border border-secondary/30 p-4 rounded">
-                                <h4 className="font-display text-secondary mb-2">UBUNTU INSTALLATION</h4>
-                                <pre className="bg-black/50 p-3 rounded text-xs font-mono text-green-300 overflow-x-auto">
-{`# 1. Update system
-sudo apt update && sudo apt upgrade -y
-
-# 2. Install Python dependencies
-sudo apt install python3-pip python3-dev
-
-# 3. Install required packages
-pip3 install flask flask-cors flask-socketio pyserial
-
-# 4. Add user to dialout group (for serial access)
-sudo usermod -aG dialout $USER
-
-# 5. Reboot for group changes
-sudo reboot`}
-                                </pre>
-                            </div>
-
-                            <div className="bg-accent/10 border border-accent/30 p-4 rounded">
-                                <h4 className="font-display text-accent mb-2">RUNNING THE CONTROLLER</h4>
-                                <pre className="bg-black/50 p-3 rounded text-xs font-mono text-green-300 overflow-x-auto">
-{`cd firmware/raspberry_pi_master
-python3 rover_controller.py
-
-# Expected output:
-# ============================================================
-#   ROVER MASTER CONTROLLER v3.0.0
-#   Mini PC Host - Ubuntu / Intel Celeron
-#   RC: FlySky FS-I6x + FS-IA10B (iBUS Protocol)
-# ============================================================
-# 
-# [OK] Connected to Arduino on /dev/ttyACM0
-# [INIT] Starting server on 0.0.0.0:5000`}
-                                </pre>
-                            </div>
-
-                            <div className="bg-yellow-500/10 border border-yellow-500/30 p-4 rounded">
-                                <h4 className="font-display text-yellow-400 mb-2">AUTO-START ON BOOT</h4>
-                                <pre className="bg-black/50 p-3 rounded text-xs font-mono text-green-300 overflow-x-auto">
-{`# Create systemd service
-sudo nano /etc/systemd/system/rover.service
-
-# Add this content:
-[Unit]
-Description=RoverOS Controller
-After=network.target
-
-[Service]
-Type=simple
-User=your_username
-WorkingDirectory=/home/your_username/firmware/raspberry_pi_master
-ExecStart=/usr/bin/python3 rover_controller.py
-Restart=always
-
-[Install]
-WantedBy=multi-user.target
-
-# Enable and start:
-sudo systemctl enable rover
-sudo systemctl start rover`}
-                                </pre>
-                            </div>
-
-                            <h4 className="text-lg text-primary font-display mt-6">API ENDPOINTS</h4>
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-xs font-mono">
-                                    <thead>
-                                        <tr className="border-b border-border">
-                                            <th className="text-left p-2 text-primary">Endpoint</th>
-                                            <th className="text-left p-2 text-primary">Method</th>
-                                            <th className="text-left p-2 text-primary">Description</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="text-muted-foreground">
-                                        <tr className="border-b border-border/50"><td className="p-2">/api/telemetry</td><td className="p-2">GET</td><td className="p-2">Current sensor data</td></tr>
-                                        <tr className="border-b border-border/50"><td className="p-2">/api/control</td><td className="p-2">POST</td><td className="p-2">throttle, steering</td></tr>
-                                        <tr className="border-b border-border/50"><td className="p-2">/api/stop</td><td className="p-2">POST</td><td className="p-2">Emergency stop</td></tr>
-                                        <tr className="border-b border-border/50"><td className="p-2">/api/mode</td><td className="p-2">POST</td><td className="p-2">MANUAL/RC/AUTONOMOUS</td></tr>
-                                        <tr className="border-b border-border/50"><td className="p-2">/api/ibus</td><td className="p-2">GET</td><td className="p-2">RC channel values</td></tr>
-                                        <tr><td className="p-2">/api/status</td><td className="p-2">GET</td><td className="p-2">Connection status</td></tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
+                        <MiniPcInstallGuide />
                     </ScrollArea>
                 </TabsContent>
 
@@ -1169,9 +1055,9 @@ That's it! Just 3 wires for all 10 channels.`}
                                     <ol className="text-xs font-mono space-y-1 text-muted-foreground list-decimal list-inside">
                                         <li>Flash Arduino with sensor controller firmware</li>
                                         <li>Install Ubuntu on Mini PC</li>
-                                        <li>Install Python dependencies</li>
-                                        <li>Copy rover_controller.py to Mini PC</li>
-                                        <li>Configure auto-start service</li>
+                                        <li>Install Node.js 22 and PostgreSQL 16</li>
+                                        <li>Build the RoverOS web/API service</li>
+                                        <li>Configure the database and systemd service</li>
                                         <li>Test all systems</li>
                                     </ol>
                                 </div>
@@ -1254,10 +1140,10 @@ groups
                                     <h4 className="font-display text-green-400 mb-2">WEB DASHBOARD NOT LOADING</h4>
                                     <ul className="text-xs font-mono space-y-1 text-muted-foreground">
                                         <li>• Check Mini PC is connected to WiFi</li>
-                                        <li>• Verify rover_controller.py is running</li>
+                                        <li>• Check: sudo systemctl status roveros</li>
                                         <li>• Check firewall allows port 5000</li>
-                                        <li>• Try: http://[mini-pc-ip]:5000</li>
-                                        <li>• Check console for Python errors</li>
+                                        <li>• Try: http://MINIPC-IP:5000</li>
+                                        <li>• Check: journalctl -u roveros</li>
                                     </ul>
                                 </div>
                             </div>
