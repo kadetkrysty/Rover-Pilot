@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
+import { getProvisioningStatus } from "./provisioningState";
 import { 
   insertRouteSchema, 
   insertWaypointSchema,
@@ -46,6 +47,23 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+
+  app.get("/api/provisioning/status", async (_req, res) => {
+    try {
+      res.setHeader("Cache-Control", "no-store");
+      res.json(await getProvisioningStatus());
+    } catch {
+      res.status(503).json({
+        service: "RoverOS",
+        rover_name: "RoverOS-Server",
+        state: "failed",
+        stage: "status",
+        progress: 0,
+        errorCode: "STATUS_UNAVAILABLE",
+        message: "Provisioning status is temporarily unavailable.",
+      });
+    }
+  });
   
   // Routes API
   app.get("/api/routes", async (req, res) => {

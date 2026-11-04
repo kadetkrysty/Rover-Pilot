@@ -8,6 +8,7 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(RoverDiscoveryPlugin.class);
+        registerPlugin(RoverProvisioningPlugin.class);
         super.onCreate(savedInstanceState);
     }
 }

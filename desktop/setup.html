@@ -26,6 +26,40 @@
       <p id="connection-status" class="status" role="status" aria-live="polite" aria-atomic="true"></p>
       <button id="search-button" type="button">Search again</button>
 
+      <section id="provisioning-panel" class="provisioning" hidden>
+        <h2>First-time MiniPC setup</h2>
+        <p class="hint">
+          Enter the certificate fingerprint and one-time pairing code printed by
+          the MiniPC bootstrap installer. Wi-Fi credentials are sent only over
+          the fingerprint-verified encrypted setup connection and are not saved
+          on this computer.
+        </p>
+        <label for="fingerprint">HTTPS certificate SHA-256 fingerprint</label>
+        <input id="fingerprint" autocomplete="off" spellcheck="false"
+          placeholder="64 hexadecimal characters" />
+        <label for="pairing-code">One-time pairing code</label>
+        <input id="pairing-code" autocomplete="off" spellcheck="false"
+          placeholder="32 hexadecimal characters" />
+        <button id="scan-button" class="secondary" type="button">Scan Wi-Fi</button>
+        <form id="wifi-form">
+          <label for="network-select">Nearby Wi-Fi networks</label>
+          <select id="network-select">
+            <option value="">Choose a network or enter its name below</option>
+          </select>
+          <label for="ssid">Wi-Fi network name (SSID)</label>
+          <input id="ssid" maxlength="32" autocomplete="off" required />
+          <label for="wifi-password">Wi-Fi password</label>
+          <input id="wifi-password" type="password" minlength="8" maxlength="64"
+            autocomplete="new-password" required />
+          <label class="checkbox-row">
+            <input id="hidden-network" type="checkbox" />
+            This is a hidden network
+          </label>
+          <button id="connect-button" type="submit">Connect and install RoverOS</button>
+        </form>
+        <p id="setup-progress" class="status" role="status" aria-live="polite"></p>
+      </section>
+
       <p class="offline-note">
         The MiniPC must be running RoverOS. This desktop app connects to it; it
         does not install the server or database on this computer. No IP address

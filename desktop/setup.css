@@ -33,6 +33,10 @@ body {
   box-shadow: 0 24px 80px rgb(0 0 0 / 30%);
 }
 
+[hidden] {
+  display: none !important;
+}
+
 .brand-icon {
   display: block;
   width: 56px;
@@ -105,6 +109,64 @@ button:focus-visible {
 button:disabled {
   cursor: wait;
   opacity: 0.7;
+}
+
+.provisioning {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid #2b3b50;
+}
+
+.provisioning h2 {
+  margin: 0 0 10px;
+  font-size: 1.2rem;
+}
+
+.provisioning .hint {
+  color: #b7c4d6;
+  font-size: 0.88rem;
+  line-height: 1.55;
+}
+
+.provisioning label {
+  display: block;
+  margin: 14px 0 6px;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.provisioning input:not([type="checkbox"]),
+.provisioning select {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid #52647c;
+  border-radius: 8px;
+  background: #07111f;
+  color: #e8eef8;
+  font: inherit;
+}
+
+.provisioning input:focus-visible,
+.provisioning select:focus-visible {
+  outline: 3px solid #7fb8ff;
+  outline-offset: 2px;
+}
+
+.provisioning .secondary {
+  margin-top: 14px;
+  background: #26374d;
+}
+
+.checkbox-row {
+  display: flex !important;
+  align-items: center;
+  gap: 8px;
+}
+
+.checkbox-row input {
+  width: 18px;
+  height: 18px;
 }
 
 .offline-note {

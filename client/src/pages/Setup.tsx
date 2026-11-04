@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Capacitor } from "@capacitor/core";
 import { Link } from "wouter";
 import { ArrowLeft, CheckCircle, Cpu, Search, Wifi, XCircle } from "lucide-react";
@@ -11,8 +11,15 @@ import {
 } from "@/lib/roverConnection";
 import { getDiscoveredRoverUrl } from "@/lib/discoveredServer";
 import { startRoverServerDiscovery } from "@/lib/roverDiscovery";
+import ProvisioningWizard from "@/components/ProvisioningWizard";
 
-type ConnectionState = "searching" | "checking" | "success" | "error";
+type ConnectionState = "searching" | "checking" | "success" | "error" | "provisioning";
+interface ProvisioningStatus {
+  state: string;
+  stage: string;
+  progress: number;
+  message: string;
+}
 
 interface SetupProps {
   requiredConnection?: boolean;
@@ -31,6 +38,10 @@ export default function Setup({
   const [statusMessage, setStatusMessage] = useState(
     "Searching for RoverOS-Server on the local network…",
   );
+  const [provisioning, setProvisioning] = useState<{
+    serverUrl: string;
+    status: ProvisioningStatus;
+  } | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -63,6 +74,24 @@ export default function Setup({
         setStatusMessage("RoverOS-Server found. Checking the connection…");
 
         try {
+          const setupResponse = await fetch(
+            `${serverUrl}/api/provisioning/status`,
+            { cache: "no-store", signal: AbortSignal.timeout(3000) },
+          );
+          if (setupResponse.ok) {
+            const setupStatus = await setupResponse.json() as ProvisioningStatus;
+            if (setupStatus.state !== "ready") {
+              if (!active || searchExpired) return;
+              setRoverUrl(serverUrl);
+              connected = true;
+              window.clearTimeout(discoveryTimer);
+              stopDiscovery();
+              setProvisioning({ serverUrl, status: setupStatus });
+              setConnectionState("provisioning");
+              return;
+            }
+          }
+
           await testRoverConnection(serverUrl);
           if (!active || searchExpired) return;
 
@@ -81,10 +110,24 @@ export default function Setup({
           return;
         } catch {
           if (!active || searchExpired) return;
-          setConnectionState("searching");
-          setStatusMessage(
-            "A device responded but did not pass the RoverOS check. Continuing to search…",
-          );
+          try {
+            await testRoverConnection(serverUrl);
+            if (!active || searchExpired) return;
+            setRoverUrl(serverUrl);
+            connected = true;
+            window.clearTimeout(discoveryTimer);
+            stopDiscovery();
+            setConnectionState("success");
+            setStatusMessage("Connected to RoverOS-Server.");
+            if (requiredConnection && onConnected) onConnected();
+            else if (!requiredConnection) window.location.assign("/");
+            return;
+          } catch {
+            setConnectionState("searching");
+            setStatusMessage(
+              "A device responded but did not pass the RoverOS check. Continuing to search…",
+            );
+          }
         }
       }
 
@@ -149,6 +192,36 @@ export default function Setup({
       stopDiscovery();
     };
   }, [retryCount, requiredConnection, onConnected]);
+
+  const finishProvisioning = useCallback(async () => {
+    if (!provisioning) return;
+    try {
+      await testRoverConnection(provisioning.serverUrl);
+      setRoverUrl(provisioning.serverUrl);
+      setProvisioning(null);
+      setConnectionState("success");
+      setStatusMessage("Connected to RoverOS-Server.");
+      if (requiredConnection && onConnected) onConnected();
+      else if (!requiredConnection) window.location.assign("/");
+    } catch {
+      setConnectionState("error");
+      setStatusMessage(
+        "Setup finished. Join the Wi-Fi network you selected, then search for RoverOS-Server again.",
+      );
+    }
+  }, [onConnected, provisioning, requiredConnection]);
+
+  if (provisioning) {
+    return (
+      <main className="min-h-screen bg-background flex items-center justify-center p-4">
+        <ProvisioningWizard
+          serverUrl={provisioning.serverUrl}
+          status={provisioning.status}
+          onReady={finishProvisioning}
+        />
+      </main>
+    );
+  }
 
   const searching =
     connectionState === "searching" || connectionState === "checking";
