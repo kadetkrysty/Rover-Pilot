@@ -1,5 +1,15 @@
 apply plugin: 'com.android.application'
 
+def appVersionCode = (findProperty('androidVersionCode') ?: '1').toString().toInteger()
+def appVersionName = (findProperty('androidVersionName') ?: '1.0.0').toString()
+
+if (appVersionCode < 1 || appVersionCode > 2100000000) {
+    throw new GradleException("androidVersionCode must be between 1 and 2100000000.")
+}
+if (appVersionName.trim().isEmpty()) {
+    throw new GradleException("androidVersionName must not be empty.")
+}
+
 def releaseSigning = [
     storeFile: System.getenv('ANDROID_KEYSTORE_PATH'),
     storePassword: System.getenv('ANDROID_KEYSTORE_PASSWORD'),
@@ -27,8 +37,8 @@ android {
         applicationId 'com.roverostech.rover'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName '1.0.0'
+        versionCode appVersionCode
+        versionName appVersionName
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
         aaptOptions {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'

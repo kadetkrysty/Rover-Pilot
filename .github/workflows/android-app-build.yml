@@ -94,7 +94,12 @@ jobs:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-        run: ./gradlew --no-daemon assembleRelease
+          ANDROID_RELEASE_RUN_NUMBER: ${{ github.run_number }}
+        run: |
+          version_code=$((ANDROID_RELEASE_RUN_NUMBER + 1))
+          ./gradlew --no-daemon assembleRelease \
+            -PandroidVersionCode="$version_code" \
+            -PandroidVersionName="1.0.${ANDROID_RELEASE_RUN_NUMBER}"
 
       - name: Verify Android release APK signature
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.build_release }}
