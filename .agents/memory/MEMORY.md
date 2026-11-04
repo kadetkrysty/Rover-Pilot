@@ -1,2 +1,3 @@
 - [Drizzle ORM upgrades](drizzle-orm-upgrades.md) — optional driver peers can trigger npm conflicts in web-only apps; check React renderer compatibility before updating.
+- [Windows signing](windows-build-signing.md) — unsigned test installers are allowed; keep trusted signed production builds separate.
 - [RoverOS provisioning and discovery](roveros-server-discovery.md) — use headless Ubuntu Server 24.04 LTS; clients check setup state and discover RoverOS-Server without IP entry.

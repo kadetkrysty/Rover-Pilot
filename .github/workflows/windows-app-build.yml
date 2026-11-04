@@ -4,6 +4,12 @@ on:
   push:
   pull_request:
   workflow_dispatch:
+    inputs:
+      build_signed_release:
+        description: Build a production installer with trusted code signing
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -55,7 +61,7 @@ jobs:
         run: npm run build
 
       - name: Require Windows code-signing certificate
-        if: ${{ github.event_name != 'pull_request' }}
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.build_signed_release }}
         shell: pwsh
         env:
           WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
@@ -68,15 +74,15 @@ jobs:
             throw "Add WIN_CSC_KEY_PASSWORD to GitHub Actions secrets as the PFX password."
           }
 
-      - name: Package Windows installer
-        if: ${{ github.event_name != 'pull_request' }}
+      - name: Package signed Windows installer
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.build_signed_release }}
         env:
           WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
           WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
         run: npm run desktop:win
 
       - name: Verify signed app and installer
-        if: ${{ github.event_name != 'pull_request' }}
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.build_signed_release }}
         shell: pwsh
         run: |
           $appExecutable = "release/win-unpacked/RoverOS.exe"
@@ -105,11 +111,47 @@ jobs:
             Write-Host "Verified $($file.Name) signed by $($signature.SignerCertificate.Subject)"
           }
 
-      - name: Upload Windows installer
-        if: ${{ github.event_name != 'pull_request' }}
+      - name: Upload signed Windows installer
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.build_signed_release }}
         uses: actions/upload-artifact@v7
         with:
           name: roveros-windows-installer
           path: release/*.exe
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Package unsigned test installer
+        if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.build_signed_release) }}
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+        run: npm run desktop:win -- --config desktop/electron-builder.test.cjs
+
+      - name: Verify and label unsigned test package
+        if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.build_signed_release) }}
+        shell: pwsh
+        run: |
+          if (-not (Test-Path -LiteralPath "release/win-unpacked/RoverOS Test.exe")) {
+            throw "Packaged RoverOS Test.exe was not found."
+          }
+          $installers = @(Get-ChildItem -Path "release" -Filter "RoverOS-Test-UNSIGNED-*.exe" -File)
+          if ($installers.Count -ne 1) {
+            throw "Expected exactly one clearly labelled unsigned test installer."
+          }
+          @"
+          UNSIGNED TEST BUILD — NOT A SIGNED PRODUCTION RELEASE
+          This installer has no trusted code signature and may show Windows security warnings.
+          Do not disable antivirus or firewall protection to install it.
+          It uses a separate RoverOS Test app identity and user-data directory.
+          For production, run this workflow with build_signed_release enabled and configure trusted signing.
+          "@ | Set-Content -LiteralPath "release/UNSIGNED-TEST-BUILD.txt" -Encoding utf8
+
+      - name: Upload unsigned Windows test installer
+        if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.build_signed_release) }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: roveros-windows-unsigned-test
+          path: |
+            release/RoverOS-Test-UNSIGNED-*.exe
+            release/UNSIGNED-TEST-BUILD.txt
           if-no-files-found: error
           retention-days: 14
