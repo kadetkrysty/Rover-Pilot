@@ -1,6 +1,6 @@
 ; NSIS uses native Win32 dialogs, not HTML. This palette is generated from the
 ; main application's client/src/index.css before every Windows package build.
-!include "${PROJECT_DIR}/generated-artifacts/installer-theme/theme.nsh"
+!include "${PROJECT_DIR}\generated-artifacts\installer-theme\theme.nsh"
 !include "MUI2.nsh"
 !include "LogicLib.nsh"
 
@@ -21,7 +21,7 @@
   !error "Unsupported NSIS Modern UI: the page callback contract has changed."
 !endif
 !macro MUI_PAGE_FUNCTION_CUSTOM TYPE
-  !if "${TYPE}" == "SHOW"
+  !if "${TYPE}" S== "SHOW"
     !ifdef BUILD_UNINSTALLER
       Call un.RoverThemePage
     !else
