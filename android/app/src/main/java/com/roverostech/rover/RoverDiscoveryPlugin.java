@@ -12,8 +12,6 @@ import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
-import org.json.JSONException;
-
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.nio.charset.StandardCharsets;
@@ -161,16 +159,12 @@ public class RoverDiscoveryPlugin extends Plugin {
         }
 
         JSObject result = new JSObject();
-        try {
-            result.put("serviceName", service.getServiceName());
-            result.put("serviceType", service.getServiceType());
-            result.put("host", host.getHostAddress());
-            result.put("port", service.getPort());
-            result.put("marker", "1");
-            notifyListeners("serverFound", result);
-        } catch (JSONException error) {
-            Log.w(TAG, "Could not report discovered RoverOS service.", error);
-        }
+        result.put("serviceName", service.getServiceName());
+        result.put("serviceType", service.getServiceType());
+        result.put("host", host.getHostAddress());
+        result.put("port", service.getPort());
+        result.put("marker", "1");
+        notifyListeners("serverFound", result);
     }
 
     private boolean isLocalAddress(InetAddress address) {
@@ -182,12 +176,8 @@ public class RoverDiscoveryPlugin extends Plugin {
 
     private void notifyDiscoveryError(String message) {
         JSObject result = new JSObject();
-        try {
-            result.put("message", message);
-            notifyListeners("discoveryError", result);
-        } catch (JSONException error) {
-            Log.w(TAG, "Could not report discovery error.", error);
-        }
+        result.put("message", message);
+        notifyListeners("discoveryError", result);
     }
 
     private void stopDiscoveryInternal() {
