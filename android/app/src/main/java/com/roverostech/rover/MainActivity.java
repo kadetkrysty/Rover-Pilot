@@ -10,5 +10,6 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(RoverDiscoveryPlugin.class);
         registerPlugin(RoverProvisioningPlugin.class);
         super.onCreate(savedInstanceState);
+        getBridge().setWebViewClient(new RoverPinnedWebViewClient(getBridge()));
     }
 }

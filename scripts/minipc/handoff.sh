@@ -37,6 +37,8 @@ for _ in {1..30}; do
     node -e 'let s="";process.stdin.on("data",d=>s+=d);process.stdin.on("end",()=>{try{const j=JSON.parse(s);process.exit(/^roveros/i.test(j.rover_name)?0:1)}catch{process.exit(1)}})' &&
     curl --fail --silent --max-time 3 http://127.0.0.1:5000/ -o /dev/null &&
     curl --fail --silent --max-time 3 http://127.0.0.1:5000/api/system/health -o /dev/null &&
+    curl --insecure --fail --silent --max-time 3 https://127.0.0.1:5443/api/system/info |
+      node -e 'let s="";process.stdin.on("data",d=>s+=d);process.stdin.on("end",()=>{try{const j=JSON.parse(s);process.exit(/^roveros/i.test(j.rover_name)?0:1)}catch{process.exit(1)}})' &&
     runuser -u postgres -- psql roveros -tAc "SELECT to_regclass('public.rover_config') IS NOT NULL" | grep -qx t; then
     healthy=true
     break

@@ -41,7 +41,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
               Welcome to RoverOS
             </DialogTitle>
             <DialogDescription className="text-muted-foreground">
-              Before you begin, please configure your rover settings for optimal performance.
+              Pair your owner device in Security before configuring rover controls and settings.
             </DialogDescription>
           </DialogHeader>
           
@@ -55,7 +55,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 </li>
                 <li className="flex items-center gap-2">
                   <CheckCircle className="w-4 h-4 text-secondary" />
-                  Set WebSocket authentication tokens
+                  Pair the owner device and invite approved clients
                 </li>
                 <li className="flex items-center gap-2">
                   <CheckCircle className="w-4 h-4 text-secondary" />
@@ -69,13 +69,13 @@ export default function AppLayout({ children }: AppLayoutProps) {
             </div>
 
             <div className="flex gap-3">
-              <Link href="/setup">
+              <Link href="/security">
                 <Button 
                   className="flex-1" 
                   onClick={handleDismissConfig}
                   data-testid="button-go-to-config"
                 >
-                  <Settings className="w-4 h-4 mr-2" /> Go to Configuration
+                  <Settings className="w-4 h-4 mr-2" /> Pair Devices
                 </Button>
               </Link>
               <Button 

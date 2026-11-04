@@ -2,9 +2,24 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
+import { createServer as createHttpsServer } from "https";
+import { existsSync, readFileSync } from "node:fs";
 
 const app = express();
 const httpServer = createServer(app);
+const tlsCertificate = process.env.ROVEROS_TLS_CERT || "/etc/roveros-provisioner/server.crt";
+const tlsPrivateKey = process.env.ROVEROS_TLS_KEY || "/etc/roveros-provisioner/server.key";
+const secureServer =
+  existsSync(tlsCertificate) && existsSync(tlsPrivateKey)
+    ? createHttpsServer(
+        {
+          cert: readFileSync(tlsCertificate),
+          key: readFileSync(tlsPrivateKey),
+          minVersion: "TLSv1.2",
+        },
+        app,
+      )
+    : undefined;
 
 // Capacitor Android serves the bundled UI from https://localhost. Allow that
 // exact origin to call the MiniPC API; do not use a wildcard for rover controls.
@@ -75,7 +90,12 @@ app.use((req, res, next) => {
     const duration = Date.now() - start;
     if (path.startsWith("/api")) {
       let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-        if (capturedJsonResponse && !path.startsWith("/api/provisioning")) {
+        const containsSensitiveData =
+          path.startsWith("/api/clients") ||
+          path.startsWith("/api/config") ||
+          path === "/api/export/all" ||
+          path === "/api/import";
+        if (capturedJsonResponse && !path.startsWith("/api/provisioning") && !containsSensitiveData) {
         logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
       }
 
@@ -87,7 +107,7 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  await registerRoutes(httpServer, app);
+  await registerRoutes(httpServer, app, secureServer);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
@@ -122,4 +142,12 @@ app.use((req, res, next) => {
       log(`serving on port ${port}`);
     },
   );
+  if (secureServer) {
+    const tlsPort = parseInt(process.env.ROVEROS_TLS_PORT || "5443", 10);
+    secureServer.listen(tlsPort, "0.0.0.0", () => {
+      log(`secure API serving on port ${tlsPort}`);
+    });
+  } else {
+    log("secure API is unavailable until the MiniPC certificate and key are installed");
+  }
 })();

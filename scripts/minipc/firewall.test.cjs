@@ -29,7 +29,8 @@ test("UFW rules stay on private interfaces and permit DHCP only on the setup AP"
     execFileSync("bash", [helper, "--runtime"], { env });
     const runtime = fs.readFileSync(log, "utf8");
     assert.match(runtime, /--force delete allow in on wlan0 to any app RoverOSSetupHotspot/);
-    assert.match(runtime, /--force delete .* port 5443/);
+    assert.match(runtime, /allow in on eth0 from 192\.168\.1\.0\/24 to any port 5443/);
+    assert.doesNotMatch(runtime, /port 5443.*delete|delete.*port 5443/);
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }

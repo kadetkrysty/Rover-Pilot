@@ -57,15 +57,15 @@ node -e 'const [a,b]=process.versions.node.split(".").map(Number); if(a!==22 || 
 wifi_device="$(nmcli -t --escape yes -f DEVICE,TYPE device status |
   awk -F: '$2 == "wifi" { print $1; exit }')"
 if [[ "$AP_MODE" == --access-point ]]; then
-[[ -n "$wifi_device" ]] || fail "no Wi-Fi device managed by NetworkManager was found."
-phy="$(iw dev "$wifi_device" info 2>/dev/null | awk '$1 == "wiphy" { print $2; exit }')"
-[[ "$phy" =~ ^[0-9]+$ ]] || fail "could not identify the Wi-Fi radio."
-iw phy "phy${phy}" info 2>/dev/null | awk '
-  /^[[:space:]]*Supported interface modes:/ { in_modes=1; next }
-  in_modes && /^[^[:space:]]/ { in_modes=0 }
-  in_modes && /^[[:space:]]+\* AP([[:space:]]|$) { found=1 }
-  END { exit !found }
-' || fail "the detected Wi-Fi adapter does not report access-point mode."
+  [[ -n "$wifi_device" ]] || fail "no Wi-Fi device managed by NetworkManager was found."
+  phy="$(iw dev "$wifi_device" info 2>/dev/null | awk '$1 == "wiphy" { print $2; exit }')"
+  [[ "$phy" =~ ^[0-9]+$ ]] || fail "could not identify the Wi-Fi radio."
+  iw phy "phy${phy}" info 2>/dev/null | awk '
+    /^[[:space:]]*Supported interface modes:/ { in_modes=1; next }
+    in_modes && /^[^[:space:]]/ { in_modes=0 }
+    in_modes && /^[[:space:]]+\* AP([[:space:]]|$) { found=1 }
+    END { exit !found }
+  ' || fail "the detected Wi-Fi adapter does not report access-point mode."
 fi
 
 mkdir -p "$SERVICE_DIR" "$CONFIG_DIR" "$STATE_DIR" "$NM_DIR" /etc/avahi/services
@@ -90,17 +90,23 @@ if [[ ! -f "$CONFIG_DIR/pairing-code" ]]; then
 fi
 pairing_code="$(cat "$CONFIG_DIR/pairing-code")"
 [[ "$pairing_code" =~ ^[a-f0-9]{32}$ ]] || fail "existing pairing code is invalid."
+if [[ ! -f "$CONFIG_DIR/owner-pairing-code" ]]; then
+  openssl rand -hex 16 >"$CONFIG_DIR/owner-pairing-code"
+fi
+owner_pairing_code="$(cat "$CONFIG_DIR/owner-pairing-code")"
+[[ "$owner_pairing_code" =~ ^[a-f0-9]{32}$ ]] || fail "existing owner enrollment code is invalid."
 if [[ ! -f "$CONFIG_DIR/server.crt" || ! -f "$CONFIG_DIR/server.key" ]]; then
-openssl req -x509 -newkey rsa:2048 -sha256 -nodes -days 3650 \
-  -keyout "$CONFIG_DIR/server.key" \
-  -out "$CONFIG_DIR/server.crt" \
-  -subj "/CN=RoverOS-Server" \
-  -addext "subjectAltName=DNS:RoverOS-Server.local,DNS:roveros-server.local" \
-  >/dev/null 2>&1
+  openssl req -x509 -newkey rsa:2048 -sha256 -nodes -days 3650 \
+    -keyout "$CONFIG_DIR/server.key" \
+    -out "$CONFIG_DIR/server.crt" \
+    -subj "/CN=RoverOS-Server" \
+    -addext "subjectAltName=DNS:RoverOS-Server.local,DNS:roveros-server.local" \
+    >/dev/null 2>&1
 fi
 chmod 600 "$CONFIG_DIR/server.key" "$CONFIG_DIR/server.crt"
 printf '%s\n' "$pairing_code" >"$CONFIG_DIR/pairing-code"
 chmod 600 "$CONFIG_DIR/pairing-code"
+chmod 600 "$CONFIG_DIR/owner-pairing-code"
 printf 'ROVEROS_GITHUB_REPOSITORY=%s\n' "$RELEASE_REPO" >"$CONFIG_DIR/environment"
 printf 'ROVEROS_SETUP_AP=%s\n' "$([[ "$AP_MODE" == --access-point ]] && echo 1 || echo 0)" >>"$CONFIG_DIR/environment"
 if [[ -n "$wifi_device" ]]; then
@@ -110,8 +116,8 @@ fi
 chmod 600 "$CONFIG_DIR/environment"
 
 if [[ "$AP_MODE" == --access-point && ! -f "${NM_DIR}/RoverOS-Hotspot.nmconnection" ]]; then
-ap_password="$(openssl rand -hex 16)"
-cat >"${NM_DIR}/RoverOS-Hotspot.nmconnection" <<PROFILE
+  ap_password="$(openssl rand -hex 16)"
+  cat >"${NM_DIR}/RoverOS-Hotspot.nmconnection" <<PROFILE
 [connection]
 id=RoverOS-Hotspot
 uuid=$(cat /proc/sys/kernel/random/uuid)
@@ -136,7 +142,7 @@ method=shared
 [ipv6]
 method=ignore
 PROFILE
-chmod 600 "${NM_DIR}/RoverOS-Hotspot.nmconnection"
+  chmod 600 "${NM_DIR}/RoverOS-Hotspot.nmconnection"
 fi
 nmcli connection reload
 
@@ -187,7 +193,8 @@ if [[ "$AP_MODE" == --access-point ]]; then
   printf 'Wi-Fi password: %s\n' "$ap_password"
 fi
 printf 'Setup pairing code: %s\n' "$pairing_code"
+printf 'Owner enrollment code: %s\n' "$owner_pairing_code"
 printf 'HTTPS certificate SHA-256 fingerprint: %s\n' "$fingerprint"
-printf '\nKeep the Wi-Fi password, pairing code, and fingerprint private. The pairing code is required by the client setup screen.\n'
+printf '\nKeep both codes and the fingerprint private. The setup code is only for first-run Wi-Fi setup; the owner enrollment code is only for pairing the first normal-operation owner client.\n'
 
 printf 'If already connected to Wi-Fi, use that LAN. Setup does not replace an active Wi-Fi connection until you submit the client wizard.\n'

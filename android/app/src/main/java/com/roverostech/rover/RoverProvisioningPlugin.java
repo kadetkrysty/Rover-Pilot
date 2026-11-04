@@ -48,7 +48,9 @@ public class RoverProvisioningPlugin extends Plugin {
         try {
             url = new URL(urlValue);
             if (!"https".equals(url.getProtocol()) || url.getPort() != 5443 ||
-                url.getUserInfo() != null || url.getQuery() != null || url.getRef() != null ||
+                url.getUserInfo() != null || url.getRef() != null ||
+                (url.getQuery() != null && (url.getQuery().length() > 512 ||
+                    url.getQuery().matches("(?s).*[\r\n].*"))) ||
                 !url.getPath().matches("^/api/provisioning/(status|networks|wifi|retry)$") ||
                 !isAllowedHost(url.getHost())) {
                 call.reject("Provisioning requests must use the local RoverOS setup service.");
@@ -122,6 +124,121 @@ public class RoverProvisioningPlugin extends Plugin {
                 call.resolve(result);
             } catch (Exception error) {
                 call.reject("Could not securely connect to the MiniPC setup service.");
+            } finally {
+                if (connection != null) connection.disconnect();
+            }
+        });
+    }
+
+    @PluginMethod
+    public void setServerFingerprint(PluginCall call) {
+        String fingerprint = normalizeFingerprint(call.getString("fingerprint"));
+        if (fingerprint == null) {
+            call.reject("Invalid MiniPC certificate fingerprint.");
+            return;
+        }
+        getContext().getSharedPreferences("roveros-secure-connection", 0)
+            .edit().putString("certificate-fingerprint", fingerprint).apply();
+        call.resolve();
+    }
+
+    @PluginMethod
+    public void requestApi(PluginCall call) {
+        String urlValue = call.getString("url");
+        String fingerprint = normalizeFingerprint(call.getString("fingerprint"));
+        String token = call.getString("token", "");
+        String method = call.getString("method", "GET");
+        String body = call.getString("body", "");
+
+        if (urlValue == null || fingerprint == null ||
+            !(method.matches("GET|POST|PATCH|DELETE|HEAD")) ||
+            (!token.isEmpty() && !token.matches("(?i)^[a-f0-9]{64}$")) ||
+            body.length() > 1024 * 1024) {
+            call.reject("Invalid secure API request.");
+            return;
+        }
+
+        final URL url;
+        try {
+            url = new URL(urlValue);
+            if (!"https".equals(url.getProtocol()) || url.getPort() != 5443 ||
+                url.getUserInfo() != null || url.getRef() != null ||
+                (url.getQuery() != null && (url.getQuery().length() > 512 ||
+                    url.getQuery().matches("(?s).*[\\r\\n].*"))) ||
+                !url.getPath().matches("^/api/[A-Za-z0-9_./-]+$") ||
+                url.getPath().contains("/../") || url.getPath().startsWith("/api/provisioning/") ||
+                !isAllowedHost(url.getHost())) {
+                call.reject("Secure API requests must use the local RoverOS service.");
+                return;
+            }
+        } catch (Exception error) {
+            call.reject("Invalid MiniPC secure API address.");
+            return;
+        }
+
+        executor.execute(() -> {
+            HttpsURLConnection connection = null;
+            try {
+                final byte[] expected = hexToBytes(fingerprint);
+                X509TrustManager pinTrustManager = new X509TrustManager() {
+                    @Override
+                    public void checkClientTrusted(X509Certificate[] chain, String authType)
+                        throws CertificateException { }
+
+                    @Override
+                    public void checkServerTrusted(X509Certificate[] chain, String authType)
+                        throws CertificateException {
+                        if (chain == null || chain.length == 0) {
+                            throw new CertificateException("MiniPC certificate is missing.");
+                        }
+                        try {
+                            chain[0].checkValidity();
+                            byte[] actual = MessageDigest.getInstance("SHA-256")
+                                .digest(chain[0].getEncoded());
+                            if (!MessageDigest.isEqual(expected, actual)) {
+                                throw new CertificateException("MiniPC certificate fingerprint does not match.");
+                            }
+                        } catch (CertificateException error) {
+                            throw error;
+                        } catch (Exception error) {
+                            throw new CertificateException("Could not verify MiniPC certificate.");
+                        }
+                    }
+
+                    @Override
+                    public X509Certificate[] getAcceptedIssuers() {
+                        return new X509Certificate[0];
+                    }
+                };
+                SSLContext context = SSLContext.getInstance("TLS");
+                context.init(null, new TrustManager[] { pinTrustManager }, new SecureRandom());
+                connection = (HttpsURLConnection) url.openConnection();
+                connection.setSSLSocketFactory(context.getSocketFactory());
+                connection.setHostnameVerifier((hostname, session) -> isAllowedHost(hostname));
+                connection.setConnectTimeout(5000);
+                connection.setReadTimeout(15000);
+                connection.setRequestMethod(method);
+                connection.setRequestProperty("Accept", "application/json");
+                if (!token.isEmpty()) connection.setRequestProperty("Authorization", "Bearer " + token);
+                connection.setUseCaches(false);
+                connection.setInstanceFollowRedirects(false);
+                if (!"GET".equals(method) && !"HEAD".equals(method)) {
+                    connection.setDoOutput(true);
+                    connection.setRequestProperty("Content-Type", "application/json");
+                    try (java.io.OutputStream output = connection.getOutputStream()) {
+                        output.write(body.getBytes("UTF-8"));
+                    }
+                }
+
+                int status = connection.getResponseCode();
+                InputStream stream = status >= 400 ? connection.getErrorStream() : connection.getInputStream();
+                String responseBody = stream == null ? "" : readLimited(stream, 1024 * 1024);
+                JSObject result = new JSObject();
+                result.put("status", status);
+                result.put("body", responseBody);
+                call.resolve(result);
+            } catch (Exception error) {
+                call.reject("Could not securely connect to the MiniPC API.");
             } finally {
                 if (connection != null) connection.disconnect();
             }

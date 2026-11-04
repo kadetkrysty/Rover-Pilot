@@ -130,7 +130,16 @@ fi
 [[ "$database_exists" == "1" ]] || runuser -u postgres -- createdb --owner=roveros roveros
 printf 'NODE_ENV=production\nDATABASE_URL=postgresql://roveros:%s@127.0.0.1:5432/roveros\nROVEROS_PROVISIONING_STATE_FILE=/var/lib/roveros-provisioner/state.json\n' \
   "$database_password" >"$WORK_DIR/roveros.env"
+printf 'ROVEROS_TLS_CERT=/etc/roveros-provisioner/server.crt\nROVEROS_TLS_KEY=/etc/roveros-provisioner/server.key\nROVEROS_OWNER_PAIRING_CODE_FILE=/etc/roveros-provisioner/owner-pairing-code\nROVEROS_TLS_PORT=5443\n' \
+  >>"$WORK_DIR/roveros.env"
+if [[ ! -f /etc/roveros-provisioner/owner-pairing-code ]]; then
+  openssl rand -hex 16 >/etc/roveros-provisioner/owner-pairing-code
+fi
 install -m 0640 -o root -g roveros "$WORK_DIR/roveros.env" /etc/roveros.env
+chown root:roveros /etc/roveros-provisioner /etc/roveros-provisioner/server.key /etc/roveros-provisioner/owner-pairing-code
+chmod 0750 /etc/roveros-provisioner
+chmod 0640 /etc/roveros-provisioner/server.key /etc/roveros-provisioner/owner-pairing-code
+chmod 0644 /etc/roveros-provisioner/server.crt
 export DATABASE_URL="postgresql://roveros:${database_password}@127.0.0.1:5432/roveros"
 export ROVEROS_MIGRATIONS_DIR="$staging/migrations"
 # Inherit credentials through the environment, never through process arguments.

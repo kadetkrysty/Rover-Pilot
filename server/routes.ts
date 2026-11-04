@@ -1,4 +1,4 @@
-import type { Express } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage, db } from "./storage";
@@ -11,6 +11,19 @@ import {
   insertRoverConfigSchema
 } from "@shared/schema";
 import { z } from "zod";
+import { randomUUID, timingSafeEqual } from "node:crypto";
+import { readFileSync, unlinkSync } from "node:fs";
+import {
+  CLIENT_AUTH_CONFIG_KEY,
+  createClientToken,
+  findClientByToken,
+  hashClientToken,
+  isClientAuthRole,
+  parseClientAuthState,
+  type AuthenticatedRoverClient,
+  type ClientAuthState,
+  type RoverClientRole,
+} from "./clientAuth";
 
 interface TelemetryData {
   timestamp: number;
@@ -23,22 +36,80 @@ interface TelemetryData {
   motorRight: number;
 }
 
-type ClientRole = 'viewer' | 'operator' | 'rover';
+type ClientRole = RoverClientRole;
 
 interface AuthenticatedClient {
   ws: WebSocket;
   role: ClientRole;
   authenticated: boolean;
   sessionId: string;
+  clientAuth: AuthenticatedRoverClient | null;
+  token: string | null;
 }
 
 const connectedClients = new Map<WebSocket, AuthenticatedClient>();
 let latestTelemetry: TelemetryData | null = null;
 
-let cachedRoverToken: string | null = null;
-let cachedOperatorToken: string | null = null;
-let tokenCacheTime = 0;
-const TOKEN_CACHE_TTL = 60000;
+let ownerEnrollmentInProgress = false;
+let clientAuthMutationQueue: Promise<void> = Promise.resolve();
+
+function withClientAuthMutation<T>(operation: () => Promise<T>): Promise<T> {
+  const next = clientAuthMutationQueue.then(operation, operation);
+  clientAuthMutationQueue = next.then(() => undefined, () => undefined);
+  return next;
+}
+
+function bearerToken(authorization: string | undefined): string | undefined {
+  return /^Bearer ([a-f0-9]{64})$/i.exec(authorization || "")?.[1];
+}
+
+function isSecureRequest(req: Request): boolean {
+  return Boolean((req.socket as typeof req.socket & { encrypted?: boolean }).encrypted);
+}
+
+async function readClientAuthState(): Promise<ClientAuthState> {
+  const config = await storage.getConfig(CLIENT_AUTH_CONFIG_KEY);
+  return parseClientAuthState(config?.value);
+}
+
+async function writeClientAuthState(state: ClientAuthState): Promise<void> {
+  await storage.setConfig({ key: CLIENT_AUTH_CONFIG_KEY, value: JSON.stringify(state) });
+}
+
+function secureTransportOnly(req: Request, res: Response): boolean {
+  res.setHeader("Cache-Control", "no-store");
+  if (isSecureRequest(req)) return true;
+  res.status(426).json({ error: "Use the certificate-pinned HTTPS API on port 5443." });
+  return false;
+}
+
+async function authenticateClient(
+  req: Request,
+): Promise<AuthenticatedRoverClient | null> {
+  const state = await readClientAuthState();
+  return findClientByToken(state, bearerToken(req.get("authorization")));
+}
+
+async function authenticateToken(token: string | undefined): Promise<AuthenticatedRoverClient | null> {
+  const state = await readClientAuthState();
+  return findClientByToken(state, token);
+}
+
+function isPrivateConfigKey(key: string): boolean {
+  return key === CLIENT_AUTH_CONFIG_KEY || /(?:auth|token|secret|password|credential|api[_-]?key)/i.test(key);
+}
+
+function validOwnerCode(supplied: string, expected: string): boolean {
+  if (!/^[a-f0-9]{32}$/i.test(supplied) || !/^[a-f0-9]{32}$/i.test(expected)) return false;
+  return timingSafeEqual(Buffer.from(supplied, "hex"), Buffer.from(expected, "hex"));
+}
+
+function safeClientName(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const name = value.trim();
+  if (!name || name.length > 64 || /[\u0000-\u001f\u007f]/.test(name)) return null;
+  return name;
+}
 
 function generateSessionId(): string {
   return Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
@@ -46,7 +117,8 @@ function generateSessionId(): string {
 
 export async function registerRoutes(
   httpServer: Server,
-  app: Express
+  app: Express,
+  secureServer?: Server,
 ): Promise<Server> {
   app.get("/api/system/health", async (_req, res) => {
     res.setHeader("Cache-Control", "no-store");
@@ -72,6 +144,247 @@ export async function registerRoutes(
         errorCode: "STATUS_UNAVAILABLE",
         message: "Provisioning status is temporarily unavailable.",
       });
+    }
+  });
+
+  // This identity-only endpoint is intentionally public so clients can verify
+  // discovery before pairing. It contains no settings, telemetry, or secrets.
+  app.get("/api/system/info", (_req, res) => {
+    res.setHeader("Cache-Control", "no-store");
+    res.json({
+      rover_name: "RoverOS v3.0",
+      firmware_version: "3.0.0",
+      controller: "Arduino Mega 2560",
+      host: "Mini PC",
+      host_os: "Ubuntu",
+    });
+  });
+
+  const requireOwner = async (req: Request, res: Response) => {
+    if (!secureTransportOnly(req, res)) return null;
+    let client: AuthenticatedRoverClient | null;
+    try {
+      client = await authenticateClient(req);
+    } catch {
+      res.status(503).json({ error: "Client authorization is temporarily unavailable." });
+      return null;
+    }
+    if (!client) {
+      res.status(401).json({ error: "Pair this client with the rover before continuing." });
+      return null;
+    }
+    if (client.role !== "owner") {
+      res.status(403).json({ error: "Only the rover owner can manage paired clients." });
+      return null;
+    }
+    return client;
+  };
+
+  app.post("/api/clients/pair-owner", async (req, res) => {
+    res.setHeader("Cache-Control", "no-store");
+    if (!secureTransportOnly(req, res)) return;
+    if (ownerEnrollmentInProgress) {
+      return res.status(409).json({ error: "Owner enrollment is already in progress." });
+    }
+    const name = safeClientName(req.body?.name);
+    const code = typeof req.body?.code === "string" ? req.body.code.trim() : "";
+    if (!name || !/^[a-f0-9]{32}$/i.test(code)) {
+      return res.status(400).json({ error: "Enter the owner enrollment code and a client name." });
+    }
+
+    ownerEnrollmentInProgress = true;
+    try {
+      await withClientAuthMutation(async () => {
+        const state = await readClientAuthState();
+        if (state.clients.some((client) => client.role === "owner" && !client.revokedAt)) {
+          return res.status(409).json({ error: "An owner is already paired. Ask the owner to invite this client." });
+        }
+
+        const codeFile = process.env.ROVEROS_OWNER_PAIRING_CODE_FILE ||
+          "/etc/roveros-provisioner/owner-pairing-code";
+        let expectedCode = "";
+        try {
+          expectedCode = readFileSync(codeFile, "utf8").trim();
+        } catch {
+          return res.status(503).json({ error: "Owner enrollment is unavailable. Use the MiniPC console to restore access." });
+        }
+        if (!validOwnerCode(code, expectedCode)) {
+          return res.status(401).json({ error: "Owner enrollment code was not accepted." });
+        }
+
+        const token = createClientToken();
+        const clientId = randomUUID();
+        state.clients.push({
+          id: clientId,
+          name,
+          role: "owner",
+          tokenHash: hashClientToken(token),
+          createdAt: new Date().toISOString(),
+        });
+        await writeClientAuthState(state);
+        try {
+          unlinkSync(codeFile);
+        } catch {
+          // A second attempt is still rejected because the owner record now exists.
+        }
+        res.status(201).json({ clientId, name, role: "owner", token });
+      });
+    } catch (error) {
+      console.error("Owner enrollment failed:", error);
+      res.status(500).json({ error: "Owner enrollment could not be completed." });
+    } finally {
+      ownerEnrollmentInProgress = false;
+    }
+  });
+
+  app.post("/api/clients/claim", async (req, res) => {
+    res.setHeader("Cache-Control", "no-store");
+    if (!secureTransportOnly(req, res)) return;
+    const code = typeof req.body?.invitationCode === "string" ? req.body.invitationCode.trim() : "";
+    if (!/^[a-f0-9]{64}$/i.test(code)) {
+      return res.status(400).json({ error: "Enter a valid owner invitation code." });
+    }
+    try {
+      await withClientAuthMutation(async () => {
+        const state = await readClientAuthState();
+        const now = Date.now();
+        const index = state.invitations.findIndex(
+          (invitation) => invitation.tokenHash === hashClientToken(code) &&
+            Date.parse(invitation.expiresAt) > now,
+        );
+        if (index < 0) return res.status(401).json({ error: "Invitation is invalid or expired." });
+
+        const [invitation] = state.invitations.splice(index, 1);
+        const token = createClientToken();
+        const clientId = randomUUID();
+        const name = invitation.name;
+        state.clients.push({
+          id: clientId,
+          name,
+          role: invitation.role,
+          tokenHash: hashClientToken(token),
+          createdAt: new Date().toISOString(),
+        });
+        await writeClientAuthState(state);
+        res.status(201).json({ clientId, name, role: invitation.role, token });
+      });
+    } catch (error) {
+      console.error("Client enrollment failed:", error);
+      res.status(500).json({ error: "Client enrollment could not be completed." });
+    }
+  });
+
+  app.get("/api/clients/me", async (req, res) => {
+    res.setHeader("Cache-Control", "no-store");
+    if (!secureTransportOnly(req, res)) return;
+    try {
+      const client = await authenticateClient(req);
+      if (!client) return res.status(401).json({ error: "Pair this client with the rover before continuing." });
+      res.json({ id: client.id, name: client.name, role: client.role });
+    } catch {
+      res.status(503).json({ error: "Client authorization is temporarily unavailable." });
+    }
+  });
+
+  app.get("/api/clients", async (req, res) => {
+    const owner = await requireOwner(req, res);
+    if (!owner) return;
+    try {
+      const state = await readClientAuthState();
+      res.json(state.clients.map(({ id, name, role, createdAt, revokedAt }) => ({
+        id, name, role, createdAt, revokedAt: revokedAt || null,
+      })));
+    } catch {
+      res.status(500).json({ error: "Could not read paired clients." });
+    }
+  });
+
+  app.post("/api/clients/invitations", async (req, res) => {
+    const owner = await requireOwner(req, res);
+    if (!owner) return;
+    const name = safeClientName(req.body?.name);
+    const role = req.body?.role;
+    if (!name || !isClientAuthRole(role) || role === "owner") {
+      return res.status(400).json({ error: "Enter a client name and a permitted non-owner role." });
+    }
+    try {
+      await withClientAuthMutation(async () => {
+        const state = await readClientAuthState();
+        const code = createClientToken();
+        const now = Date.now();
+        const invitationId = randomUUID();
+        const expiresAt = new Date(now + 10 * 60_000).toISOString();
+        state.invitations = state.invitations.filter(
+          (invitation) => Date.parse(invitation.expiresAt) > now,
+        );
+        state.invitations.push({
+          id: invitationId,
+          name,
+          role,
+          tokenHash: hashClientToken(code),
+          createdAt: new Date(now).toISOString(),
+          expiresAt,
+        });
+        await writeClientAuthState(state);
+        res.status(201).json({ invitationId, name, role, code, expiresAt });
+      });
+    } catch (error) {
+      console.error("Client invitation failed:", error);
+      res.status(500).json({ error: "Could not create a client invitation." });
+    }
+  });
+
+  app.delete("/api/clients/:id", async (req, res) => {
+    const owner = await requireOwner(req, res);
+    if (!owner) return;
+    try {
+      await withClientAuthMutation(async () => {
+        const state = await readClientAuthState();
+        const target = state.clients.find((client) => client.id === req.params.id);
+        if (!target) return res.status(404).json({ error: "Paired client not found." });
+        if (target.id === owner.id) {
+          return res.status(400).json({ error: "The current owner client cannot revoke itself." });
+        }
+        target.revokedAt = new Date().toISOString();
+        await writeClientAuthState(state);
+        connectedClients.forEach((client) => {
+          if (client.clientAuth?.id === target.id) client.ws.close(4001, "Client authorization revoked");
+        });
+        res.status(204).send();
+      });
+    } catch (error) {
+      console.error("Client revocation failed:", error);
+      res.status(500).json({ error: "Could not revoke the paired client." });
+    }
+  });
+
+  // All remaining application APIs require a client token over pinned HTTPS.
+  app.use("/api", async (req: Request, res: Response, next: NextFunction) => {
+    if (!secureTransportOnly(req, res)) return;
+    try {
+      const client = await authenticateClient(req);
+      if (!client) {
+        return res.status(401).json({ error: "Pair this client with the rover before continuing." });
+      }
+      const isRead = req.method === "GET" || req.method === "HEAD";
+      const isRoverTelemetry =
+        client.role === "rover" &&
+        req.method === "POST" &&
+        (req.path === "/telemetry" || req.path === "/telemetry/push");
+      if (!isRead && !["owner", "operator"].includes(client.role) && !isRoverTelemetry) {
+        return res.status(403).json({ error: "This paired client does not have permission to change rover settings." });
+      }
+      if (
+        isRead &&
+        ["viewer", "rover"].includes(client.role) &&
+        (req.path === "/config" || req.path.startsWith("/config/") || req.path === "/export/all")
+      ) {
+        return res.status(403).json({ error: "Only owner and operator clients can read sensitive settings." });
+      }
+      next();
+    } catch (error) {
+      console.error("Client authorization check failed:", error);
+      res.status(503).json({ error: "Client authorization is temporarily unavailable." });
     }
   });
   
@@ -300,7 +613,7 @@ export async function registerRoutes(
   // Configuration API
   app.get("/api/config", async (req, res) => {
     try {
-      const configs = await storage.getAllConfig();
+      const configs = (await storage.getAllConfig()).filter((config) => !isPrivateConfigKey(config.key));
       res.json(configs);
     } catch (error) {
       console.error("Error fetching config:", error);
@@ -310,6 +623,9 @@ export async function registerRoutes(
 
   app.get("/api/config/:key", async (req, res) => {
     try {
+      if (isPrivateConfigKey(req.params.key)) {
+        return res.status(404).json({ error: "Config not found" });
+      }
       const config = await storage.getConfig(req.params.key);
       if (!config) {
         return res.status(404).json({ error: "Config not found" });
@@ -324,6 +640,9 @@ export async function registerRoutes(
   app.post("/api/config", async (req, res) => {
     try {
       const validatedData = insertRoverConfigSchema.parse(req.body);
+      if (isPrivateConfigKey(validatedData.key)) {
+        return res.status(400).json({ error: "This configuration key is managed internally." });
+      }
       const config = await storage.setConfig(validatedData);
       res.status(201).json(config);
     } catch (error) {
@@ -358,32 +677,6 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error fetching iBUS data:", error);
       res.status(500).json({ error: "Failed to fetch iBUS data" });
-    }
-  });
-
-  // System Info API
-  app.get("/api/system/info", async (req, res) => {
-    try {
-      res.json({
-        rover_name: 'RoverOS v3.0',
-        firmware_version: '3.0.0',
-        controller: 'Arduino Mega 2560',
-        host: 'Mini PC (Intel Celeron)',
-        host_os: 'Ubuntu',
-        rc_receiver: 'FlySky FS-IA10B (iBUS)',
-        rc_transmitter: 'FlySky FS-I6x',
-        sensors: {
-          lidar: 'YDLIDAR T-mini Plus (360°)',
-          camera: 'Imou CELL GO (Wi-Fi)',
-          objectDetection: 'HuskyLens AI (I2C)',
-          imu: 'MPU6050',
-          gps: 'GY-NEO6MV2',
-          ultrasonic: 5
-        }
-      });
-    } catch (error) {
-      console.error("Error fetching system info:", error);
-      res.status(500).json({ error: "Failed to fetch system info" });
     }
   });
 
@@ -476,31 +769,14 @@ export async function registerRoutes(
   });
 
   // WebSocket server for real-time telemetry streaming
-  const wss = new WebSocketServer({ server: httpServer, path: "/ws/telemetry" });
-
-  async function refreshTokenCache(): Promise<void> {
-    const now = Date.now();
-    if (now - tokenCacheTime < TOKEN_CACHE_TTL) return;
-    
-    const [roverConfig, operatorConfig] = await Promise.all([
-      storage.getConfig("rover_auth_token"),
-      storage.getConfig("operator_auth_token")
-    ]);
-    
-    cachedRoverToken = roverConfig?.value || null;
-    cachedOperatorToken = operatorConfig?.value || null;
-    tokenCacheTime = now;
-  }
-
-  async function getRoverToken(): Promise<string | null> {
-    await refreshTokenCache();
-    return cachedRoverToken;
-  }
-
-  async function getOperatorToken(): Promise<string | null> {
-    await refreshTokenCache();
-    return cachedOperatorToken;
-  }
+  const wss = new WebSocketServer({
+    server: secureServer || httpServer,
+    path: "/ws/telemetry",
+    verifyClient: (info, done) => {
+      const socket = info.req.socket as typeof info.req.socket & { encrypted?: boolean };
+      done(Boolean(socket.encrypted));
+    },
+  });
 
   wss.on("connection", (ws: WebSocket) => {
     const sessionId = generateSessionId();
@@ -508,7 +784,9 @@ export async function registerRoutes(
       ws,
       role: 'viewer',
       authenticated: false,
-      sessionId
+      sessionId,
+      clientAuth: null,
+      token: null,
     };
     connectedClients.set(ws, client);
     console.log(`WebSocket client connected: ${sessionId} (unauthenticated viewer)`);
@@ -516,7 +794,7 @@ export async function registerRoutes(
     ws.send(JSON.stringify({ 
       type: "auth_required", 
       sessionId,
-      message: "Send auth message with role and token to unlock commands"
+      message: "Send auth message with a paired client token"
     }));
 
     ws.on("message", async (message: Buffer) => {
@@ -526,36 +804,43 @@ export async function registerRoutes(
         if (!clientInfo) return;
         
         if (parsed.type === "auth") {
-          const { role, token } = parsed;
-          
-          if (role === "rover") {
-            const roverToken = await getRoverToken();
-            if (roverToken && token === roverToken) {
-              clientInfo.role = 'rover';
-              clientInfo.authenticated = true;
-              console.log(`Client ${sessionId} authenticated as ROVER`);
-              ws.send(JSON.stringify({ type: "auth_success", role: "rover" }));
-              if (latestTelemetry) {
-                ws.send(JSON.stringify({ type: "telemetry", data: latestTelemetry }));
-              }
-            } else {
-              ws.send(JSON.stringify({ type: "auth_failed", message: "Invalid rover token" }));
-            }
-          } else if (role === "operator") {
-            const operatorToken = await getOperatorToken();
-            if (operatorToken && token === operatorToken) {
-              clientInfo.role = 'operator';
-              clientInfo.authenticated = true;
-              console.log(`Client ${sessionId} authenticated as OPERATOR`);
-              ws.send(JSON.stringify({ type: "auth_success", role: "operator" }));
-              if (latestTelemetry) {
-                ws.send(JSON.stringify({ type: "telemetry", data: latestTelemetry }));
-              }
-            } else {
-              ws.send(JSON.stringify({ type: "auth_failed", message: "Invalid operator token" }));
-            }
+          clientInfo.authenticated = false;
+          clientInfo.clientAuth = null;
+          clientInfo.token = null;
+          const socket = (ws as WebSocket & { _socket?: { encrypted?: boolean } })._socket;
+          if (!socket?.encrypted) {
+            ws.close(4003, "Secure transport required");
+            return;
+          }
+          const clientAuth = await authenticateToken(
+            typeof parsed.token === "string" ? parsed.token : undefined,
+          );
+          if (!clientAuth) {
+            ws.send(JSON.stringify({ type: "auth_failed", message: "Client is not paired or has been revoked." }));
+            return;
+          }
+          clientInfo.clientAuth = clientAuth;
+          clientInfo.role = clientAuth.role === "owner" ? "operator" : clientAuth.role;
+          clientInfo.authenticated = true;
+          clientInfo.token = parsed.token;
+          console.log(`Client ${sessionId} authenticated as ${clientAuth.role}`);
+          ws.send(JSON.stringify({ type: "auth_success", role: clientAuth.role }));
+          if (latestTelemetry) {
+            ws.send(JSON.stringify({ type: "telemetry", data: latestTelemetry }));
           }
           return;
+        }
+
+        if (clientInfo.authenticated && clientInfo.token) {
+          const current = await authenticateToken(clientInfo.token);
+          if (!current) {
+            clientInfo.authenticated = false;
+            clientInfo.clientAuth = null;
+            ws.close(4001, "Client authorization revoked");
+            return;
+          }
+          clientInfo.clientAuth = current;
+          clientInfo.role = current.role === "owner" ? "operator" : current.role;
         }
 
         if (parsed.type === "telemetry") {
@@ -566,7 +851,7 @@ export async function registerRoutes(
           latestTelemetry = parsed.data as TelemetryData;
           broadcastTelemetry(latestTelemetry);
         } else if (parsed.type === "command") {
-          if (clientInfo.role !== 'operator' || !clientInfo.authenticated) {
+          if (!['operator', 'owner'].includes(clientInfo.clientAuth?.role || '') || !clientInfo.authenticated) {
             ws.send(JSON.stringify({ type: "error", message: "Only authenticated operator can send commands" }));
             return;
           }
@@ -648,7 +933,7 @@ export async function registerRoutes(
   app.get("/api/export/all", async (_req, res) => {
     try {
       const routes = await storage.getRoutes();
-      const configs = await storage.getAllConfig();
+      const configs = (await storage.getAllConfig()).filter((config) => !isPrivateConfigKey(config.key));
       
       // Get waypoints for each route
       const routesWithWaypoints = await Promise.all(
@@ -712,6 +997,7 @@ export async function registerRoutes(
       // Import config
       if (data.config && Array.isArray(data.config)) {
         for (const configItem of data.config) {
+          if (typeof configItem?.key !== "string" || isPrivateConfigKey(configItem.key)) continue;
           await storage.setConfig({ key: configItem.key, value: configItem.value });
           importedConfigs++;
         }
@@ -731,7 +1017,7 @@ export async function registerRoutes(
     }
   });
 
-  console.log("WebSocket server initialized on /ws/telemetry");
+  console.log(`Secure WebSocket server initialized on /ws/telemetry${secureServer ? "" : " (TLS unavailable)"}`);
 
   return httpServer;
 }

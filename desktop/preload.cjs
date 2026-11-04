@@ -8,4 +8,8 @@ contextBridge.exposeInMainWorld("roverosDesktop", {
     ipcRenderer.invoke("desktop:scan-wifi-networks", credentials),
   submitWifiSettings: (settings) =>
     ipcRenderer.invoke("desktop:submit-wifi-settings", settings),
+  setServerFingerprint: (fingerprint) =>
+    ipcRenderer.invoke("desktop:set-server-fingerprint", fingerprint),
+  secureApiRequest: (options) =>
+    ipcRenderer.invoke("desktop:secure-api-request", options),
 });

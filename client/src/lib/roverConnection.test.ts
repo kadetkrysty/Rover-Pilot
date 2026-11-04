@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   getRoverApiUrl,
+  getRoverSecureApiUrl,
+  getRoverWsUrl,
   normalizeRoverUrl,
   testRoverConnection,
 } from "./roverConnection";
@@ -41,6 +43,16 @@ test("builds API URLs on the configured MiniPC and blocks paths outside /api", (
     () => getRoverApiUrl("/api/../admin", "http://192.168.1.40:5000"),
     /under \/api\//,
   );
+});
+
+test("normal operation uses the pinned HTTPS API and WSS endpoint", () => {
+  const miniPc = "http://192.168.1.40:5000";
+  assert.equal(
+    getRoverSecureApiUrl("/api/config?section=drive", miniPc),
+    "https://192.168.1.40:5443/api/config?section=drive",
+  );
+  assert.equal(getRoverWsUrl(miniPc), "wss://192.168.1.40:5443/ws/telemetry");
+  assert.throws(() => getRoverSecureApiUrl("/admin", miniPc), /begin with \/api\//);
 });
 
 test("connection verification rejects a successful response from a non-RoverOS service", async () => {

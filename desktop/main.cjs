@@ -1,7 +1,9 @@
 const { app, BrowserWindow, ipcMain, Menu, shell } = require("electron");
+const fs = require("node:fs");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
 const { requestProvisioning } = require("./provisioning-request.cjs");
+const { requestSecureApi, normalizeFingerprint } = require("./secure-api-request.cjs");
 
 const roverServerUrl = "http://roveros-server.local:5000";
 const roverHealthUrl = `${roverServerUrl}/api/system/info`;
@@ -13,6 +15,7 @@ let mainWindow;
 let activeServerOrigin = null;
 let setupError = "";
 let currentProvisioningStatus = null;
+let activeServerFingerprint = "";
 
 function safeHttpUrl(value) {
   try {
@@ -75,6 +78,67 @@ function createWindow() {
     activeServerOrigin = null;
   });
 }
+
+app.on("certificate-error", (event, webContents, urlValue, _error, certificate, callback) => {
+  let url;
+  try {
+    url = new URL(urlValue);
+  } catch {
+    callback(false);
+    return;
+  }
+  const actualFingerprint = normalizeFingerprint(certificate?.fingerprint || "");
+  const expectedOrigin = activeServerOrigin ? new URL(activeServerOrigin) : null;
+  if (
+    mainWindow &&
+    webContents === mainWindow.webContents &&
+    expectedOrigin &&
+    url.protocol === "wss:" &&
+    url.port === "5443" &&
+    url.hostname.toLowerCase() === expectedOrigin.hostname.toLowerCase() &&
+    activeServerFingerprint &&
+    actualFingerprint === activeServerFingerprint
+  ) {
+    event.preventDefault();
+    callback(true);
+    return;
+  }
+  callback(false);
+});
+
+function isMainAppRequest(event) {
+  if (!mainWindow || event.sender !== mainWindow.webContents || !activeServerOrigin) return false;
+  try {
+    return new URL(event.senderFrame?.url || "").origin === activeServerOrigin;
+  } catch {
+    return false;
+  }
+}
+
+ipcMain.handle("desktop:set-server-fingerprint", async (event, fingerprint) => {
+  if (!isMainAppRequest(event)) throw new Error("Open the paired RoverOS app to set its server certificate.");
+  const normalized = normalizeFingerprint(fingerprint);
+  if (!normalized) throw new Error("Invalid MiniPC certificate fingerprint.");
+  const fingerprintPath = path.join(app.getPath("userData"), "server-certificate-fingerprint");
+  fs.mkdirSync(path.dirname(fingerprintPath), { recursive: true, mode: 0o700 });
+  fs.writeFileSync(fingerprintPath, `${normalized}\n`, { mode: 0o600 });
+  fs.chmodSync(fingerprintPath, 0o600);
+  activeServerFingerprint = normalized;
+  return { ok: true };
+});
+
+ipcMain.handle("desktop:secure-api-request", async (event, options) => {
+  if (!isMainAppRequest(event)) throw new Error("Open the paired RoverOS app to send secure API requests.");
+  const fingerprint = normalizeFingerprint(options?.fingerprint);
+  if (!fingerprint || fingerprint !== activeServerFingerprint) {
+    throw new Error("The MiniPC certificate pin has not been confirmed on this device.");
+  }
+  return requestSecureApi({
+    ...options,
+    fingerprint,
+    serverOrigin: activeServerOrigin,
+  });
+});
 
 async function showSetup(error = "") {
   if (!mainWindow) return;
@@ -247,6 +311,15 @@ function installAppMenu() {
 }
 
 app.whenReady().then(async () => {
+  try {
+    const savedFingerprint = fs.readFileSync(
+      path.join(app.getPath("userData"), "server-certificate-fingerprint"),
+      "utf8",
+    ).trim();
+    activeServerFingerprint = normalizeFingerprint(savedFingerprint) || "";
+  } catch {
+    activeServerFingerprint = "";
+  }
   app.setAppUserModelId("com.roverostech.rover.desktop");
   installAppMenu();
   createWindow();

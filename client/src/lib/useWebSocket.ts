@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { getRoverWsUrl } from './roverConnection';
+import { getRoverCredentials } from './roverConnection';
 
 export interface TelemetryData {
   timestamp: number;
@@ -24,7 +25,7 @@ export interface WebSocketMessage {
   command?: unknown;
 }
 
-export type ClientRole = 'viewer' | 'operator' | 'rover';
+export type ClientRole = 'owner' | 'viewer' | 'operator' | 'rover';
 
 export interface ConnectionStatus {
   state: 'connecting' | 'connected' | 'disconnected' | 'reconnecting' | 'error';
@@ -110,11 +111,11 @@ export function useWebSocket(): UseWebSocketResult {
           
           if (message.type === 'auth_required') {
             setSessionId(message.sessionId);
-            // Auto-authenticate as viewer
-            ws.send(JSON.stringify({ type: 'auth', role: 'viewer', token: '' }));
+            const token = getRoverCredentials()?.token;
+            if (token) ws.send(JSON.stringify({ type: 'auth', token }));
           } else if (message.type === 'auth_success') {
             setIsAuthenticated(true);
-            setRole(message.role);
+            setRole(message.role as ClientRole);
           } else if (message.type === 'auth_failed') {
             setIsAuthenticated(false);
             console.error('Authentication failed:', message.message);
@@ -187,9 +188,9 @@ export function useWebSocket(): UseWebSocketResult {
   }, []);
 
   const sendCommand = useCallback((command: object) => {
-    if (wsRef.current?.readyState === WebSocket.OPEN && isAuthenticated && role === 'operator') {
+    if (wsRef.current?.readyState === WebSocket.OPEN && isAuthenticated && ['owner', 'operator'].includes(role)) {
       wsRef.current.send(JSON.stringify({ type: 'command', command }));
-    } else if (!isAuthenticated || role !== 'operator') {
+    } else if (!isAuthenticated || !['owner', 'operator'].includes(role)) {
       console.warn('Cannot send command: not authenticated as operator');
     }
   }, [isAuthenticated, role]);

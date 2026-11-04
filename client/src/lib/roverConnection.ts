@@ -1,4 +1,36 @@
+import { Capacitor, registerPlugin } from "@capacitor/core";
+
 const ROVER_URL_KEY = "rover_api_url";
+const ROVER_TOKEN_KEY = "rover_client_token";
+const ROVER_FINGERPRINT_KEY = "rover_certificate_fingerprint";
+
+interface NativeSecureApiPlugin {
+  requestApi(options: {
+    url: string;
+    fingerprint: string;
+    token?: string;
+    method: string;
+    body?: string;
+  }): Promise<{ status: number; body: string }>;
+  setServerFingerprint(options: { fingerprint: string }): Promise<void>;
+}
+
+const NativeSecureApi = registerPlugin<NativeSecureApiPlugin>("RoverProvisioning");
+
+declare global {
+  interface Window {
+    roverosDesktop?: {
+      secureApiRequest: (options: {
+        url: string;
+        fingerprint: string;
+        token?: string;
+        method: string;
+        body?: string;
+      }) => Promise<{ status: number; body: string }>;
+      setServerFingerprint?: (fingerprint: string) => Promise<unknown>;
+    };
+  }
+}
 
 function normalizeApiPath(path: string): string {
   if (!path.startsWith("/api/") || path.startsWith("//")) {
@@ -71,6 +103,42 @@ export function setRoverUrl(url: string): void {
   window.localStorage.setItem(ROVER_URL_KEY, normalized);
 }
 
+export interface RoverCredentials {
+  fingerprint: string;
+  token: string;
+}
+
+export function getRoverCredentials(): RoverCredentials | null {
+  if (typeof window === "undefined") return null;
+  const fingerprint = window.localStorage.getItem(ROVER_FINGERPRINT_KEY)?.replace(/:/g, "").trim().toLowerCase();
+  const token = window.localStorage.getItem(ROVER_TOKEN_KEY)?.trim();
+  if (!fingerprint || !/^[a-f0-9]{64}$/.test(fingerprint) || !token || !/^[a-f0-9]{64}$/i.test(token)) {
+    return null;
+  }
+  return { fingerprint, token };
+}
+
+export async function saveRoverCredentials(credentials: RoverCredentials): Promise<void> {
+  const fingerprint = credentials.fingerprint.replace(/:/g, "").trim().toLowerCase();
+  const token = credentials.token.trim();
+  if (!/^[a-f0-9]{64}$/.test(fingerprint) || !/^[a-f0-9]{64}$/i.test(token)) {
+    throw new Error("The MiniPC returned invalid paired-client credentials.");
+  }
+  window.localStorage.setItem(ROVER_FINGERPRINT_KEY, fingerprint);
+  window.localStorage.setItem(ROVER_TOKEN_KEY, token);
+  if (Capacitor.isNativePlatform()) {
+    await NativeSecureApi.setServerFingerprint({ fingerprint });
+  } else if (window.roverosDesktop?.setServerFingerprint) {
+    await window.roverosDesktop.setServerFingerprint(fingerprint);
+  }
+}
+
+export function clearRoverCredentials(): void {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(ROVER_TOKEN_KEY);
+  window.localStorage.removeItem(ROVER_FINGERPRINT_KEY);
+}
+
 export function getRoverApiUrl(path: string, serverUrl = getRoverUrl()): string {
   const apiPath = normalizeApiPath(path);
 
@@ -84,15 +152,70 @@ export function getRoverApiUrl(path: string, serverUrl = getRoverUrl()): string 
   return url.toString();
 }
 
+export function getRoverSecureApiUrl(path: string, serverUrl = getRoverUrl()): string {
+  const apiPath = normalizeApiPath(path);
+  const server = new URL(normalizeRoverUrl(serverUrl || window.location.origin));
+  server.protocol = "https:";
+  server.port = "5443";
+  const parsedPath = new URL(apiPath, "http://roveros.invalid");
+  server.pathname = parsedPath.pathname;
+  server.search = parsedPath.search;
+  server.hash = "";
+  return server.toString();
+}
+
 export function roverFetch(
   path: string,
   init: RequestInit = {},
   serverUrl = getRoverUrl(),
 ): Promise<Response> {
-  return fetch(getRoverApiUrl(path, serverUrl), {
-    credentials: "include",
-    ...init,
-  });
+  return roverSecureFetch(path, init, serverUrl);
+}
+
+export async function roverSecureFetch(
+  path: string,
+  init: RequestInit = {},
+  serverUrl = getRoverUrl(),
+  credentialsOverride?: Partial<RoverCredentials>,
+): Promise<Response> {
+  const apiPath = normalizeApiPath(path);
+  const secureUrl = getRoverSecureApiUrl(apiPath, serverUrl);
+
+  const saved = getRoverCredentials();
+  const fingerprint = credentialsOverride?.fingerprint || saved?.fingerprint;
+  const token = credentialsOverride?.token ?? saved?.token;
+  if (!fingerprint) {
+    throw new Error("Pair this client with the MiniPC before using rover controls or settings.");
+  }
+
+  const method = (init.method || "GET").toUpperCase();
+  const body = typeof init.body === "string" ? init.body : undefined;
+  const request = {
+    url: secureUrl,
+    fingerprint: fingerprint.replace(/:/g, "").toLowerCase(),
+    ...(token ? { token } : {}),
+    method,
+    ...(body !== undefined ? { body } : {}),
+  };
+
+  let result: { status: number; body: string };
+  if (Capacitor.isNativePlatform()) {
+    result = await NativeSecureApi.requestApi(request);
+  } else if (window.roverosDesktop) {
+    result = await window.roverosDesktop.secureApiRequest(request);
+  } else {
+    return new Response(JSON.stringify({
+      error: "Use the installed Android or Windows app for certificate-pinned secure API access.",
+    }), {
+      status: 426,
+      headers: { "content-type": "application/json" },
+    });
+  }
+
+  return new Response(
+    [204, 205, 304].includes(result.status) ? null : result.body,
+    { status: result.status, headers: { "content-type": "application/json" } },
+  );
 }
 
 export function getRoverServiceUrl(path: string, port: number): string {
@@ -114,16 +237,14 @@ export function getRoverServiceUrl(path: string, port: number): string {
   return serviceUrl.toString();
 }
 
-export function getRoverWsUrl(): string {
-  const configuredUrl = getRoverUrl();
-  if (configuredUrl) {
-    const server = new URL(configuredUrl);
-    const protocol = server.protocol === "https:" ? "wss:" : "ws:";
-    return `${protocol}//${server.host}/ws/telemetry`;
-  }
-
-  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-  return `${protocol}//${window.location.host}/ws/telemetry`;
+export function getRoverWsUrl(configuredUrl = getRoverUrl()): string {
+  const server = new URL(normalizeRoverUrl(configuredUrl || window.location.origin));
+  server.protocol = "wss:";
+  server.port = "5443";
+  server.pathname = "/ws/telemetry";
+  server.search = "";
+  server.hash = "";
+  return server.toString();
 }
 
 export function isRoverConfigured(): boolean {
@@ -136,11 +257,12 @@ export async function testRoverConnection(serverUrl: string): Promise<void> {
   const timeout = window.setTimeout(() => controller.abort(), 5000);
 
   try {
-    const response = await roverFetch(
-      "/api/system/info",
-      { signal: controller.signal, cache: "no-store" },
-      normalized,
-    );
+    const response = await fetch(`${normalized}/api/system/info`, {
+      signal: controller.signal,
+      cache: "no-store",
+      credentials: "omit",
+      redirect: "error",
+    });
     if (!response.ok) {
       throw new Error(`MiniPC returned HTTP ${response.status}.`);
     }

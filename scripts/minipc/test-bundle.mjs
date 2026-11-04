@@ -41,12 +41,12 @@ try {
   assert.ok(response?.ok, `Extracted server did not start: ${output}`);
   assert.match((await response.json()).rover_name, /^roveros/i);
   assert.ok((await fetch(`http://127.0.0.1:${port}/`)).ok);
-  const invalidCommand = await fetch(`http://127.0.0.1:${port}/api/rover/mode`, {
+  const cleartextCommand = await fetch(`http://127.0.0.1:${port}/api/rover/mode`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ mode: "invalid-fixture-☃" }),
   });
-  assert.equal(invalidCommand.status, 400, "Bundled JSON/UTF-8 parsing must work without npm dependencies.");
+  assert.equal(cleartextCommand.status, 426, "Unpaired HTTP clients must not send rover commands.");
   const state = await (await fetch(`http://127.0.0.1:${port}/api/provisioning/status`)).json();
   assert.equal(state.state, "ready");
   const health = await fetch(`http://127.0.0.1:${port}/api/system/health`, { signal: AbortSignal.timeout(3000) });
