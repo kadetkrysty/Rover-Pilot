@@ -12,7 +12,9 @@
     "dev": "NODE_ENV=development tsx server/index.ts",
     "build": "tsx script/build.ts",
     "desktop:win": "electron-builder --win nsis --x64 --publish never",
-    "test:desktop": "node --test desktop/server-url.test.cjs desktop/build-config.test.cjs desktop/secure-api-request.test.cjs scripts/normalize-github-npm-lock.test.mjs",
+    "predesktop:win": "npm run desktop:assets",
+    "desktop:assets": "node desktop/scripts/generate-installer-theme.mjs",
+    "test:desktop": "node --test desktop/server-url.test.cjs desktop/build-config.test.cjs desktop/secure-api-request.test.cjs desktop/scripts/generate-installer-theme.test.mjs scripts/normalize-github-npm-lock.test.mjs",
     "test:client-connection": "node --import tsx --test client/src/lib/roverConnection.test.ts client/src/lib/discoveredServer.test.ts client/src/lib/demoMode.test.ts",
     "test:client-auth": "node --import tsx --test server/clientAuth.test.ts server/routes.auth.test.ts",
     "start": "NODE_ENV=production node dist/index.cjs",
@@ -181,6 +183,12 @@
       "artifactName": "RoverOS-Setup-${version}-${arch}.${ext}"
     },
     "nsis": {
+      "include": "desktop/installer/theme.nsh",
+      "installerHeader": "generated-artifacts/installer-theme/header.bmp",
+      "installerSidebar": "generated-artifacts/installer-theme/sidebar.bmp",
+      "uninstallerSidebar": "generated-artifacts/installer-theme/sidebar.bmp",
+      "installerIcon": "generated-artifacts/installer-theme/installer.ico",
+      "uninstallerIcon": "generated-artifacts/installer-theme/installer.ico",
       "oneClick": false,
       "perMachine": false,
       "allowToChangeInstallationDirectory": true,

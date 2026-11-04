@@ -155,3 +155,11 @@ jobs:
             release/UNSIGNED-TEST-BUILD.txt
           if-no-files-found: error
           retention-days: 14
+
+      - name: Upload CSS-derived installer theme resources
+        uses: actions/upload-artifact@v7
+        with:
+          name: roveros-windows-installer-theme
+          path: generated-artifacts/installer-theme/
+          if-no-files-found: error
+          retention-days: 14

@@ -1,5 +1,23 @@
 # Windows build modes
 
+## Shared installer styling
+
+NSIS installers are native Windows dialogs and cannot interpret a CSS file.
+Before every `npm run desktop:win`, the `predesktop:win` step reads the real
+`client/src/index.css` palette and generates native NSIS colors, RoverOS header
+and sidebar bitmaps, and matching installer/uninstaller icons. There is no
+separate hand-maintained installer palette.
+
+Generated resources live in the ignored `generated-artifacts/installer-theme/`
+directory. Run `npm run desktop:assets` to regenerate them locally. GitHub also
+uploads `roveros-windows-installer-theme` for inspection. The native theme
+preserves electron-builder's page callbacks, install permissions, signing
+checks, update behavior and default handling of user data. Windows security
+prompts and some OS-drawn controls retain their system appearance; they are not
+HTML controls and do not run the application's CSS.
+
+## Test installers
+
 Normal pushes, pull requests, and manual runs with the default options build
 an **unsigned test installer**. Download `roveros-windows-unsigned-test` from
 the successful Windows desktop app run's Artifacts section.

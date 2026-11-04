@@ -1,5 +1,6 @@
 - [Drizzle ORM upgrades](drizzle-orm-upgrades.md) — optional driver peers can trigger npm conflicts in web-only apps; check React renderer compatibility before updating.
 - [Windows signing](windows-build-signing.md) — unsigned test installers are allowed; keep trusted signed production builds separate.
+- [Windows installer theme](windows-installer-theme.md) — generate native installer resources from the main CSS; preserve install, update and signing behavior.
 - [Offline demo](offline-demo.md) — connection footer opens a local sample dashboard; never bypass pairing or send real rover commands in demo.
 - [Preview browser testing](preview-browser-testing.md) — direct Chromium/CDP navigation may abort despite working curl and preview screenshots.
 - [RoverOS provisioning and discovery](roveros-server-discovery.md) — use headless Ubuntu Server 24.04 LTS; clients check setup state and discover RoverOS-Server without IP entry.
