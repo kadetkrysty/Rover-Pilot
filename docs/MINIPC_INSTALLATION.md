@@ -56,25 +56,49 @@ blocked.
 
 RoverOS advertises and discovers the server; it does not take control of the
 MiniPC's Wi-Fi adapter. For a direct connection without a router, the MiniPC
-must have an access-point-capable Wi-Fi adapter and an OS-managed hotspot.
-NetworkManager can create one when it already manages the Wi-Fi interface:
+must have an access-point-capable Wi-Fi adapter managed by NetworkManager. The
+included setup script checks both conditions and refuses to switch network
+managers. Run it from the MiniPC's local console, not over SSH:
 
 ```bash
-nmcli device status
-sudo nmcli device wifi hotspot ifname wlp2s0 con-name RoverOS-Server ssid RoverOS-Server
-sudo nmcli --show-secrets -g 802-11-wireless-security.psk connection show RoverOS-Server
+cd /opt/roveros/app
+sudo apt install -y iw
+sudo bash scripts/setup-minipc-hotspot.sh
 ```
 
-Replace `wlp2s0` with the MiniPC's Wi-Fi interface. If no password is supplied,
-NetworkManager generates a WPA password and saves it in its protected
-connection profile; the second command displays it so you can join the hotspot
-from Windows and Android. Keep the password private. Use an adapter/driver that
-supports WPA2 or better. Run this at the MiniPC's local
-console: activating the hotspot can disconnect its existing Wi-Fi or SSH
-connection. Do not install or switch network managers remotely; Ubuntu Server
-installations using `systemd-networkd` need deliberate OS-level network
-configuration first. After both clients have joined the hotspot, RoverOS finds
-the MiniPC automatically.
+If `nmcli device status` lists multiple Wi-Fi interfaces, pass the intended
+interface name, for example:
+
+```bash
+sudo bash scripts/setup-minipc-hotspot.sh wlp2s0
+```
+
+The script checks for access-point mode and NetworkManager ownership before
+changing anything. It shows whether the selected interface is active and
+requires you to type a confirmation. If active, the hotspot can disconnect its
+current Wi-Fi connection; keep local-console access and another recovery path.
+The script creates a WPA2-Personal (AES/CCMP) profile with a randomly generated
+password, does not enable automatic hotspot startup, and displays the password
+once in the local terminal. Keep it private. It does not install or switch
+network managers; Ubuntu Server systems using `systemd-networkd` need deliberate
+OS-level network configuration first.
+
+If UFW is installed, the script adds only inbound rules for TCP port `5000` and
+UDP port `5353` on the hotspot interface and its assigned subnet. It never
+enables UFW or opens PostgreSQL. If UFW is not installed, the script prints
+equivalently scoped commands rather than adding broad rules. For example, with
+the default `10.42.0.0/24` hotspot subnet:
+
+```bash
+sudo ufw allow in on wlp2s0 from 10.42.0.0/24 to any port 5000 proto tcp
+sudo ufw allow in on wlp2s0 from 10.42.0.0/24 to any port 5353 proto udp
+```
+
+Use the interface and subnet reported by the script if they differ from this
+example. On Android and Windows, join the `RoverOS-Server` Wi-Fi network in the
+device's Wi-Fi settings and enter the password shown in the MiniPC terminal.
+Then open RoverOS; it discovers the MiniPC automatically. To turn the hotspot
+off, run `sudo nmcli connection down RoverOS-Hotspot` from the MiniPC.
 
 Bluetooth is not used for app-to-server traffic. RoverOS uses HTTP and
 WebSockets over IP; Bluetooth would require a separate Bluetooth-network
@@ -245,8 +269,9 @@ The output should include the `RoverOS-Server` service, port `5000`, and the
 
 ## 9. Restrict access to your local network
 
-Replace `192.168.1.0/24` with your LAN subnet. If you administer this computer
-over SSH, allow SSH before enabling the firewall:
+For a normal router-based LAN, replace `192.168.1.0/24` with your LAN subnet.
+If you administer this computer over SSH, allow SSH before enabling the
+firewall:
 
 ```bash
 sudo apt install -y ufw
@@ -257,13 +282,13 @@ sudo ufw enable
 sudo ufw status verbose
 ```
 
-If using NetworkManager's default hotspot subnet (`10.42.0.0/24`), allow both
-ports from that subnet instead of the router LAN subnet:
-
-```bash
-sudo ufw allow from 10.42.0.0/24 to any port 5000 proto tcp
-sudo ufw allow from 10.42.0.0/24 to any port 5353 proto udp
-```
+When using the MiniPC hotspot, do not substitute a broad network rule here.
+The hotspot setup script adds port `5000`/TCP and `5353`/UDP rules scoped to
+the hotspot's Wi-Fi interface and the subnet NetworkManager assigned. If UFW
+was not installed when the hotspot was configured, install it and use the
+interface/subnet-specific commands printed by the script. The script never
+enables UFW, so review the SSH rule and your intended firewall policy before
+enabling it.
 
 Do **not** open PostgreSQL port `5432` to the LAN and do not configure public
 router port forwarding for RoverOS. The current rover-control API does not
@@ -332,8 +357,8 @@ Store backups somewhere separate from the MiniPC as well.
   non-guest LAN, inspect `sudo ufw status`, confirm Avahi is active, and check
   `sudo avahi-browse -rt _http._tcp`.
 - **Discovery works on the router but not the MiniPC hotspot:** confirm the
-  clients joined the `RoverOS-Server` SSID and that the hotspot subnet is
-  allowed through UFW.
+  clients joined the `RoverOS-Server` SSID and that the hotspot's assigned
+  subnet is allowed on its Wi-Fi interface through UFW.
 - **Windows cannot find the MiniPC:** verify the Windows network is private and
   that local multicast name resolution is not blocked by network policy.
 - **Android reports a discovery error:** update to the latest APK and ensure
