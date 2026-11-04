@@ -1,2 +1,2 @@
 - [Drizzle ORM upgrades](drizzle-orm-upgrades.md) — optional driver peers can trigger npm conflicts in web-only apps; check React renderer compatibility before updating.
-- [RoverOS provisioning and discovery](roveros-server-discovery.md) — MiniPCs start on Ubuntu Core; clients check setup state and discover RoverOS-Server without IP entry.
+- [RoverOS provisioning and discovery](roveros-server-discovery.md) — use headless Ubuntu Server 24.04 LTS; clients check setup state and discover RoverOS-Server without IP entry.

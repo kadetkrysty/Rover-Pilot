@@ -6,16 +6,17 @@
 
 On first boot, the MiniPC must provide a small, secure setup service before the full RoverOS server is installed. Android and Windows clients discover `RoverOS-Server`, ask whether the MiniPC is provisioned, and either open RoverOS normally or show a first-run wizard. The wizard collects the Wi-Fi network details; the MiniPC—not the clients—joins that network and installs its approved software bundle.
 
-The most important architecture decision is the operating system. The repository's current installation guide targets Ubuntu Server and uses APT, Node.js installed on-device, PostgreSQL packages, and a systemd service. Ubuntu Core is a snap-managed, transactional system assembled from a model, base, kernel, gadget, and application snaps. Its default network setup uses netplan and systemd-networkd; installing the NetworkManager snap can take control of all network interfaces. The Ubuntu Server instructions and current hotspot script therefore cannot be reused as-is on Ubuntu Core.
+The operating-system clarification is that the MiniPC needs a **headless Ubuntu installation with no desktop environment**, not Ubuntu Core. The recommendation is **Ubuntu Server 24.04 LTS, 64-bit amd64, minimal install**. This aligns with the existing installation guide, Node.js 22.12+, PostgreSQL 16, APT, systemd, Avahi, and the current Ubuntu Server hotspot tooling. Use the latest 24.04 point release available when installing (24.04.5 as of this plan update).
 
-This plan assumes **Ubuntu Core is the intended factory OS**, as stated in the request. It proposes a preinstalled provisioning snap and a Core-compatible RoverOS release. If “Ubuntu Core” means a minimal Ubuntu Server installation instead, select that before implementation; it is a substantially simpler APT/systemd path.
+Ubuntu 26.04 LTS is newer and has a longer support window, but the project has not been qualified on it and the default package versions differ from the current Node/PostgreSQL targets. Debian 13 is also a viable headless server OS, but its current default PostgreSQL version and the project’s Ubuntu-specific guide create extra work. Neither is the easiest first implementation. The plan keeps Ubuntu 26.04 and Debian as later qualification options rather than mixing operating systems in the first release.
 
 ## Current project baseline
 
 - Android and Windows already find the MiniPC named `RoverOS-Server` on the local network. Android uses DNS-SD discovery; Windows checks `RoverOS-Server.local`.
 - The clients verify `/api/system/info`, but there is no provisioning state or Wi-Fi onboarding API yet. Android currently treats any verified RoverOS server as ready.
 - The existing install guide installs Node.js 22, PostgreSQL 16, Avahi, the production RoverOS build, and a systemd service on Ubuntu Server.
-- `scripts/setup-minipc-hotspot.sh` is an optional, interactive Ubuntu Server/NetworkManager tool. It checks the Wi-Fi adapter and NetworkManager, refuses to run over SSH, creates a WPA2 hotspot with a random password, and adds scoped firewall rules. It does not start the hotspot automatically on first boot and is not a drop-in Ubuntu Core snap.
+- `scripts/setup-minipc-hotspot.sh` is an optional, interactive Ubuntu Server/NetworkManager tool. It checks the Wi-Fi adapter and NetworkManager, refuses to run over SSH, creates a WPA2 hotspot with a random password, and adds scoped firewall rules. It does not start the hotspot automatically on first boot, so the first-run service must safely replace or extend this manual flow.
+- Project documentation identifies an Intel Celeron MiniPC and 64-bit architecture, but does not record the exact CPU model, RAM, SSD, or Wi-Fi adapter. Hardware-specific compatibility cannot be claimed until those are measured.
 - Current documentation excludes Arduino firmware, motor-control services, camera streaming, and the separate FlyBaby service from the MiniPC install. These need to be classified as required or optional before “install everything” can be defined.
 
 ## Proposed first-run experience
@@ -58,7 +59,7 @@ The existing Android discovery plugin and Windows hostname check can be extended
 
 ### MiniPC provisioning service
 
-The provisioning service must be preinstalled in the factory image. A bare operating system cannot serve the setup screen, accept Wi-Fi credentials, or download RoverOS until a network is available.
+The provisioning service must be preinstalled in a prepared Ubuntu Server image or installed during a one-time factory/bench setup. A stock headless Ubuntu install alone cannot serve the setup screen, accept Wi-Fi credentials, or download RoverOS until a network is available. SSH is useful for administration and recovery, but is not a substitute for the client-facing bootstrap service.
 
 Responsibilities:
 
@@ -71,20 +72,40 @@ Responsibilities:
 7. Persist each completed stage atomically so power loss or a failed download can resume safely.
 8. Keep an audit trail of stage names, timestamps, and sanitized error codes—never request bodies, Wi-Fi passwords, pairing tokens, or credential-bearing command lines.
 
-The mobile or desktop app must never send a shell script or arbitrary package URL for the MiniPC to execute. The privileged service should accept typed, allow-listed operations and use a safe OS API (prefer a network-management API such as NetworkManager's D-Bus interface where supported). If a subprocess is unavoidable, pass validated arguments separately; never interpolate SSIDs, passwords, URLs, or other request data into a shell command.
+The mobile or desktop app must never send a shell script or arbitrary package URL for the MiniPC to execute. The privileged service should accept typed, allow-listed operations and use a safe OS API (prefer NetworkManager's D-Bus interface for Wi-Fi setup). If a subprocess is unavoidable, pass validated arguments separately; never interpolate SSIDs, passwords, URLs, or other request data into a shell command.
 
-## Ubuntu Core packaging plan
+## Operating-system and hardware recommendation
 
-If Ubuntu Core is mandatory:
+### Recommended OS: Ubuntu Server 24.04 LTS
 
-1. **Validate the target hardware and image.** Confirm the exact MiniPC model, CPU architecture, Wi-Fi chipset/driver, storage, and supported Ubuntu Core release. Confirm that an appropriate kernel and gadget configuration exist for the hardware.
-2. **Build a factory image.** Include the required base, kernel, gadget, network stack, and a signed RoverOS provisioning snap. The provisioning service must be present before first boot and able to expose the setup API.
-3. **Choose one network-management design.** Ubuntu Core defaults to netplan/systemd-networkd; the NetworkManager snap also supports Wi-Fi and AP creation, but installing it changes which service manages all network interfaces. Select and test the renderer as part of the image build; do not switch renderers opportunistically during first-run setup.
-4. **Package the application and database.** Build and test a confined RoverOS snap (or a small, explicit set of snaps) for the Node.js server and web assets. Prove that PostgreSQL 16 can be packaged and operated with persistent data and the necessary confinement/interfaces. If a supported database snap is not suitable, stop and revisit the OS choice rather than falling back to undocumented APT changes.
-5. **Install signed releases.** The provisioning service installs an approved snap revision or bundle using snapd and a pinned channel/version. Do not download and execute an unsigned shell installer.
-6. **Use Core-managed recovery and updates.** Integrate with snapd's transactional changes and recovery model; keep database backup/migration behavior explicit and test interrupted updates.
+Use the **Ubuntu Server 24.04 LTS amd64 image without a desktop environment**. Select the Server installer, install OpenSSH Server, set the hostname to `RoverOS-Server`, and use SSH keys for administration. Keep root SSH login and password-based remote login disabled where the installation supports that policy.
 
-For a minimal **Ubuntu Server 24.04** alternative, keep the current app stack and provide a first-boot systemd provisioning service that installs pinned APT dependencies, configures Wi-Fi through the chosen network manager, creates PostgreSQL state, and installs a signed RoverOS release. This is not the same installer as the Ubuntu Core path.
+Reasons for this choice:
+
+- It matches the project's existing MiniPC installation guide and the currently documented PostgreSQL 16 and Node.js 22.12+ requirements.
+- It uses the project's existing APT/systemd/Avahi operating model and avoids the custom image, snap confinement, and database-packaging work that Ubuntu Core would require.
+- The Server image has no desktop environment, so it avoids the memory and storage cost of a GUI on a low-power Celeron MiniPC.
+- Ubuntu 24.04 LTS standard security maintenance is scheduled through May 2029. This is sufficient for the initial implementation, but the project should qualify an upgrade path before that date.
+
+Ubuntu Server's published baseline (3 GB suggested RAM and 25 GB suggested storage for the OS) is not the RoverOS system requirement. For planning, use **4 GB RAM and 32 GB SSD as a provisional minimum for the web/API and database only; 8 GB RAM and 64 GB SSD are recommended**. These are engineering targets, not yet validated on the project's hardware. If the MiniPC has less than 4 GB RAM or 32 GB storage, do not promise support until a measured load/upgrade test passes. Hardware-specific services may need more.
+
+To reduce CPU, RAM, and disk pressure, build the production RoverOS release in GitHub Actions and install a verified prebuilt artifact on the MiniPC. Do not run `npm ci` and compile the application during first boot. Keep PostgreSQL local-only and budget storage for database growth, logs, backups, and at least one update/rollback.
+
+### Network and SSH setup
+
+- Use NetworkManager for the Wi-Fi scan, client connection, and access-point functions required by first-run setup. Configure it during OS imaging or local installation, before relying on SSH. Changing the active network manager over SSH can cut off the session and is not an acceptable unattended provisioning step.
+- Verify the exact Wi-Fi adapter's driver and AP mode. Test whether it can maintain an AP while joining another Wi-Fi network; if not, document Ethernet/second-adapter use or the client reconnect step.
+- Enable SSH for owner administration and recovery, preferably with key-based authentication. The first-run client API remains a separate, narrowly scoped interface; SSH credentials are never entered into the Android or Windows app.
+
+### Alternatives considered
+
+| OS | Assessment for RoverOS |
+| --- | --- |
+| Ubuntu Server 24.04 LTS amd64 | **Recommended for the first release.** Existing guide and stack already target it; headless install, APT, systemd, and PostgreSQL 16 fit the current setup. Standard maintenance through May 2029 means a later OS upgrade must be planned. |
+| Ubuntu Server 26.04 LTS amd64 | Best candidate if a fresh five-year support window through May 2031 is more important than minimizing initial changes. It was released in April 2026; qualify the exact MiniPC, Node.js 22, PostgreSQL 16, NetworkManager, and installation scripts before switching. |
+| Debian 13 “trixie” amd64 | Technically suitable and lean, with Debian LTS through June 2030. Not the easiest option: the current guide is Ubuntu-specific and Debian 13 defaults to PostgreSQL 17, so retaining PostgreSQL 16 and the required Node.js runtime needs extra repository/version work. |
+
+The codebase does not identify the MiniPC's exact model or Wi-Fi chipset. Before claiming hardware support, collect `lscpu`, `free -h`, `lsblk`, `lspci -nn`, `lsusb`, and `iw list` output locally or over the owner's SSH session, then test the selected OS on that device. Do not request or store SSH passwords or private keys in the app or plan.
 
 ## Credential and installation security
 
@@ -103,32 +124,37 @@ Wi-Fi passwords are sensitive credentials. The proposed safeguards are:
 
 Create and approve an inventory before implementation:
 
-| Category | Current Ubuntu Server baseline | Core requirement |
-| --- | --- | --- |
-| Network discovery | Avahi, `RoverOS-Server` DNS-SD record | Core-compatible discovery service/record |
-| RoverOS API and web app | Node.js 22.12+, production build | Packaged and confined snap(s) |
-| Database | PostgreSQL 16, local-only listener | Tested snap/package with persistent storage |
-| Service management | systemd service and environment file | Snap services and snap-managed configuration |
-| Hardware features | Not included by the current install guide | Explicitly classify firmware, motor/camera services, and FlyBaby as required or optional |
+| Category | Recommended Ubuntu Server target |
+| --- | --- |
+| Operating system | Ubuntu Server 24.04 LTS amd64, latest point release, no desktop |
+| Network discovery | Avahi and the `RoverOS-Server` DNS-SD record |
+| Wi-Fi provisioning | NetworkManager configured before first run; adapter must support the required AP/client mode |
+| RoverOS API and web app | Node.js 22.12+ runtime and a prebuilt, verified production artifact |
+| Database | PostgreSQL 16 with a local-only listener and tested backup/restore |
+| Service management | systemd unit, protected environment file, and a separate restricted provisioning service |
+| Administration | OpenSSH Server with key-based owner access; do not expose SSH through the client API |
+| Hardware features | Current guide excludes firmware, motor/camera services, and FlyBaby; explicitly classify each as required or optional |
 
 The completed inventory should include versions, supported CPU architecture, disk/RAM requirements, trusted source, signature/checksum policy, and a readiness check for each component. Do not label hardware features “installed” unless their firmware, drivers, permissions, and physical connections are also verified.
 
 ## Implementation phases
 
-### Phase 0 — Platform and hardware decision
+### Phase 0 — Hardware qualification
 
-- Confirm Ubuntu Core is mandatory or select minimal Ubuntu Server.
-- Record the exact MiniPC model, Wi-Fi adapter, antenna, storage, architecture, and whether Ethernet or a second Wi-Fi radio is available.
-- Prototype booting the selected OS, starting an AP, joining an upstream Wi-Fi network, and maintaining/recovering client access.
-- Confirm PostgreSQL 16 packaging, storage, and migration strategy for Ubuntu Core.
+- Install the recommended Ubuntu Server 24.04 LTS amd64 image without a desktop environment on the actual MiniPC.
+- Record the exact CPU, RAM, storage, Wi-Fi adapter/driver, antenna, and whether Ethernet or a second Wi-Fi radio is available.
+- Configure NetworkManager and SSH during local setup; verify SSH recovery before testing AP changes.
+- Prototype starting an AP, joining an upstream Wi-Fi network, and maintaining or recovering client access.
+- Measure idle and peak memory, disk use, database growth, and update/rollback space with the complete software inventory.
 - Approve the required-vs-optional software inventory and signed release source.
 
-**Exit gate:** no app implementation until the platform and Wi-Fi topology are proven on the target hardware.
+**Exit gate:** no app implementation until the OS, resource budget, and Wi-Fi topology are proven on the target hardware.
 
-### Phase 1 — Factory bootstrap image
+### Phase 1 — Headless Ubuntu bootstrap
 
-- Build an image that boots into setup mode with a unique AP credential and device pairing identity.
-- Start the provisioning service before the RoverOS application.
+- Prepare an Ubuntu Server image or one-time factory setup that boots into setup mode with a unique AP credential and device pairing identity.
+- Enable SSH for owner administration and recovery without putting SSH credentials in the clients.
+- Start the systemd provisioning service before the RoverOS application.
 - Advertise the stable `RoverOS-Server` identity and expose only setup-status and pairing behavior.
 - Provide a documented physical recovery path if Wi-Fi credentials are wrong or the installer loses internet.
 
@@ -136,7 +162,7 @@ The completed inventory should include versions, supported CPU architecture, dis
 
 - Implement a durable, idempotent provisioning state machine and safe status/progress API.
 - Add encrypted, authenticated Wi-Fi credential submission and OS-specific network configuration.
-- Add the signed release-manifest download, verification, installation, database setup, service activation, and post-install health checks.
+- Add the signed release-manifest download, verification, pinned APT dependencies, PostgreSQL setup, prebuilt app-artifact installation, service activation, and post-install health checks.
 - Add retry and recovery behavior for wrong credentials, no internet, package-source failures, corrupted downloads, reboot, and interrupted installation.
 
 ### Phase 3 — Android and Windows onboarding
@@ -150,7 +176,7 @@ The completed inventory should include versions, supported CPU architecture, dis
 
 - Test clean first boot, normal reboot, recovery, update, and factory reset behavior.
 - Run on the actual target MiniPC and Wi-Fi hardware, not only an emulator or desktop VM.
-- Release the factory image, provisioning snap/agent, and client updates together with matching versions and signatures.
+- Release the prepared Ubuntu Server bootstrap/provisioning service and client updates together with matching versions and verified artifacts.
 - Document first boot, network joining, recovery, updates, backups, and supported hardware/OS combinations.
 
 ## Acceptance criteria
@@ -167,12 +193,12 @@ The completed inventory should include versions, supported CPU architecture, dis
 
 ## Decisions needed for approval
 
-1. **Operating system:** Is Ubuntu Core mandatory, or did you mean a minimal Ubuntu Server installation? Core requires a custom image and snap packaging; it cannot use the existing APT installer unchanged.
-2. **Wi-Fi hardware:** Can the MiniPC host an AP and join the home network at the same time? If not, is a second adapter or Ethernet available, and may the client need to rejoin Wi-Fi manually?
+1. **Hardware qualification:** What exact MiniPC model, RAM, SSD, and Wi-Fi adapter are in use? If unknown, collect the inventory listed above over SSH or locally.
+2. **Wi-Fi topology:** Can its adapter host an AP and join the home network simultaneously? If not, is Ethernet or a second adapter available, and may the client need to reconnect manually?
 3. **Factory access:** How will the owner obtain each device's unique AP password and pairing identity—printed QR/label, local console, or another method?
 4. **Network support:** Should the first version support personal WPA2/WPA3 networks only, or enterprise Wi-Fi as well?
 5. **Software scope:** Which firmware, motor-control, camera, and FlyBaby components are required for a “fully working Rover,” and which are optional?
-6. **Release source:** Can the MiniPC reach GitHub Releases/Snap Store, and should every installed release be signed by the project?
+6. **Release source:** Can the MiniPC reach GitHub Releases, and should every installed release be signed by the project?
 
 ## References
 
@@ -185,9 +211,9 @@ The completed inventory should include versions, supported CPU architecture, dis
 - `deploy/avahi/roveros.service` — current RoverOS DNS-SD advertisement.
 - `docs/MINIPC_INSTALLATION.md` and `client/src/pages/MiniPcInstallGuide.tsx` — current Ubuntu Server installation guide and software-scope notes.
 
-### Ubuntu Core documentation
+### Operating-system references
 
-- [Using Ubuntu Core](https://documentation.ubuntu.com/core/how-to-guides/using-ubuntu-core/) — snap-managed, confined, transactional system model.
-- [How installation works](https://documentation.ubuntu.com/core/explanation/how-installation-works/) — Core images include the base, kernel, gadget, snapd, and application snaps.
-- [Network Manager on Ubuntu Core](https://documentation.ubuntu.com/core/explanation/system-snaps/network-manager/) — default networkd/netplan behavior and NetworkManager's takeover of network interfaces.
-- [Configure Wi-Fi connections](https://documentation.ubuntu.com/core/explanation/system-snaps/network-manager/how-to-guides/configure-wifi-connections/) and [Configure Wi-Fi access points](https://documentation.ubuntu.com/core/explanation/system-snaps/network-manager/how-to-guides/configure-wifi-access-points/) — Core's supported NetworkManager workflows.
+- [Ubuntu Server system requirements](https://documentation.ubuntu.com/server/reference/installation/system-requirements/) — amd64 support and OS-level RAM/storage guidance; these are not full RoverOS requirements.
+- [Ubuntu release cycle](https://ubuntu.com/about/release-cycle) — Ubuntu 24.04 and 26.04 LTS support windows.
+- [Ubuntu 26.04 LTS release notes](https://documentation.ubuntu.com/release-notes/26.04/) — current newer Ubuntu LTS release.
+- [Debian Releases](https://www.debian.org/releases/) and [Debian 13 release announcement](https://www.debian.org/News/2025/20250809) — current stable release and support lifecycle.
