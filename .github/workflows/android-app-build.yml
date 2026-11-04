@@ -68,6 +68,30 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+      - name: Check Android release version is newer than published releases
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.build_release }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPOSITORY: ${{ github.repository }}
+          ANDROID_RELEASE_RUN_NUMBER: ${{ github.run_number }}
+        run: |
+          set -euo pipefail
+          latest_release_run=0
+          release_tags=$(gh api --paginate "repos/${GH_REPOSITORY}/releases?per_page=100" --jq '.[].tag_name')
+          while IFS= read -r tag; do
+            if [[ "$tag" =~ ^roveros-android-v1\.0\.([0-9]+)$ ]]; then
+              release_run=${BASH_REMATCH[1]}
+              if (( release_run > latest_release_run )); then
+                latest_release_run=$release_run
+              fi
+            fi
+          done <<< "$release_tags"
+
+          if (( ANDROID_RELEASE_RUN_NUMBER <= latest_release_run )); then
+            echo "::error::This workflow run would create Android version 1.0.${ANDROID_RELEASE_RUN_NUMBER}, which is not newer than the latest published Android release 1.0.${latest_release_run}. Start a new workflow run to create an installable update."
+            exit 1
+          fi
+
       - name: Prepare Android release signing key
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.build_release }}
         env:
@@ -195,6 +219,9 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    concurrency:
+      group: android-release-publish
+      cancel-in-progress: false
     permissions:
       contents: write
 
@@ -214,6 +241,22 @@ jobs:
           GH_RUN_NUMBER: ${{ github.run_number }}
         run: |
           set -euo pipefail
+          latest_release_run=0
+          release_tags=$(gh api --paginate "repos/${GH_REPOSITORY}/releases?per_page=100" --jq '.[].tag_name')
+          while IFS= read -r existing_tag; do
+            if [[ "$existing_tag" =~ ^roveros-android-v1\.0\.([0-9]+)$ ]]; then
+              release_run=${BASH_REMATCH[1]}
+              if (( release_run > latest_release_run )); then
+                latest_release_run=$release_run
+              fi
+            fi
+          done <<< "$release_tags"
+
+          if (( GH_RUN_NUMBER <= latest_release_run )); then
+            echo "::error::This workflow run would publish Android version 1.0.${GH_RUN_NUMBER}, which is not newer than the latest published Android release 1.0.${latest_release_run}."
+            exit 1
+          fi
+
           tag="roveros-android-v1.0.${GH_RUN_NUMBER}"
           version="1.0.${GH_RUN_NUMBER}"
           apk="RoverOS-Android-v${version}.apk"
