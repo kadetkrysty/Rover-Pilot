@@ -84,7 +84,7 @@ export async function registerRoutes(
       res.status(201).json(route);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ error: "Invalid route data", details: error.errors });
+        return res.status(400).json({ error: "Invalid route data", details: error.issues });
       }
       console.error("Error creating route:", error);
       res.status(500).json({ error: "Failed to create route" });
@@ -108,7 +108,7 @@ export async function registerRoutes(
       res.json(route);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ error: "Invalid route data", details: error.errors });
+        return res.status(400).json({ error: "Invalid route data", details: error.issues });
       }
       console.error("Error updating route:", error);
       res.status(500).json({ error: "Failed to update route" });
@@ -173,7 +173,7 @@ export async function registerRoutes(
       }
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ error: "Invalid waypoint data", details: error.errors });
+        return res.status(400).json({ error: "Invalid waypoint data", details: error.issues });
       }
       console.error("Error creating waypoint:", error);
       res.status(500).json({ error: "Failed to create waypoint" });
@@ -204,7 +204,7 @@ export async function registerRoutes(
       res.json(waypoint);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ error: "Invalid waypoint data", details: error.errors });
+        return res.status(400).json({ error: "Invalid waypoint data", details: error.issues });
       }
       console.error("Error updating waypoint:", error);
       res.status(500).json({ error: "Failed to update waypoint" });
@@ -238,7 +238,7 @@ export async function registerRoutes(
       res.status(201).json(log);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ error: "Invalid telemetry data", details: error.errors });
+        return res.status(400).json({ error: "Invalid telemetry data", details: error.issues });
       }
       console.error("Error creating telemetry log:", error);
       res.status(500).json({ error: "Failed to create telemetry log" });
@@ -300,7 +300,7 @@ export async function registerRoutes(
       res.status(201).json(config);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ error: "Invalid config data", details: error.errors });
+        return res.status(400).json({ error: "Invalid config data", details: error.issues });
       }
       console.error("Error setting config:", error);
       res.status(500).json({ error: "Failed to set config" });

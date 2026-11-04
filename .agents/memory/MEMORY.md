@@ -1,0 +1,1 @@
+- [Drizzle ORM upgrades](drizzle-orm-upgrades.md) — optional driver peers can trigger npm conflicts in web-only apps; check React renderer compatibility before updating.

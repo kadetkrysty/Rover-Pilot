@@ -2,6 +2,11 @@ import { useState, useEffect, useCallback } from 'react';
 import { Geolocation, Position } from '@capacitor/geolocation';
 import { Capacitor } from '@capacitor/core';
 
+type LocationPosition = {
+  coords: Pick<Position['coords'], 'latitude' | 'longitude' | 'accuracy' | 'heading' | 'speed'>;
+  timestamp: number;
+};
+
 interface LocationState {
   latitude: number | null;
   longitude: number | null;
@@ -46,7 +51,7 @@ export function useLocation(watchPosition: boolean = false) {
     try {
       setLocation(prev => ({ ...prev, loading: true, error: null }));
 
-      let position: Position;
+      let position: LocationPosition;
 
       if (Capacitor.isNativePlatform()) {
         position = await Geolocation.getCurrentPosition({
@@ -54,7 +59,7 @@ export function useLocation(watchPosition: boolean = false) {
           timeout: 5000,
         });
       } else {
-        position = await new Promise<Position>((resolve, reject) => {
+        position = await new Promise<LocationPosition>((resolve, reject) => {
           navigator.geolocation.getCurrentPosition(
             (pos) => {
               resolve({
@@ -62,8 +67,6 @@ export function useLocation(watchPosition: boolean = false) {
                   latitude: pos.coords.latitude,
                   longitude: pos.coords.longitude,
                   accuracy: pos.coords.accuracy,
-                  altitude: pos.coords.altitude,
-                  altitudeAccuracy: pos.coords.altitudeAccuracy,
                   heading: pos.coords.heading,
                   speed: pos.coords.speed,
                 },
