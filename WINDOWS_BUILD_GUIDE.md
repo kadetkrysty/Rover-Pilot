@@ -58,18 +58,21 @@ and [electron-builder's Windows signing guide](https://www.electron.build/v26/fe
 
 1. Start the RoverOS server on the MiniPC and make sure it can reach its
    PostgreSQL database through `DATABASE_URL`.
-2. Keep the MiniPC and Windows computer on the same trusted local network.
-3. Install and open RoverOS on Windows.
-4. Enter the MiniPC address, for example `http://192.168.1.40:5000`.
-5. To change it later, choose **RoverOS → Change MiniPC address**.
+2. Set the MiniPC hostname and advertised service name to
+   `RoverOS-Server`, and keep it and Windows on the same trusted local network.
+3. Install and open RoverOS on Windows. The client checks
+   `http://roveros-server.local:5000` and verifies that the server identifies as
+   RoverOS before opening the client.
+4. If discovery fails, connect Windows to the same Wi-Fi/LAN (or the MiniPC
+   hotspot) and select **Search again**. The client does not ask for an IP.
 
-The server listens on port `5000` by default. If the MiniPC uses another port,
-enter that port in the address.
+The server listens on port `5000` by default. Windows local-network name
+resolution must be allowed by the network and security policy.
 
 The Windows app is a client: it makes outbound requests to the MiniPC and does
 not host an inbound server. Windows normally needs no inbound firewall rule. If
 an organization blocks outbound LAN access, its administrator must allow RoverOS
-to reach the chosen MiniPC address and port.
+to reach `roveros-server.local` on port `5000`.
 
 ## Network security
 

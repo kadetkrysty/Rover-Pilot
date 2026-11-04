@@ -61,12 +61,15 @@ NetworkManager can create one when it already manages the Wi-Fi interface:
 
 ```bash
 nmcli device status
-sudo nmcli device wifi hotspot ifname <WIFI_INTERFACE> con-name RoverOS-Server ssid RoverOS-Server
+sudo nmcli device wifi hotspot ifname wlp2s0 con-name RoverOS-Server ssid RoverOS-Server
+sudo nmcli --show-secrets -g 802-11-wireless-security.psk connection show RoverOS-Server
 ```
 
-If no password is supplied, NetworkManager generates a WPA password and saves
-it in its protected connection profile; record the displayed password and use
-it to join the hotspot from Windows and Android. Run this at the MiniPC's local
+Replace `wlp2s0` with the MiniPC's Wi-Fi interface. If no password is supplied,
+NetworkManager generates a WPA password and saves it in its protected
+connection profile; the second command displays it so you can join the hotspot
+from Windows and Android. Keep the password private. Use an adapter/driver that
+supports WPA2 or better. Run this at the MiniPC's local
 console: activating the hotspot can disconnect its existing Wi-Fi or SSH
 connection. Do not install or switch network managers remotely; Ubuntu Server
 installations using `systemd-networkd` need deliberate OS-level network

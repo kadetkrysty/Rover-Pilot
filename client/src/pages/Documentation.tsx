@@ -43,7 +43,7 @@ export default function Documentation() {
              </div>
         </div>
 
-        <div className="hud-panel h-[70vh] min-h-[32rem] overflow-hidden p-0 flex flex-col lg:col-span-9 lg:h-full">
+        <div className="hud-panel col-span-12 min-w-0 h-[70vh] min-h-[32rem] overflow-hidden p-0 flex flex-col lg:col-span-9 lg:h-full">
             <Tabs defaultValue="overview" className="h-full flex flex-col">
                 <div className="bg-card border-b border-border p-2 overflow-x-auto">
                     <TabsList className="bg-background/50 w-max">
@@ -1142,7 +1142,7 @@ groups
                                         <li>• Check Mini PC is connected to WiFi</li>
                                         <li>• Check: sudo systemctl status roveros</li>
                                         <li>• Check firewall allows port 5000</li>
-                                        <li>• Try: http://MINIPC-IP:5000</li>
+                                        <li>• Try: http://RoverOS-Server.local:5000</li>
                                         <li>• Check: journalctl -u roveros</li>
                                     </ul>
                                 </div>

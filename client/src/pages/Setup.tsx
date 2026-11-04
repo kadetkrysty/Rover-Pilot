@@ -35,6 +35,7 @@ export default function Setup({
   useEffect(() => {
     let active = true;
     let connected = false;
+    let searchExpired = false;
     let processing = false;
     let stopDiscovery = () => {};
     const queuedUrls: string[] = [];
@@ -42,6 +43,7 @@ export default function Setup({
 
     const discoveryTimer = window.setTimeout(() => {
       if (!active || connected) return;
+      searchExpired = true;
       setConnectionState("error");
       setStatusMessage(
         "RoverOS-Server was not found. Join its Wi-Fi or the same local network, then search again.",
@@ -62,7 +64,7 @@ export default function Setup({
 
         try {
           await testRoverConnection(serverUrl);
-          if (!active) return;
+          if (!active || searchExpired) return;
 
           setRoverUrl(serverUrl);
           connected = true;
@@ -78,7 +80,7 @@ export default function Setup({
           }
           return;
         } catch {
-          if (!active) return;
+          if (!active || searchExpired) return;
           setConnectionState("searching");
           setStatusMessage(
             "A device responded but did not pass the RoverOS check. Continuing to search…",
@@ -90,7 +92,7 @@ export default function Setup({
     };
 
     const enqueueServer = (serverUrl: string) => {
-      if (!active || attemptedUrls.has(serverUrl)) return;
+      if (!active || searchExpired || attemptedUrls.has(serverUrl)) return;
       attemptedUrls.add(serverUrl);
       queuedUrls.push(serverUrl);
       void processQueue();
@@ -123,7 +125,7 @@ export default function Setup({
           },
         );
 
-        if (!active || connected) {
+        if (!active || connected || searchExpired) {
           stop();
         } else {
           stopDiscovery = stop;
@@ -237,16 +239,16 @@ export default function Setup({
 
         {!requiredConnection && (
           <CardFooter>
-            <Link href="/">
-              <Button
-                variant="ghost"
-                className="w-full min-h-11 font-mono text-sm"
-                data-testid="button-back-to-dashboard"
-              >
+            <Button
+              asChild
+              variant="ghost"
+              className="w-full min-h-11 font-mono text-sm"
+            >
+              <Link href="/" data-testid="button-back-to-dashboard">
                 <ArrowLeft className="w-4 h-4 mr-2" aria-hidden="true" />
                 BACK TO DASHBOARD
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           </CardFooter>
         )}
       </Card>

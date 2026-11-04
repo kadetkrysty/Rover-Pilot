@@ -3,6 +3,7 @@ package com.roverostech.rover;
 import android.content.Context;
 import android.net.nsd.NsdManager;
 import android.net.nsd.NsdServiceInfo;
+import android.os.Build;
 import android.util.Log;
 
 import com.getcapacitor.JSObject;
@@ -17,7 +18,6 @@ import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.HashSet;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -135,8 +135,10 @@ public class RoverDiscoveryPlugin extends Plugin {
     private boolean isTargetService(NsdServiceInfo service) {
         String serviceType = service.getServiceType();
         String serviceName = service.getServiceName();
+        boolean isHttpService = "_http._tcp.".equalsIgnoreCase(serviceType)
+            || "_http._tcp".equalsIgnoreCase(serviceType);
         return serviceType != null
-            && serviceType.toLowerCase(Locale.ROOT).startsWith("_http._tcp")
+            && isHttpService
             && SERVICE_NAME.equalsIgnoreCase(serviceName);
     }
 
@@ -145,10 +147,12 @@ public class RoverDiscoveryPlugin extends Plugin {
             return;
         }
 
-        Map<String, byte[]> attributes = service.getAttributes();
-        byte[] marker = attributes == null ? null : attributes.get("roveros");
-        if (marker == null || !"1".equals(new String(marker, StandardCharsets.UTF_8))) {
-            return;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            Map<String, byte[]> attributes = service.getAttributes();
+            byte[] marker = attributes == null ? null : attributes.get("roveros");
+            if (marker == null || !"1".equals(new String(marker, StandardCharsets.UTF_8))) {
+                return;
+            }
         }
 
         InetAddress host = service.getHost();

@@ -132,11 +132,13 @@ sudo systemctl enable --now avahi-daemon`}</CodeBlock>
           MiniPC’s local console:
         </p>
         <CodeBlock title="NetworkManager hotspot">{`nmcli device status
-sudo nmcli device wifi hotspot ifname wlp2s0 con-name RoverOS-Server ssid RoverOS-Server`}</CodeBlock>
+sudo nmcli device wifi hotspot ifname wlp2s0 con-name RoverOS-Server ssid RoverOS-Server
+sudo nmcli --show-secrets -g 802-11-wireless-security.psk connection show RoverOS-Server`}</CodeBlock>
         <p className="text-sm leading-relaxed text-muted-foreground">
           Replace <code className="text-foreground">wlp2s0</code> with the
           MiniPC’s Wi-Fi interface. NetworkManager generates a password when
-          omitted; record it and join from Windows and Android. This can replace
+          omitted; the second command displays it. Keep it private, then join
+          from Windows and Android. Use an adapter with WPA2 or better. This can replace
           the MiniPC’s current Wi-Fi connection, so do not activate it over SSH.
           Do not switch the network manager remotely on an Ubuntu Server using
           systemd-networkd. Bluetooth is not supported as an app transport;
@@ -287,30 +289,30 @@ sudo ufw status verbose
           authentication. Keep port 5000 on a trusted, isolated LAN; do not expose
           it to the public internet. Use a properly secured VPN for remote access.
         </aside>
+        <p className="text-sm text-muted-foreground">
+          For NetworkManager’s default hotspot subnet (
+          <code className="text-foreground">10.42.0.0/24</code>), also allow
+          ports 5000/TCP and 5353/UDP from that subnet.
+        </p>
       </GuideSection>
 
       <GuideSection number="09" title="Connect the Windows and Android clients">
         <ol className="list-decimal space-y-3 pl-5 text-sm leading-relaxed text-muted-foreground">
           <li>
-            On the Windows PC or Android phone, join the same Wi-Fi/LAN as the
-            MiniPC.
+            Join the same Wi-Fi/LAN as the MiniPC. If using its hotspot, connect
+            to the <code className="text-foreground">RoverOS-Server</code> Wi-Fi
+            using the password shown by NetworkManager.
           </li>
           <li>
-            Enter the MiniPC URL, for example{" "}
-            <code className="text-foreground">http://192.168.1.40:5000</code>.
-            Use the reserved MiniPC address, not localhost.
-          </li>
-          <li>
-            Android asks for this address on first launch. Tap TEST CONNECTION,
-            then SAVE AND CONNECT. The address is saved on the device and can be
-            changed from the app’s CONFIG page.
+            Open the Android or Windows RoverOS app. It searches for{" "}
+            <code className="text-foreground">RoverOS-Server</code>, verifies the
+            RoverOS API, and connects without asking for an IP address.
           </li>
           <li>
             Build/install Windows using the{" "}
             <code className="text-foreground">Windows app build</code> GitHub
-            Actions workflow. Install the generated{" "}
-            <code className="text-foreground">.exe</code>, then enter the same
-            MiniPC URL when prompted.
+            Actions workflow and install the generated{" "}
+            <code className="text-foreground">.exe</code>.
           </li>
           <li>
             To install Android, run the{" "}
@@ -321,9 +323,8 @@ sudo ufw status verbose
         </ol>
         <p className="text-sm text-muted-foreground">
           The Android client uses the MiniPC’s API and WebSocket on port 5000.
-          Android does not connect directly to PostgreSQL. If Android reports a
-          network error, verify the firewall, address, port, and that the API is
-          running.
+          Android does not connect directly to PostgreSQL. If discovery fails,
+          verify Wi-Fi, Avahi, firewall rules, and that the API is running.
         </p>
       </GuideSection>
 
@@ -361,16 +362,18 @@ sudo systemctl status roveros --no-pager`}</CodeBlock>
           </li>
           <li>
             From another device on the LAN, open{" "}
-            <code className="text-foreground">http://MINIPC-IP:5000</code> in a
-            browser. If this fails, check the reserved IP and UFW rule.
+            <code className="text-foreground">http://RoverOS-Server.local:5000</code>{" "}
+            in a browser. If this fails, check the hostname and local firewall.
           </li>
           <li>
-            Make sure the entered URL has the right protocol and port, and that
-            the phone is not using mobile data or an isolated guest Wi-Fi.
+            Make sure the phone is not using mobile data or isolated guest Wi-Fi,
+            and confirm the MiniPC is named{" "}
+            <code className="text-foreground">RoverOS-Server</code>.
           </li>
           <li>
-            If the website opens but Android’s connection test fails, update the
-            Android APK to the version with MiniPC connection support.
+            If Android discovery fails, update the APK and confirm the Avahi
+            record includes the <code className="text-foreground">roveros=1</code>{" "}
+            marker.
           </li>
         </ul>
       </GuideSection>

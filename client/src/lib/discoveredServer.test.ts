@@ -30,10 +30,24 @@ test("rejects unrelated services, ports, and public addresses", () => {
     getDiscoveredRoverUrl({ ...validCandidate, host: "203.0.113.12" }),
     null,
   );
+  assert.equal(
+    getDiscoveredRoverUrl({ ...validCandidate, serviceType: "_ssh._tcp." }),
+    null,
+  );
+  assert.equal(
+    getDiscoveredRoverUrl({ ...validCandidate, marker: "wrong" }),
+    null,
+  );
 });
 
 test("rejects malformed and non-IPv4 discovery data", () => {
-  for (const host of ["127.0.0.1", "192.168.1.999", "RoverOS-Server.local", "::1"]) {
+  for (const host of [
+    "127.0.0.1",
+    "192.168.1.999",
+    "192.168.001.40",
+    "RoverOS-Server.local",
+    "::1",
+  ]) {
     assert.equal(getDiscoveredRoverUrl({ ...validCandidate, host }), null);
   }
   assert.equal(getDiscoveredRoverUrl(null), null);

@@ -10,7 +10,11 @@ function isLocalIpv4(value: string): boolean {
   const parts = value.split(".");
   if (
     parts.length !== 4 ||
-    parts.some((part) => !/^\d{1,3}$/.test(part) || Number(part) > 255)
+    parts.some(
+      (part) =>
+        !/^(0|[1-9]\d{0,2})$/.test(part) ||
+        Number(part) > 255,
+    )
   ) {
     return false;
   }
@@ -32,7 +36,9 @@ export function getDiscoveredRoverUrl(candidate: unknown): string | null {
     typeof service.serviceName !== "string" ||
     service.serviceName.toLowerCase() !== "roveros-server" ||
     typeof service.serviceType !== "string" ||
-    !service.serviceType.toLowerCase().startsWith("_http._tcp") ||
+    !["_http._tcp", "_http._tcp."].includes(
+      service.serviceType.toLowerCase(),
+    ) ||
     service.port !== 5000 ||
     service.marker !== "1" ||
     typeof service.host !== "string" ||

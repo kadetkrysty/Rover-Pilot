@@ -1,1 +1,2 @@
 - [Drizzle ORM upgrades](drizzle-orm-upgrades.md) — optional driver peers can trigger npm conflicts in web-only apps; check React renderer compatibility before updating.
+- [RoverOS local-network discovery](roveros-server-discovery.md) — clients find the MiniPC as RoverOS-Server over local Wi-Fi; joining an OS hotspot remains a manual device step.

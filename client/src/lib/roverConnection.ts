@@ -19,18 +19,18 @@ function normalizeApiPath(path: string): string {
 export function normalizeRoverUrl(value: string): string {
   const input = value.trim();
   if (!input || input.length > 2048) {
-    throw new Error("Enter the MiniPC address.");
+    throw new Error("The RoverOS server URL is missing or too long.");
   }
 
   let parsed: URL;
   try {
     parsed = new URL(input);
   } catch {
-    throw new Error("Enter a complete address, such as http://192.168.1.40:5000.");
+    throw new Error("The RoverOS server URL is invalid.");
   }
 
   if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-    throw new Error("The address must start with http:// or https://.");
+    throw new Error("The RoverOS server URL must use HTTP or HTTPS.");
   }
 
   if (
@@ -41,7 +41,7 @@ export function normalizeRoverUrl(value: string): string {
     parsed.hash ||
     (parsed.pathname !== "/" && parsed.pathname !== "")
   ) {
-    throw new Error("Enter only the MiniPC address and optional port, without a path or sign-in details.");
+    throw new Error("The RoverOS server URL cannot contain credentials, paths, or query parameters.");
   }
 
   if (!parsed.port) parsed.port = "5000";
