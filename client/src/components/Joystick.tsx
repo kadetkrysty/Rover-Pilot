@@ -1,5 +1,5 @@
 import { motion, useMotionValue, animate } from 'framer-motion';
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, type KeyboardEvent } from 'react';
 import { fitJoystick } from '@/lib/joystickLayout';
 
 interface JoystickProps {
@@ -7,6 +7,8 @@ interface JoystickProps {
   onHeadingChange?: (heading: number, magnitude: number) => void;
   className?: string;
   size?: number | string;
+  disabled?: boolean;
+  onRelease?: () => void;
 }
 
 export interface JoystickData {
@@ -15,7 +17,7 @@ export interface JoystickData {
   cardinalDirection: string;
 }
 
-export default function Joystick({ onMove, onHeadingChange, className, size = 192 }: JoystickProps) {
+export default function Joystick({ onMove, onHeadingChange, className, size = 192, disabled = false, onRelease }: JoystickProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const joystickRef = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState(false);
@@ -24,6 +26,9 @@ export default function Joystick({ onMove, onHeadingChange, className, size = 19
     fitJoystick(bounds.width, bounds.height, size);
   const [heading, setHeading] = useState<number | null>(null);
   const [magnitude, setMagnitude] = useState(0);
+  const previousSizeRef = useRef(0);
+  const onReleaseRef = useRef(onRelease);
+  onReleaseRef.current = onRelease;
 
   const x = useMotionValue(0);
   const y = useMotionValue(0);
@@ -37,18 +42,27 @@ export default function Joystick({ onMove, onHeadingChange, className, size = 19
     updateSize();
     const observer = new ResizeObserver(updateSize);
     observer.observe(container);
-    return () => observer.disconnect();
+    const releaseOnResize = () => onReleaseRef.current?.();
+    window.addEventListener('resize', releaseOnResize);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', releaseOnResize);
+      onReleaseRef.current?.();
+    };
   }, []);
 
   const knobSize = Math.min(computedSize * 0.4, Math.max(computedSize * 0.15, 24));
   const maxDistance = (computedSize / 2) - (knobSize / 2);
 
   useEffect(() => {
+    const previousSize = previousSizeRef.current;
+    previousSizeRef.current = computedSize;
     x.set(0);
     y.set(0);
     setActive(false);
     setHeading(null);
     setMagnitude(0);
+    if (previousSize > 0 && computedSize !== previousSize) onReleaseRef.current?.();
   }, [computedSize, x, y]);
 
   const handleDrag = () => {
@@ -84,6 +98,32 @@ export default function Joystick({ onMove, onHeadingChange, className, size = 19
     setHeading(null);
     setMagnitude(0);
     if (onMove) onMove(0, 0);
+    onRelease?.();
+  };
+
+  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (disabled) return;
+    const step = event.shiftKey ? 0.2 : 0.08;
+    let nextX = x.get();
+    let nextY = y.get();
+    if (event.key === 'ArrowLeft') nextX -= maxDistance * step;
+    else if (event.key === 'ArrowRight') nextX += maxDistance * step;
+    else if (event.key === 'ArrowUp') nextY -= maxDistance * step;
+    else if (event.key === 'ArrowDown') nextY += maxDistance * step;
+    else if (event.key === 'Escape' || event.key === ' ') {
+      event.preventDefault();
+      handleDragEnd();
+      return;
+    } else return;
+    event.preventDefault();
+    x.set(Math.max(-maxDistance, Math.min(maxDistance, nextX)));
+    y.set(Math.max(-maxDistance, Math.min(maxDistance, nextY)));
+    setActive(true);
+    handleDrag();
+  };
+
+  const handleKeyUp = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key.startsWith('Arrow')) handleDragEnd();
   };
 
   const center = containerSize / 2;
@@ -111,14 +151,14 @@ export default function Joystick({ onMove, onHeadingChange, className, size = 19
         {/* All cardinal point labels positioned radially */}
         <div className="absolute inset-0 pointer-events-none font-bold leading-none"
           style={{ fontSize: 14 * labelScale }}>
-          <div className="absolute text-primary" style={getRadialPosition(0)}>N</div>
-          <div className="absolute text-primary/50" style={{ ...getRadialPosition(45), fontSize: 12 * labelScale }}>NE</div>
-          <div className="absolute text-primary/60" style={getRadialPosition(90)}>E</div>
-          <div className="absolute text-primary/50" style={{ ...getRadialPosition(135), fontSize: 12 * labelScale }}>SE</div>
-          <div className="absolute text-primary/60" style={getRadialPosition(180)}>S</div>
-          <div className="absolute text-primary/50" style={{ ...getRadialPosition(225), fontSize: 12 * labelScale }}>SW</div>
-          <div className="absolute text-primary/60" style={getRadialPosition(270)}>W</div>
-          <div className="absolute text-primary/50" style={{ ...getRadialPosition(315), fontSize: 12 * labelScale }}>NW</div>
+          <div className="absolute text-primary" style={getRadialPosition(0)}>FWD</div>
+          <div className="absolute text-primary/50" style={{ ...getRadialPosition(45), fontSize: 12 * labelScale }}>FWD-R</div>
+          <div className="absolute text-primary/60" style={getRadialPosition(90)}>RIGHT</div>
+          <div className="absolute text-primary/50" style={{ ...getRadialPosition(135), fontSize: 12 * labelScale }}>REV-R</div>
+          <div className="absolute text-primary/60" style={getRadialPosition(180)}>REV</div>
+          <div className="absolute text-primary/50" style={{ ...getRadialPosition(225), fontSize: 12 * labelScale }}>REV-L</div>
+          <div className="absolute text-primary/60" style={getRadialPosition(270)}>LEFT</div>
+          <div className="absolute text-primary/50" style={{ ...getRadialPosition(315), fontSize: 12 * labelScale }}>FWD-L</div>
         </div>
 
         {/* Joystick circle container */}
@@ -191,7 +231,7 @@ export default function Joystick({ onMove, onHeadingChange, className, size = 19
           />
 
           <motion.div
-            drag
+            drag={!disabled}
             dragConstraints={{ 
               top: -maxDistance, 
               left: -maxDistance, 
@@ -203,11 +243,23 @@ export default function Joystick({ onMove, onHeadingChange, className, size = 19
             onDragStart={() => setActive(true)}
             onDrag={handleDrag}
             onDragEnd={handleDragEnd}
+            onPointerCancel={handleDragEnd}
+            onKeyDown={handleKeyDown}
+            onKeyUp={handleKeyUp}
+            onBlur={() => { if (active) handleDragEnd(); }}
+            role="slider"
+            tabIndex={disabled ? -1 : 0}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={Math.round(magnitude * 100)}
+            aria-label="Rover-relative joystick. Arrow keys control throttle and steering; Space or Escape releases."
+            aria-valuetext={heading === null ? 'Neutral' : `Requested rover-relative direction ${heading.toFixed(0)} degrees, ${Math.round(magnitude * 100)} percent`}
             style={{ x, y }}
-            className={`absolute rounded-full 
+            className={`absolute rounded-full touch-none
               bg-primary/20 border-2 border-primary shadow-[0_0_15px_rgba(var(--primary),0.5)] cursor-pointer
               flex items-center justify-center transition-colors duration-200
               ${active ? 'bg-primary/40 shadow-[0_0_30px_rgba(var(--primary),0.8)]' : ''}
+              ${disabled ? 'cursor-not-allowed opacity-50' : ''}
             `}
             initial={{
               top: `calc(50% - ${knobSize / 2}px)`,
@@ -241,15 +293,15 @@ export function useJoystickData() {
 
   const handleHeadingChange = (heading: number, magnitude: number) => {
     const getCardinal = (deg: number): string => {
-      if (deg >= 337.5 || deg < 22.5) return 'N';
-      if (deg >= 22.5 && deg < 67.5) return 'NE';
-      if (deg >= 67.5 && deg < 112.5) return 'E';
-      if (deg >= 112.5 && deg < 157.5) return 'SE';
-      if (deg >= 157.5 && deg < 202.5) return 'S';
-      if (deg >= 202.5 && deg < 247.5) return 'SW';
-      if (deg >= 247.5 && deg < 292.5) return 'W';
-      if (deg >= 292.5 && deg < 337.5) return 'NW';
-      return 'N';
+      if (deg >= 337.5 || deg < 22.5) return 'FWD';
+      if (deg >= 22.5 && deg < 67.5) return 'FWD-R';
+      if (deg >= 67.5 && deg < 112.5) return 'RIGHT';
+      if (deg >= 112.5 && deg < 157.5) return 'REV-R';
+      if (deg >= 157.5 && deg < 202.5) return 'REV';
+      if (deg >= 202.5 && deg < 247.5) return 'REV-L';
+      if (deg >= 247.5 && deg < 292.5) return 'LEFT';
+      if (deg >= 292.5 && deg < 337.5) return 'FWD-L';
+      return 'FWD';
     };
     
     setData({

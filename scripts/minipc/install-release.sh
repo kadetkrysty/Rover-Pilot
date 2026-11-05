@@ -83,7 +83,7 @@ with tarfile.open(sys.argv[1], "r:gz") as archive:
         p = pathlib.PurePosixPath(member.name)
         if p.is_absolute() or ".." in p.parts or not (member.isfile() or member.isdir()):
             raise ValueError("Unsafe server archive entry.")
-        if p.parts and p.parts[0] not in ("dist", "migrations", "deploy", "release-manifest.json"):
+        if p.parts and p.parts[0] not in ("dist", "migrations", "deploy", "scripts", "firmware", "docs", "release-manifest.json"):
             raise ValueError("Unexpected server archive entry.")
     archive.extractall(sys.argv[2], filter="data")
 PY
@@ -96,6 +96,9 @@ NODE
 test -s "$staging/dist/index.cjs"
 test -s "$staging/dist/migrate.cjs"
 test -s "$staging/dist/public/index.html"
+for required in scripts/minipc/install-control.sh deploy/systemd/roveros-control.service firmware/mini_pc_master/control_core.py firmware/mini_pc_master/secure_control_daemon.py; do
+  test -s "$staging/$required"
+done
 test -s "$staging/migrations/meta/_journal.json"
 find "$staging" -type d -exec chmod 0755 {} +
 find "$staging" -type f -exec chmod 0644 {} +
@@ -161,7 +164,8 @@ cat >/etc/systemd/system/roveros.service <<'UNIT'
 [Unit]
 Description=RoverOS web and API service
 After=network-online.target postgresql.service
-Wants=network-online.target
+Wants=network-online.target roveros-control.service
+After=roveros-control.service
 
 [Service]
 Type=simple
@@ -182,6 +186,7 @@ StateDirectory=roveros
 [Install]
 WantedBy=multi-user.target
 UNIT
+bash "$APP_ROOT/current/scripts/minipc/install-control.sh" "$APP_ROOT/current"
 systemctl daemon-reload
 systemctl enable --now roveros-update-trigger.socket
 systemd-run --unit=roveros-handoff --collect --no-block "$SERVICE_DIR/handoff.sh"

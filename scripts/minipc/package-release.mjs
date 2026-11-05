@@ -14,7 +14,11 @@ if (!/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(version)) {
 }
 await rm(output, { recursive: true, force: true });
 await mkdir(staging, { recursive: true });
-for (const file of ["dist", "migrations", "deploy/avahi/roveros.service"]) {
+for (const file of ["dist", "migrations", "deploy/avahi/roveros.service",
+  "deploy/systemd/roveros-control.service", "scripts/minipc/install-control.sh",
+  "firmware/mini_pc_master/control_core.py", "firmware/mini_pc_master/secure_control_daemon.py",
+  "firmware/arduino_mega_sensor_controller/arduino_mega_sensor_controller.ino",
+  "firmware/arduino_mega_sensor_controller/feru_protocol.h", "docs/ROVEROS_DRIVE_CONTROL.md"]) {
   await mkdir(path.dirname(path.join(staging, file)), { recursive: true });
   await cp(file, path.join(staging, file), { recursive: true });
 }

@@ -30,7 +30,7 @@ function fixture(t) {
 
   const releaseDir = path.join(root, "release");
   for (const dir of [
-    "dist/public", "migrations/meta", "deploy/avahi",
+    "dist/public", "migrations/meta", "deploy/avahi", "deploy/systemd", "scripts/minipc", "firmware/mini_pc_master",
   ]) fs.mkdirSync(path.join(releaseDir, dir), { recursive: true });
   fs.writeFileSync(path.join(releaseDir, "release-manifest.json"), JSON.stringify({
     schemaVersion: 1, product: "RoverOS", version: "1.1.0", architecture: "x64",
@@ -42,6 +42,10 @@ function fixture(t) {
     ["dist/public/index.html", "app"],
     ["migrations/meta/_journal.json", "{}"],
     ["deploy/avahi/roveros.service", "service"],
+    ["deploy/systemd/roveros-control.service", "test service"],
+    ["scripts/minipc/install-control.sh", "#!/bin/bash\nexit 0\n"],
+    ["firmware/mini_pc_master/control_core.py", "# test control core"],
+    ["firmware/mini_pc_master/secure_control_daemon.py", "# test daemon"],
   ]) fs.writeFileSync(path.join(releaseDir, file), content);
 
   const archive = path.join(assetsDir, "RoverOS-server-linux-x64.tar.gz");

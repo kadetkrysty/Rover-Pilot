@@ -48,6 +48,7 @@ export default function Documentation() {
                 <div className="shrink-0 bg-card border-b border-border p-2 overflow-x-auto">
                     <TabsList className="bg-background/50 w-max">
                         <TabsTrigger value="minipc" className="font-mono text-xs" data-testid="tab-minipc">MINIPC SETUP</TabsTrigger>
+                        <TabsTrigger value="drive" className="font-mono text-xs" data-testid="tab-drive">DRIVE CONTROL</TabsTrigger>
                         <TabsTrigger value="overview" className="font-mono text-xs" data-testid="tab-overview">OVERVIEW</TabsTrigger>
                         <TabsTrigger value="pantilt" className="font-mono text-xs" data-testid="tab-pantilt">PAN/TILT</TabsTrigger>
                         <TabsTrigger value="estop" className="font-mono text-xs" data-testid="tab-estop">E-STOP</TabsTrigger>
@@ -59,6 +60,63 @@ export default function Documentation() {
                         <TabsTrigger value="troubleshoot" className="font-mono text-xs" data-testid="tab-troubleshoot">TROUBLESHOOT</TabsTrigger>
                     </TabsList>
                 </div>
+
+                <TabsContent value="drive" className="flex-1 p-0 m-0 relative overflow-hidden">
+                    <ScrollArea className="h-full w-full">
+                        <div className="p-5 sm:p-6 space-y-5 pr-4">
+                            <div>
+                                <h3 className="text-xl text-primary font-display mb-2 flex items-center gap-2">
+                                    <Shield className="w-5 h-5" /> SAFE DRIVE CONTROL
+                                </h3>
+                                <p className="text-sm text-muted-foreground">
+                                    Drive requests use the paired, certificate-pinned client connection to the MiniPC’s private local control bridge. Clients do not connect directly to motor hardware; the MiniPC daemon validates ownership, commissioning, interlocks, and command limits.
+                                </p>
+                            </div>
+
+                            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                                <div className="bg-primary/10 border border-primary/30 p-4 rounded">
+                                    <h4 className="font-display text-primary mb-2">SOURCE & LEASE</h4>
+                                    <ul className="text-xs font-mono leading-relaxed text-muted-foreground space-y-1">
+                                        <li>• Only paired owners and operators with drive permission can arm.</li>
+                                        <li>• Joystick, standard gamepad, and FlySky are server-global sources.</li>
+                                        <li>• Source handover stops and disarms first; selection is never an arm command.</li>
+                                        <li>• ARM is an explicit action. No automatic arm after reconnect, reload, or lease recovery.</li>
+                                        <li>• A lost client heartbeat expires the drive lease; service errors locally block further frames.</li>
+                                    </ul>
+                                </div>
+                                <div className="bg-secondary/10 border border-secondary/30 p-4 rounded">
+                                    <h4 className="font-display text-secondary mb-2">ON-SCREEN & GAMEPAD</h4>
+                                    <ul className="text-xs font-mono leading-relaxed text-muted-foreground space-y-1">
+                                        <li>• On-screen stick: hold for rover-relative forward/reverse and left/right; release sends zero and disarms.</li>
+                                        <li>• Standard gamepad: left stick Y = forward/reverse; right stick X = steering.</li>
+                                        <li>• Hold R1 as the gamepad deadman. Center both sticks and release R1 before arming.</li>
+                                        <li>• Releasing R1 or disconnecting the gamepad stops and disarms.</li>
+                                        <li>• App drive requests are currently capped by the daemon at 15%.</li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <div className="bg-accent/10 border border-accent/30 p-4 rounded">
+                                <h4 className="font-display text-accent mb-2 flex items-center gap-2"><Radio className="w-4 h-4" /> FLYSKY & STARTUP</h4>
+                                <ul className="text-xs font-mono leading-relaxed text-muted-foreground space-y-1">
+                                    <li>• FlySky drive mapping is fixed: CH1 steering, CH3 centered throttle, CH5 held high deadman.</li>
+                                    <li>• At arm, the receiver must be connected and fresh, CH1 and CH3 centered, CH5 high, and failsafe clear.</li>
+                                    <li>• While FlySky owns the app lease, the client sends zero heartbeat frames; the MiniPC derives movement from the radio.</li>
+                                    <li>• Commission and test with the drive wheels raised. Confirm motor direction, radio failsafe, and emergency stop before floor testing.</li>
+                                    <li>• Keep the rover stationary during MPU6050 startup calibration: 64 stationary samples take roughly 3–10 seconds.</li>
+                                    <li>• MPU6050 yaw is rover-relative, not a compass bearing to North. Dashboard attitude is separate from the joystick’s requested direction.</li>
+                                </ul>
+                            </div>
+
+                            <div className="bg-destructive/10 border border-destructive/30 p-4 rounded">
+                                <h4 className="font-display text-destructive mb-2 flex items-center gap-2"><Power className="w-4 h-4" /> LATCHED EMERGENCY STOP</h4>
+                                <p className="text-xs font-mono leading-relaxed text-muted-foreground">
+                                    E-STOP stops and latches the drive. It does not clear itself after a timer; only the owner client can reset it. Demo mode is a local preview and makes no real drive status or action requests. Consult <code>docs/ROVEROS_DRIVE_CONTROL.md</code> for the MiniPC commissioning and hardware procedure.
+                                </p>
+                            </div>
+                        </div>
+                    </ScrollArea>
+                </TabsContent>
                 
                 <TabsContent value="overview" className="flex-1 p-0 m-0 relative overflow-hidden">
                     <ScrollArea className="h-full w-full">
@@ -154,7 +212,7 @@ export default function Documentation() {
                                 </h3>
                                 <p className="text-sm text-muted-foreground mb-4">
                                     The camera pan/tilt mechanism uses a dedicated Raspberry Pi 3 B+ with SlushEngine Model X LT 
-                                    stepper motor driver. This provides precise ±180° pan and ±90° tilt control via the left stick on the PS4 controller.
+                                    stepper motor driver. The gamepad page can preview pan/tilt from the left stick; real rover drive uses left stick Y for throttle, right stick X for steering, and R1 as deadman.
                                 </p>
                             </div>
 
@@ -426,17 +484,17 @@ set_tilt(0)`}
                                     <ul className="text-xs font-mono text-muted-foreground space-y-1">
                                         <li>• Click the red E-STOP button in the navigation bar</li>
                                         <li>• Button is visible on ALL pages for quick access</li>
-                                        <li>• Command is sent via WebSocket immediately</li>
-                                        <li>• All motor commands are zeroed</li>
+                                        <li>• Sends the latched drive E-STOP action through the paired MiniPC control bridge</li>
+                                        <li>• The drive remains disarmed until the owner resets the latch</li>
                                     </ul>
                                 </div>
 
                                 <div className="bg-card border border-border p-4 rounded">
-                                    <h5 className="text-sm font-bold text-secondary mb-2">2. PS4 Controller</h5>
+                                    <h5 className="text-sm font-bold text-secondary mb-2">2. Gamepad</h5>
                                     <ul className="text-xs font-mono text-muted-foreground space-y-1">
-                                        <li>• Press the PS button (PlayStation logo)</li>
-                                        <li>• Immediately stops all movement</li>
-                                        <li>• Throttle and steering reset to zero</li>
+                                        <li>• Press Options to latch E-STOP from GAMEPAD CONTROL</li>
+                                        <li>• E-STOP remains latched; it is not a momentary stop</li>
+                                        <li>• Only the owner client can reset the latch</li>
                                     </ul>
                                 </div>
 
@@ -453,10 +511,10 @@ set_tilt(0)`}
                             <div className="bg-primary/10 border border-primary/30 p-4 rounded">
                                 <h5 className="font-display text-primary mb-2">E-STOP BEHAVIOR</h5>
                                 <ul className="text-xs font-mono text-muted-foreground space-y-1">
-                                    <li>• Motors immediately set to 0 speed</li>
-                                    <li>• Autonomous navigation paused</li>
-                                    <li>• Button pulses for 3 seconds to confirm</li>
-                                    <li>• Manual control can resume after stop</li>
+                                    <li>• Drive output is stopped and the E-STOP latch remains active</li>
+                                    <li>• The header reflects the server-reported latched state</li>
+                                    <li>• No timer clears the latch automatically</li>
+                                    <li>• Only the owner client can reset; arm remains explicit afterward</li>
                                 </ul>
                             </div>
                         </div>

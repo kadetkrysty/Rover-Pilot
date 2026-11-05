@@ -5,6 +5,7 @@ import { useFlySky } from '@/hooks/useFlySky';
 import { useLocation } from '@/hooks/useLocation';
 import CameraFeed from '@/components/CameraFeed';
 import { AspectRatio } from '@/components/ui/aspect-ratio';
+import DriveControlPanel from '@/components/DriveControlPanel';
 
 const AVAILABLE_FUNCTIONS = [
   { value: 'steering', label: 'Steering' },
@@ -191,12 +192,13 @@ export default function FlySkyControl() {
     <div className="min-h-screen bg-background text-foreground font-sans p-6" data-testid="page-flysky-control">
       <div className="mb-6">
         <h1 className="text-3xl font-display font-bold text-primary" data-testid="text-flysky-title">FLYSKY RECEIVER CONTROL</h1>
-        <p className="text-muted-foreground font-mono mt-1">FS-I6x / FS-IA10B 10-Channel Remote Control (iBUS)</p>
+        <p className="text-muted-foreground font-mono mt-1">CH1 steering · CH3 centered throttle · CH5 held high deadman</p>
       </div>
+      <DriveControlPanel />
 
-      <div className="grid grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 mt-4">
         {/* Left Panel: Camera Feed */}
-        <div className="col-span-8 space-y-4">
+        <div className="space-y-4 lg:col-span-8">
           {/* Connection Status */}
           <div className={`hud-panel p-4 border-2 transition-all ${
             flySky.isConnected 
@@ -275,7 +277,7 @@ export default function FlySkyControl() {
         </div>
 
         {/* Right Panel: Receiver Info & Channel Mapping */}
-        <div className="col-span-4 space-y-4">
+        <div className="space-y-4 lg:col-span-4">
           {/* Receiver Info */}
           <div className="hud-panel p-4">
             <h3 className="text-xs font-display text-primary/70 mb-3">RECEIVER INFO</h3>
@@ -310,7 +312,7 @@ export default function FlySkyControl() {
           {/* Channel Mapping */}
           <div className="hud-panel p-4">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-xs font-display text-primary/70">CHANNEL MAPPING</h3>
+              <h3 className="text-xs font-display text-primary/70">CHANNEL TELEMETRY & DISPLAY MAP</h3>
               <Button 
                 variant="ghost" 
                 size="sm" 
@@ -324,7 +326,7 @@ export default function FlySkyControl() {
             </div>
             
             <div className="text-[10px] text-muted-foreground mb-3">
-              Move a stick or flip a switch to detect the channel
+              Drive mapping is fixed: CH1 steering, CH3 centered throttle, CH5 high deadman. Choices below only label this page’s local display.
             </div>
 
             <div className="space-y-2">

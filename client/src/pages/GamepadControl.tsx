@@ -13,6 +13,8 @@ import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getRecordingLibrary, startServerRecording, stopServerRecording } from '@/lib/recordingApi';
 import { isDemoMode as isOfflineDemoMode } from '@/lib/demoMode';
+import DriveControlPanel from '@/components/DriveControlPanel';
+import { useDriveControl } from '@/lib/DriveControlProvider';
 
 const ThreeRoverSimulation = lazy(() => import('@/components/ThreeRoverSimulation'));
 
@@ -20,6 +22,7 @@ export default function GamepadControl() {
   const [, setLocation] = useLocation();
   const data = useRoverData();
   const gamepadInput = useGamepad();
+  const driveControl = useDriveControl();
   const { sendCommand, isConnected: wsConnected } = useWebSocket();
   const performanceSettings = usePerformanceSettings();
   const isDemoMode = !wsConnected;
@@ -40,7 +43,6 @@ export default function GamepadControl() {
   const [direction, setDirection] = useState<'FORWARD' | 'REVERSE' | 'NEUTRAL'>('NEUTRAL');
   const [steering, setSteering] = useState(0);
   const [mode, setMode] = useState<'MANUAL' | 'AUTONOMOUS'>('MANUAL');
-  const [emergencyStop, setEmergencyStop] = useState(false);
   const [cameraPan, setCameraPan] = useState(0);
   const [cameraTilt, setCameraTilt] = useState(0);
   const [cameraZoom, setCameraZoom] = useState(1.0);
@@ -65,12 +67,10 @@ export default function GamepadControl() {
     const prev = prevInputRef.current;
 
     if (isButtonJustPressed(gamepadInput.options, prev?.options)) {
-      setEmergencyStop(true);
       setThrottle(0);
       setSteering(0);
-      sendCommand({ type: 'command', action: 'ESTOP', timestamp: Date.now() });
-      toast.error('EMERGENCY STOP ACTIVATED');
-      setTimeout(() => setEmergencyStop(false), 3000);
+      void driveControl.emergencyStop();
+      toast.error('EMERGENCY STOP LATCHED');
     }
 
     if (isButtonJustPressed(gamepadInput.psButton, prev?.psButton)) {
@@ -79,23 +79,11 @@ export default function GamepadControl() {
       return;
     }
 
-    if (!emergencyStop) {
-      // Triangle = Select Forward direction, X = Select Reverse direction
-      if (isButtonJustPressed(gamepadInput.triangle, prev?.triangle)) {
-        setDirection('FORWARD');
-        setMode('MANUAL');
-        toast.info('Direction: FORWARD');
-      }
-      if (isButtonJustPressed(gamepadInput.x, prev?.x)) {
-        setDirection('REVERSE');
-        setMode('MANUAL');
-        toast.info('Direction: REVERSE');
-      }
-
-      // R2 = Throttle amount (0-100%), direction determines actual movement
-      const throttleAmount = gamepadInput.r2 * 100;
-      setThrottle(throttleAmount > 5 ? throttleAmount : 0);
-
+    if (!driveControl.status.estop) {
+      const mappedThrottle = gamepadInput.r1 ? -gamepadInput.leftStickY : 0;
+      setDirection(mappedThrottle > 0.03 ? 'FORWARD' : mappedThrottle < -0.03 ? 'REVERSE' : 'NEUTRAL');
+      setMode('MANUAL');
+      setThrottle(Math.abs(mappedThrottle) > 0.03 ? Math.abs(mappedThrottle) * 100 : 0);
       setSteering(gamepadInput.rightStickX * 100);
       setCameraPan(gamepadInput.leftStickX * 90);
       setCameraTilt(-gamepadInput.leftStickY * 45);
@@ -161,7 +149,7 @@ export default function GamepadControl() {
     }
 
     prevInputRef.current = { ...gamepadInput };
-  }, [gamepadInput, isDemoMode, offlineDemo, isRecording, sendCommand, queryClient]);
+  }, [gamepadInput, isDemoMode, offlineDemo, isRecording, sendCommand, queryClient, driveControl.status.estop, driveControl.emergencyStop]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -175,7 +163,7 @@ export default function GamepadControl() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-display font-bold text-primary">GAMEPAD CONTROL</h1>
-            <p className="text-muted-foreground font-mono text-sm mt-1">PS4 DualShock 4 Controller</p>
+            <p className="text-muted-foreground font-mono text-sm mt-1">Left stick Y = forward / reverse · right stick X = steering · hold R1 to drive</p>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -192,14 +180,15 @@ export default function GamepadControl() {
         </div>
       </div>
 
-      <div className="grid grid-cols-12 gap-4">
-        <div className="col-span-8 space-y-4">
+      <DriveControlPanel />
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 mt-4">
+        <div className="space-y-4 lg:col-span-8">
           <div className="hud-panel p-3 flex items-center justify-between">
             <div className="flex items-center gap-2">
               {gamepadInput.isConnected ? (
                 <>
                   <div className="w-3 h-3 rounded-full bg-secondary animate-pulse shadow-[0_0_8px_var(--secondary)]"></div>
-                  <span className="font-mono text-sm text-secondary">PS4 CONNECTED</span>
+                  <span className="font-mono text-sm text-secondary">GAMEPAD CONNECTED</span>
                 </>
               ) : (
                 <>
@@ -304,9 +293,9 @@ export default function GamepadControl() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="hud-panel p-4">
-              <div className="text-xs font-display text-primary/70 mb-2">LEFT STICK - CAMERA</div>
+              <div className="text-xs font-display text-primary/70 mb-2">LEFT STICK Y - THROTTLE</div>
               <div className="flex items-center gap-4">
                 <div className="relative w-16 h-16 bg-black/50 border border-primary/20 rounded-full">
                   <motion.div
@@ -319,14 +308,14 @@ export default function GamepadControl() {
                   />
                 </div>
                 <div className="text-xs font-mono text-muted-foreground">
-                  <div>PAN: {cameraPan.toFixed(0)}°</div>
-                  <div>TILT: {cameraTilt.toFixed(0)}°</div>
+                  <div>{direction === 'FORWARD' ? 'FWD' : direction === 'REVERSE' ? 'REV' : 'NEUTRAL'}</div>
+                  <div>R1: {gamepadInput.r1 ? 'HELD' : 'RELEASED'}</div>
                 </div>
               </div>
             </div>
 
             <div className="hud-panel p-4">
-              <div className="text-xs font-display text-primary/70 mb-2">RIGHT STICK - STEERING</div>
+              <div className="text-xs font-display text-primary/70 mb-2">RIGHT STICK X - STEERING</div>
               <div className="flex items-center gap-4">
                 <div className="relative w-16 h-16 bg-black/50 border border-primary/20 rounded-full">
                   <motion.div
@@ -346,8 +335,8 @@ export default function GamepadControl() {
           </div>
         </div>
 
-        <div className="col-span-4 space-y-4">
-          {emergencyStop && (
+        <div className="space-y-4 lg:col-span-4">
+          {driveControl.status.estop && (
             <div className="hud-panel p-4 border-2 border-destructive bg-destructive/10 animate-pulse">
               <div className="flex items-center gap-2 text-destructive">
                 <AlertTriangle className="w-5 h-5" />
@@ -368,7 +357,7 @@ export default function GamepadControl() {
           </div>
 
           <div className="hud-panel p-4 space-y-3">
-            <h3 className="text-xs font-display text-primary/70">MOTION CONTROL</h3>
+            <h3 className="text-xs font-display text-primary/70">SIMULATION MOTION · DRIVE MAPPING</h3>
             
             <div>
               <div className="flex justify-between text-xs font-mono text-muted-foreground mb-1">
@@ -494,23 +483,23 @@ export default function GamepadControl() {
               
               <div className="space-y-4">
                 <div>
-                  <h3 className="text-xs font-display text-primary/70 mb-2">MOVEMENT</h3>
+                  <h3 className="text-xs font-display text-primary/70 mb-2">DRIVE MAPPING</h3>
                   <div className="grid grid-cols-2 gap-2 text-xs font-mono">
                     <div className="p-2 bg-black/30 rounded flex justify-between">
-                      <span className="text-secondary">△ Triangle</span>
-                      <span className="text-muted-foreground">Forward</span>
+                      <span className="text-secondary">Left stick Y</span>
+                      <span className="text-muted-foreground">Forward / Reverse</span>
                     </div>
                     <div className="p-2 bg-black/30 rounded flex justify-between">
-                      <span className="text-destructive">✕ Cross</span>
-                      <span className="text-muted-foreground">Reverse</span>
-                    </div>
-                    <div className="p-2 bg-black/30 rounded flex justify-between">
-                      <span className="text-secondary">R2</span>
-                      <span className="text-muted-foreground">Throttle</span>
-                    </div>
-                    <div className="p-2 bg-black/30 rounded flex justify-between">
-                      <span className="text-primary">R-Stick</span>
+                      <span className="text-primary">Right stick X</span>
                       <span className="text-muted-foreground">Steering</span>
+                    </div>
+                    <div className="p-2 bg-black/30 rounded flex justify-between">
+                      <span className="text-secondary">Hold R1</span>
+                      <span className="text-muted-foreground">Deadman</span>
+                    </div>
+                    <div className="p-2 bg-black/30 rounded flex justify-between">
+                      <span className="text-primary">Neutral + R1 released</span>
+                      <span className="text-muted-foreground">Required to arm</span>
                     </div>
                   </div>
                 </div>

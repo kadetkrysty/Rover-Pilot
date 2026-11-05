@@ -197,7 +197,7 @@ test("paired rover clients cannot read settings or issue operator commands", asy
   assert.equal(command.status, 403);
 });
 
-test("paired operators can read non-internal settings and control the rover", async () => {
+test("paired operators can read non-internal settings but legacy fake movement is retired", async () => {
   const headers = { authorization: `Bearer ${OPERATOR_TOKEN}` };
   const read = await fetch(`${origin}/api/config`, { headers });
   const configs = await read.json() as Array<{ key: string }>;
@@ -208,7 +208,7 @@ test("paired operators can read non-internal settings and control the rover", as
   });
   assert.equal(read.status, 200);
   assert.deepEqual(configs.map(({ key }) => key), ["camera_stream_url"]);
-  assert.equal(control.status, 200);
+  assert.equal(control.status, 410);
 });
 
 test("owner enrollment, invitation, and revocation use separate one-time client credentials", async () => {

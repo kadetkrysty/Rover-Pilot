@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 
 export interface GamepadInput {
   leftStickX: number;      // -1 to 1
@@ -55,8 +55,6 @@ export const useGamepad = () => {
     isConnected: false,
     gamepadIndex: null,
   });
-
-  const animationFrameRef = useRef<number | null>(null);
 
   const applyDeadzone = (value: number, threshold: number = DEADZONE): number => {
     if (Math.abs(value) < threshold) return 0;
@@ -157,19 +155,14 @@ export const useGamepad = () => {
     window.addEventListener('gamepadconnected', handleGamepadConnected);
     window.addEventListener('gamepaddisconnected', handleGamepadDisconnected);
 
-    // Start polling
-    const poll = () => {
-      pollGamepad();
-      animationFrameRef.current = requestAnimationFrame(poll);
-    };
-    animationFrameRef.current = requestAnimationFrame(poll);
+    // Keep the UI preview responsive without driving React at display refresh rate.
+    const poll = window.setInterval(pollGamepad, 100);
+    pollGamepad();
 
     return () => {
       window.removeEventListener('gamepadconnected', handleGamepadConnected);
       window.removeEventListener('gamepaddisconnected', handleGamepadDisconnected);
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
+      window.clearInterval(poll);
     };
   }, []);
 

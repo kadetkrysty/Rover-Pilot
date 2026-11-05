@@ -7,6 +7,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import AppLayout from "@/components/AppLayout";
+import { DriveControlProvider } from "@/lib/DriveControlProvider";
 import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/Dashboard";
 import { PerformanceContext, getPerformanceSettings, detectPerformanceProfile } from "@/lib/performanceSettings";
@@ -81,16 +82,18 @@ function App() {
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
           <Toaster />
-          {needsNativeConnection ? (
-            <Suspense fallback={<LoadingFallback />}>
-              <Setup
-                requiredConnection
-                onConnected={handleNativeConnected}
-              />
-            </Suspense>
-          ) : (
-            <Router />
-          )}
+          <DriveControlProvider>
+            {needsNativeConnection ? (
+              <Suspense fallback={<LoadingFallback />}>
+                <Setup
+                  requiredConnection
+                  onConnected={handleNativeConnected}
+                />
+              </Suspense>
+            ) : (
+              <Router />
+            )}
+          </DriveControlProvider>
         </TooltipProvider>
       </QueryClientProvider>
     </PerformanceContext.Provider>

@@ -52,6 +52,11 @@ rollback_application() {
   systemctl stop roveros.service || true
   ln -sfn "$previous_target" "$APP_ROOT/current.rollback"
   mv -Tf "$APP_ROOT/current.rollback" "$APP_ROOT/current"
+  if [[ -f "$previous_target/scripts/minipc/install-control.sh" ]]; then
+    bash "$previous_target/scripts/minipc/install-control.sh" "$previous_target" || true
+  else
+    systemctl stop roveros-control.service || true
+  fi
   switched=0
   systemctl start roveros.service || true
   health_check
@@ -158,7 +163,7 @@ with tarfile.open(sys.argv[1], "r:gz") as archive:
         p = pathlib.PurePosixPath(member.name)
         if p.is_absolute() or ".." in p.parts or not (member.isfile() or member.isdir()):
             raise ValueError("Unsafe server archive entry.")
-        if p.parts and p.parts[0] not in ("dist", "migrations", "deploy", "release-manifest.json"):
+        if p.parts and p.parts[0] not in ("dist", "migrations", "deploy", "scripts", "firmware", "docs", "release-manifest.json"):
             raise ValueError("Unexpected server archive entry.")
     archive.extractall(sys.argv[2], filter="data")
 PY
@@ -168,7 +173,7 @@ const [helper, file, version, current] = process.argv.slice(2);
 const installed = JSON.parse(fs.readFileSync(current, "utf8")).version;
 require(helper).verifyManifest(JSON.parse(fs.readFileSync(file, "utf8")), version, installed);
 NODE
-for required in dist/index.cjs dist/migrate.cjs dist/public/index.html migrations/meta/_journal.json deploy/avahi/roveros.service; do
+for required in dist/index.cjs dist/migrate.cjs dist/public/index.html migrations/meta/_journal.json deploy/avahi/roveros.service scripts/minipc/install-control.sh deploy/systemd/roveros-control.service firmware/mini_pc_master/control_core.py firmware/mini_pc_master/secure_control_daemon.py; do
   test -s "$staging/$required"
 done
 
@@ -202,10 +207,12 @@ find "$staging" -type f -exec chmod 0644 {} +
 mv "$staging" "$release_dir"
 staging=""
 previous_target="$(readlink -f "$APP_ROOT/current")"
+systemctl stop roveros-control.service || true
 write_status "running" 75 "Switching to the verified app release and checking startup health."
 ln -sfn "$release_dir" "$APP_ROOT/current.new"
 mv -Tf "$APP_ROOT/current.new" "$APP_ROOT/current"
 switched=1
+bash "$APP_ROOT/current/scripts/minipc/install-control.sh" "$APP_ROOT/current"
 systemctl restart roveros.service
 stage="startup_health_check"
 health_check

@@ -5,6 +5,7 @@ import {
   Gamepad2, Video, Cloud, Menu, X, ChevronDown, ShieldCheck
 } from 'lucide-react';
 import { useWebSocket } from '@/lib/useWebSocket';
+import { useDriveControl } from '@/lib/DriveControlProvider';
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -25,19 +26,10 @@ const navItems = [
 
 export default function Header() {
   const [location] = useLocation();
-  const { sendCommand, isConnected } = useWebSocket();
-  const [eStopActive, setEStopActive] = useState(false);
+  const { isConnected } = useWebSocket();
+  const { emergencyStop, status: driveStatus, demo } = useDriveControl();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
-
-  const handleEStop = () => {
-    setEStopActive(true);
-    sendCommand({ type: 'command', action: 'ESTOP', timestamp: Date.now() });
-    
-    setTimeout(() => {
-      setEStopActive(false);
-    }, 3000);
-  };
 
   const isActive = (path: string) => {
     if (path === '/' && location === '/') return true;
@@ -101,13 +93,14 @@ export default function Header() {
           <Button 
             variant="destructive" 
             size="sm" 
-            className={`font-mono text-xs ${eStopActive ? 'animate-pulse' : ''}`}
-            onClick={handleEStop}
-            disabled={eStopActive}
+            className={`font-mono text-xs ${driveStatus.estop ? 'animate-pulse' : ''}`}
+            onClick={() => void emergencyStop()}
+            disabled={demo}
+            aria-label={demo ? "Emergency stop disabled in Demo mode" : driveStatus.estop ? "Emergency stop is latched" : "Latch emergency stop"}
             data-testid="button-estop"
           >
             <Power className="w-4 h-4" />
-            <span className="hidden sm:inline ml-1">{eStopActive ? 'STOP!' : 'E-STOP'}</span>
+            <span className="hidden sm:inline ml-1">{demo ? 'DEMO' : driveStatus.estop ? 'E-STOP LATCHED' : 'E-STOP'}</span>
           </Button>
         </div>
       </header>

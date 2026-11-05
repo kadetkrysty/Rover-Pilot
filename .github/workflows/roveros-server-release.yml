@@ -16,6 +16,27 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  arduino:
+    name: Build Mega 2560 control firmware
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: arduino/setup-arduino-cli@v2
+        with:
+          version: "0.35.3"
+      - name: Install pinned AVR platform and existing sensor libraries
+        run: |
+          arduino-cli core update-index
+          arduino-cli core install arduino:avr@1.8.6
+          arduino-cli lib install "IBusBM@1.1.4" "TinyGPSPlus@1.0.3"
+      - name: Compile control firmware
+        run: arduino-cli compile --fqbn arduino:avr:mega --output-dir generated-artifacts/arduino firmware/arduino_mega_sensor_controller
+      - uses: actions/upload-artifact@v4
+        with:
+          name: roveros-mega2560-firmware
+          path: generated-artifacts/arduino/*.hex
+          if-no-files-found: error
   build:
     name: Build Ubuntu amd64 server bundle
     runs-on: ubuntu-24.04
@@ -80,6 +101,7 @@ jobs:
           npm run test:desktop
           npm run test:provisioning
           npm run test:recordings
+          npm run test:drive
           bash -n scripts/minipc/*.sh
 
       - name: Build production server and web assets

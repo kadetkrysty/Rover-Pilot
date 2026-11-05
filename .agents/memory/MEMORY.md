@@ -10,3 +10,5 @@
 - [Rover recording transport](rover-recording-transport.md) — MiniPC capture, private media sidecars and authenticated chunks preserve native certificate pinning.
 - [Maps provider policy](maps-provider-policy.md) — OpenStreetMap, MiniPC-owned settings and offline Demo; respect community service limits and avoid planet-wide geocoding on the AK1.
 - [Rover hardware](rover-hardware.md) — user-confirmed IMU6050/MPU6050 orientation sensor and gamepad, joystick and FlySky driving inputs.
+- [Drive-control safety](drive-control-safety.md) — private hardware transport, explicit commissioning and exclusive source/lease authority; never equate software tests with motor safety.
+- [Firmware tooling](firmware-tooling.md) — Nix Arduino CLI's FHS launcher can fail before compilation; use the underlying binary or Ubuntu CI rather than retrying bwrap.

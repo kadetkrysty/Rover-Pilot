@@ -18,6 +18,7 @@
     "test:client-connection": "node --import tsx --test client/src/lib/roverConnection.test.ts client/src/lib/discoveredServer.test.ts client/src/lib/demoMode.test.ts client/src/lib/demoVideos.test.ts client/src/lib/recordingApi.test.ts client/src/lib/joystickLayout.test.ts client/src/lib/mapsConfig.test.ts && node --test client/src/assets/fonts/fonts.test.mjs",
     "test:recordings": "node --import tsx --test server/recordings.test.ts server/recordingRoutes.test.ts",
     "test:client-auth": "node --import tsx --test server/clientAuth.test.ts server/routes.auth.test.ts server/mapsRoutes.test.ts",
+    "test:drive": "node --import tsx --test server/driveRoutes.test.ts client/src/lib/driveMapping.test.ts client/src/lib/driveLifecycle.test.ts && python3 -B -m unittest discover -s firmware/mini_pc_master -p 'test_control*.py' && c++ -std=c++11 -Wall -Werror firmware/tests/feru_protocol.test.cpp -o /tmp/rover-feru-test && /tmp/rover-feru-test",
     "start": "NODE_ENV=production node dist/index.cjs",
     "check": "tsc",
     "db:push": "drizzle-kit push",

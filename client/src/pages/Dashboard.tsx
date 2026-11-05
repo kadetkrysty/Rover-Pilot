@@ -11,21 +11,31 @@ import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Gauge, Compass, Activity } from 'lucide-react';
 import { isDemoMode } from '@/lib/demoMode';
+import DriveControlPanel from '@/components/DriveControlPanel';
+import { useDriveControl } from '@/lib/DriveControlProvider';
 
 export default function Dashboard() {
   const data = useRoverData();
   const { lidarScans, telemetry } = useWebSocket();
   const { data: joystickData, handleHeadingChange, reset } = useJoystickData();
+  const drive = useDriveControl();
+  // Live sensor loss must never silently fall back to the local demo generator.
+  const imu = drive.status.imu?.valid ? drive.status.imu : null;
+  const angleText = (value: number | undefined) => value === undefined ? "--" : `${value.toFixed(0)}°`;
+  const pitch = angleText(imu?.pitch ?? (drive.demo ? data.pitch : undefined));
+  const roll = angleText(imu?.roll ?? (drive.demo ? data.roll : undefined));
+  const yaw = angleText(imu?.yaw ?? (drive.demo ? data.heading : undefined));
 
   const roverLat = telemetry?.gps?.lat && telemetry.gps.lat !== 0 ? telemetry.gps.lat : null;
   const roverLng = telemetry?.gps?.lng && telemetry.gps.lng !== 0 ? telemetry.gps.lng : null;
 
   return (
-    <div className={`${isDemoMode() ? "h-full" : "h-[calc(100dvh-56px)]"} bg-background text-foreground font-sans selection:bg-primary/30 overflow-hidden relative`} data-testid="page-dashboard">
+    <div className={`${isDemoMode() ? "h-full" : "h-[calc(100dvh-56px)]"} flex flex-col bg-background text-foreground font-sans selection:bg-primary/30 overflow-hidden relative`} data-testid="page-dashboard">
       <div className="scanline"></div>
+      <DriveControlPanel />
 
       {/* Desktop Layout (≥1024px): 3 columns - strict viewport fit, NO scrolling */}
-      <main className="hidden lg:grid grid-cols-12 gap-1.5 p-1.5 h-full">
+      <main className="hidden lg:grid grid-cols-12 gap-1.5 p-1.5 flex-1 min-h-0">
         
         {/* Left Column - Core Systems (50%), OpenStreetMap (50%) */}
         <div className="col-span-3 grid grid-rows-2 gap-1.5 min-h-0">
@@ -89,11 +99,13 @@ export default function Dashboard() {
             {/* Heading Panel */}
             <div className="hud-panel p-[10px] flex flex-col justify-between group hover:border-primary/60 transition-colors">
               <div className="flex items-center gap-1 text-primary/80 uppercase tracking-wider font-display text-[9px]">
-                <Compass className="w-3 h-3" /> HDG
+                <Compass className="w-3 h-3" /> {drive.status.imu?.valid ? 'YAW' : 'HDG'}
               </div>
               <div className="text-center mt-1">
-                <span className="text-xl font-mono font-bold text-foreground" data-testid="text-heading">{data.heading.toFixed(0)}°</span>
-                <div className="text-[8px] text-muted-foreground">DEG</div>
+                  <span className="text-xl font-mono font-bold text-foreground" data-testid="text-heading">
+                    {yaw}
+                  </span>
+                <div className="text-[8px] text-muted-foreground">{drive.status.imu?.valid ? 'RELATIVE' : 'TELEMETRY'}</div>
               </div>
             </div>
 
@@ -105,11 +117,11 @@ export default function Dashboard() {
               <div className="text-center mt-1">
                 <div className="text-[9px] font-mono">
                   <span className="text-muted-foreground">P:</span>
-                  <span className="text-foreground font-bold" data-testid="text-pitch">{data.pitch.toFixed(0)}°</span>
+                  <span className="text-foreground font-bold" data-testid="text-pitch">{pitch}</span>
                 </div>
                 <div className="text-[9px] font-mono">
                   <span className="text-muted-foreground">R:</span>
-                  <span className="text-foreground font-bold" data-testid="text-roll">{data.roll.toFixed(0)}°</span>
+                  <span className="text-foreground font-bold" data-testid="text-roll">{roll}</span>
                 </div>
               </div>
             </div>
@@ -141,12 +153,14 @@ export default function Dashboard() {
               <div className="flex shrink-0 justify-between items-center pb-1">
                 <h3 className="text-[10px] font-display text-primary/80">NAV CONTROL</h3>
                 <div className="font-mono text-[10px] text-primary/80">
-                  {joystickData.heading !== null ? `${joystickData.heading.toFixed(0)}° ${joystickData.cardinalDirection}` : '---'}
+                  {joystickData.heading !== null ? `INPUT ${joystickData.cardinalDirection}` : 'NEUTRAL'}
                 </div>
               </div>
               <div className="flex-1 min-h-0 min-w-0 flex items-center justify-center">
-                <Joystick 
-                  onMove={(x, y) => { if (x === 0 && y === 0) reset(); }} 
+                <Joystick
+                  disabled={!drive.demo && (!drive.status.armed || !drive.status.owned || drive.source !== "joystick")}
+                  onMove={(x, y) => { drive.setJoystick(x, y); if (x === 0 && y === 0) reset(); }}
+                  onRelease={() => { reset(); void drive.releaseJoystick(); }}
                   onHeadingChange={handleHeadingChange}
                   size="90%" 
                 />
@@ -157,7 +171,7 @@ export default function Dashboard() {
       </main>
 
       {/* Tablet Layout (640px - 1023px): 2 columns, scrollable */}
-      <main className="hidden sm:grid lg:hidden grid-cols-2 gap-2 p-2 h-full overflow-y-auto">
+      <main className="hidden sm:grid lg:hidden grid-cols-2 gap-2 p-2 flex-1 min-h-0 overflow-y-auto">
         <div className="flex flex-col gap-2">
           <div className="hud-panel overflow-hidden">
             <AspectRatio ratio={16 / 9}>
@@ -175,12 +189,14 @@ export default function Dashboard() {
               <div className="flex shrink-0 justify-between items-center pb-1">
                 <h3 className="text-[10px] font-display text-primary/80">NAV</h3>
                 <div className="font-mono text-[10px] text-primary/80">
-                  {joystickData.heading !== null ? `${joystickData.heading.toFixed(0)}°` : '---'}
+                  {joystickData.heading !== null ? `ROVER ${joystickData.cardinalDirection}` : 'NEUTRAL'}
                 </div>
               </div>
               <div className="flex-1 min-h-0 min-w-0 flex items-center justify-center">
-                <Joystick 
-                  onMove={(x, y) => { if (x === 0 && y === 0) reset(); }} 
+                <Joystick
+                  disabled={!drive.demo && (!drive.status.armed || !drive.status.owned || drive.source !== "joystick")}
+                  onMove={(x, y) => { drive.setJoystick(x, y); if (x === 0 && y === 0) reset(); }}
+                  onRelease={() => { reset(); void drive.releaseJoystick(); }}
                   onHeadingChange={handleHeadingChange}
                   size="90%" 
                 />
@@ -210,8 +226,8 @@ export default function Dashboard() {
                 <div className="text-[7px] text-muted-foreground">KM/H</div>
               </div>
               <div>
-                <div className="text-xs font-mono text-primary font-bold">{data.heading.toFixed(0)}°</div>
-                <div className="text-[7px] text-muted-foreground">HDG</div>
+                <div className="text-xs font-mono text-primary font-bold">{yaw}</div>
+                <div className="text-[7px] text-muted-foreground">{drive.status.imu?.valid ? 'REL YAW' : 'HDG'}</div>
               </div>
             </div>
           </div>
@@ -233,7 +249,7 @@ export default function Dashboard() {
       </main>
 
       {/* Mobile Layout (<640px): Single column, scrollable */}
-      <main className="sm:hidden flex flex-col gap-2 p-2 h-full overflow-y-auto [&>*]:shrink-0">
+      <main className="sm:hidden flex flex-col gap-2 p-2 flex-1 min-h-0 overflow-y-auto [&>*]:shrink-0">
         <div className="hud-panel overflow-hidden">
           <AspectRatio ratio={16 / 9}>
             <CameraFeed className="h-full" latitude={roverLat ?? 0} longitude={roverLng ?? 0} />
@@ -250,11 +266,11 @@ export default function Dashboard() {
             <div className="text-[8px] text-muted-foreground">KM/H</div>
           </div>
           <div className="hud-panel p-[10px] text-center">
-            <div className="text-lg font-mono text-primary font-bold">{data.heading.toFixed(0)}°</div>
-            <div className="text-[8px] text-muted-foreground">HEADING</div>
+            <div className="text-lg font-mono text-primary font-bold">{yaw}</div>
+            <div className="text-[8px] text-muted-foreground">{drive.status.imu?.valid ? 'REL YAW' : 'HEADING'}</div>
           </div>
           <div className="hud-panel p-[10px] text-center">
-            <div className="text-[10px] font-mono">P:{data.pitch.toFixed(0)}° R:{data.roll.toFixed(0)}°</div>
+            <div className="text-[10px] font-mono">P:{pitch} R:{roll}</div>
             <div className="text-[8px] text-muted-foreground">STABILITY</div>
           </div>
         </div>
@@ -279,12 +295,14 @@ export default function Dashboard() {
             <div className="flex shrink-0 justify-between items-center pb-1">
               <h3 className="text-[10px] font-display text-primary/80">NAVIGATION</h3>
               <div className="font-mono text-[10px] text-primary/80">
-                {joystickData.heading !== null ? `${joystickData.heading.toFixed(0)}° ${joystickData.cardinalDirection}` : '---'}
+                {joystickData.heading !== null ? `ROVER ${joystickData.cardinalDirection}` : 'NEUTRAL'}
               </div>
             </div>
             <div className="flex-1 min-h-0 min-w-0 flex items-center justify-center">
-              <Joystick 
-                onMove={(x, y) => { if (x === 0 && y === 0) reset(); }} 
+              <Joystick
+                disabled={!drive.demo && (!drive.status.armed || !drive.status.owned || drive.source !== "joystick")}
+                onMove={(x, y) => { drive.setJoystick(x, y); if (x === 0 && y === 0) reset(); }}
+                onRelease={() => { reset(); void drive.releaseJoystick(); }}
                 onHeadingChange={handleHeadingChange}
                 size="95%" 
               />

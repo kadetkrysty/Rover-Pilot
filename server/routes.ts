@@ -5,6 +5,7 @@ import { storage, db } from "./storage";
 import { getProvisioningStatus } from "./provisioningState";
 import { registerRecordingRoutes } from "./recordingRoutes";
 import { registerMapsRoutes } from "./mapsRoutes";
+import { registerDriveRoutes, requestDriveController } from "./driveRoutes";
 import { sql } from "drizzle-orm";
 import { 
   insertRouteSchema, 
@@ -250,6 +251,7 @@ export async function registerRoutes(
   };
   registerRecordingRoutes(app, requirePairedClient);
   registerMapsRoutes(app, requirePairedClient);
+  registerDriveRoutes(app, requirePairedClient);
 
   app.get("/api/system/update", async (req, res) => {
     res.setHeader("Cache-Control", "no-store");
@@ -798,61 +800,24 @@ export async function registerRoutes(
   // Here we provide mock data for the web dashboard development
   app.get("/api/ibus", async (req, res) => {
     try {
-      // Mock iBUS data - in production this would come from rover_controller.py
-      // which reads iBUS data from Arduino Serial1 at ~143Hz
-      const mockIbusData = {
-        connected: true,
-        channels: [1500, 1500, 1000, 1500, 1000, 1000, 1500, 1000, 1500, 1500], // 10 channels
-        frameRate: 143,
-        signalStrength: 100,  // 0-100 based on iBUS frame rate
-        failsafe: false,      // True if transmitter signal lost
-        control: {
-          throttle: 0,
-          steering: 0
-        }
-      };
-      
-      res.json(mockIbusData);
+      const status = await requestDriveController({ action: "status", owner: "" });
+      const receiver = status.receiver as { connected: boolean; channels: number[]; failsafe: boolean } | null;
+      res.json({ connected: receiver?.connected || false, channels: receiver?.channels || [],
+        frameRate: 0, signalStrength: null, failsafe: receiver?.failsafe ?? true,
+        control: status.output, measuredFrameRate: false });
     } catch (error) {
       console.error("Error fetching iBUS data:", error);
-      res.status(500).json({ error: "Failed to fetch iBUS data" });
+      res.status(503).json({ error: "FlySky controller telemetry is unavailable." });
     }
   });
 
-  // Rover Control API - These will proxy to Mini PC rover_controller.py
+  // Retire simulated motion endpoints: never acknowledge a motor command not delivered.
   app.post("/api/rover/mode", async (req, res) => {
-    try {
-      const { mode } = req.body;
-      if (!mode || !['manual', 'autonomous', 'emergency_stop'].includes(mode)) {
-        return res.status(400).json({ error: "Invalid mode. Must be manual, autonomous, or emergency_stop" });
-      }
-      
-      console.log(`Rover mode changed to: ${mode}`);
-      res.json({ mode, status: "success" });
-    } catch (error) {
-      console.error("Error changing rover mode:", error);
-      res.status(500).json({ error: "Failed to change rover mode" });
-    }
+    return res.status(410).json({ error: "Use Drive Source on the dashboard. Legacy mode commands are disabled." });
   });
 
   app.post("/api/rover/move", async (req, res) => {
-    try {
-      const { direction, speed } = req.body;
-      
-      if (!direction || !['forward', 'backward', 'left', 'right', 'stop'].includes(direction)) {
-        return res.status(400).json({ error: "Invalid direction" });
-      }
-      
-      if (speed !== undefined && (speed < 0 || speed > 100)) {
-        return res.status(400).json({ error: "Speed must be between 0 and 100" });
-      }
-      
-      console.log(`Rover move: ${direction} at speed ${speed || 50}`);
-      res.json({ direction, speed: speed || 50, status: "success" });
-    } catch (error) {
-      console.error("Error sending move command:", error);
-      res.status(500).json({ error: "Failed to send move command" });
-    }
+    return res.status(410).json({ error: "Use the exclusive Drive Control API. Legacy movement commands are disabled." });
   });
 
   app.post("/api/rover/navigate", async (req, res) => {
@@ -994,10 +959,24 @@ export async function registerRoutes(
             ws.send(JSON.stringify({ type: "error", message: "Only authenticated operator can send commands" }));
             return;
           }
-          console.log(`Command from operator ${sessionId}:`, parsed.command);
+          const legacy = parsed.command;
+          const action = typeof legacy?.action === "string" ? legacy.action.toUpperCase() :
+            typeof legacy?.type === "string" ? legacy.type.toUpperCase() : "";
+          if (["ESTOP", "STOP"].includes(action)) {
+            try {
+              await requestDriveController({ action: action === "ESTOP" ? "estop" : "stop", owner: clientInfo.clientAuth!.id });
+              ws.send(JSON.stringify({ type: "drive_stop_ack" }));
+            } catch { ws.send(JSON.stringify({ type: "error", message: "Motor stop could not be confirmed. Use the physical emergency stop." })); }
+            return;
+          }
+          // Only known, argument-free auxiliary commands can use this old relay.
+          if (!["CAPTURE_SNAPSHOT", "HORN_ON", "HORN_OFF", "LIGHTS_ON", "LIGHTS_OFF"].includes(action)) {
+            ws.send(JSON.stringify({ type: "error", message: "Use the exclusive Drive Control API." }));
+            return;
+          }
           connectedClients.forEach((c) => {
             if (c.role === 'rover' && c.authenticated && c.ws.readyState === WebSocket.OPEN) {
-              c.ws.send(JSON.stringify({ type: "command", command: parsed.command }));
+              c.ws.send(JSON.stringify({ type: "command", command: { action } }));
             }
           });
         } else if (parsed.type === "ping") {

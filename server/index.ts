@@ -109,6 +109,7 @@ app.use((req, res, next) => {
         const containsSensitiveData =
           path.startsWith("/api/recordings") ||
           path.startsWith("/api/maps") ||
+          path.startsWith("/api/drive") ||
           path.startsWith("/api/clients") ||
           path.startsWith("/api/config") ||
           path === "/api/export/all" ||

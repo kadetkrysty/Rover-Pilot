@@ -24,6 +24,7 @@
 #include <SoftwareSerial.h>
 #include <IBusBM.h>
 #include <TinyGPSPlus.h>
+#include "feru_protocol.h"
 
 // ===== PIN DEFINITIONS =====
 // Hoverboard FOC controller (SoftwareSerial)
@@ -100,6 +101,14 @@ bool gpsLocked = false;
 // ===== IMU VARIABLES =====
 int16_t ax, ay, az, gx, gy, gz;
 const int MPU6050_ADDR = 0x68;
+bool driveArmed = false;
+bool driveEstop = false;
+unsigned long lastDriveCommand = 0;
+const unsigned long DRIVE_TIMEOUT_MS = 350;
+unsigned long lastIbusPacket = 0;
+bool ibusSeen = false;
+bool imuCalibrated = false;
+unsigned long lastImuRead = 0;
 
 // ===== HUSKY LENS =====
 const int HUSKYLENS_ADDR = 0x32;
@@ -109,11 +118,15 @@ void setup() {
   Serial2.begin(115200);          // TF Mini Pro LIDAR
   Serial3.begin(9600);            // GPS Neo-6M
   hoverSerial.begin(115200);      // Hoverboard FOC
+  sendToHoverboard(0, 0);         // Boot is always stopped; never restore an old command.
   
   // Initialize iBUS on Serial1 (FlySky FS-IA10B)
   ibus.begin(Serial1);
   
   Wire.begin();                   // I2C for sensors
+#if defined(WIRE_HAS_TIMEOUT)
+  Wire.setWireTimeout(25000, true);
+#endif
   
   pinMode(STATUS_LED, OUTPUT);
   
@@ -139,7 +152,7 @@ void setup() {
     pinMode(23 + i*2, INPUT);     // ECHO
   }
   
-  Serial.println("{\"event\":\"boot\",\"version\":\"3.0.0\",\"controller\":\"Arduino Mega 2560\"}");
+  Serial.println("{\"event\":\"boot\",\"version\":\"4.0.0\",\"controller\":\"Arduino Mega 2560\"}");
   delay(500);
   Serial.println("{\"event\":\"ready\",\"ibus\":true,\"channels\":10}");
 }
@@ -154,9 +167,29 @@ void loop() {
   }
   
   // ===== COMMAND PROCESSING =====
-  if (Serial.available() > 0) {
-    String command = Serial.readStringUntil('\n');
-    handleCommand(command);
+  // Bounded, nonblocking line parsing: a partial serial line cannot delay the watchdog.
+  static char command[64];
+  static uint8_t commandLength = 0;
+  static bool discardLine = false;
+  uint8_t bytesRead = 0;
+  while (Serial.available() > 0 && bytesRead++ < 64) {
+    char c = Serial.read();
+    if (c == '\n') {
+      if (!discardLine) {
+        command[commandLength] = '\0';
+        handleCommand(String(command));
+      }
+      commandLength = 0;
+      discardLine = false;
+    } else if (c != '\r') {
+      if (commandLength < sizeof(command) - 1 && !discardLine) command[commandLength++] = c;
+      else discardLine = true;
+    }
+  }
+  if (driveArmed && millis() - lastDriveCommand > DRIVE_TIMEOUT_MS) {
+    driveArmed = false;
+    sendToHoverboard(0, 0);
+    Serial.println("{\"event\":\"drive_timeout\"}");
   }
   
   // ===== LIDAR READING (10Hz) =====
@@ -184,36 +217,40 @@ void loop() {
     digitalWrite(STATUS_LED, !digitalRead(STATUS_LED));
     lastStatusBlink = now;
   }
+  if (driveArmed && millis() - lastDriveCommand > DRIVE_TIMEOUT_MS) {
+    driveArmed = false;
+    sendToHoverboard(0, 0);
+  }
 }
 
 // ===== iBUS FUNCTIONS =====
 void readIbus() {
-  static unsigned long lastValidRead = 0;
-  bool anyValid = false;
+  static uint8_t lastCount = 0;
+  static unsigned long packetCount = 0;
+  static unsigned long lastFrameCheck = 0;
+  uint8_t count = ibus.cnt_rec;
+  uint8_t received = uint8_t(count - lastCount);
+  lastCount = count;
+  if (received) {
+    lastIbusPacket = millis();
+    ibusSeen = true;
+    packetCount += received;
+  }
+  bool allValid = true;
   
   for (int i = 0; i < IBUS_CHANNELS; i++) {
     int value = ibus.readChannel(i);
-    if (value > 0) {
+    if (value >= 800 && value <= 2200) {
       telemetry.ibusChannels[i] = value;
-      anyValid = true;
-    }
+    } else allValid = false;
   }
   
-  if (anyValid) {
-    lastValidRead = millis();
-    telemetry.ibusConnected = true;
-  } else if (millis() - lastValidRead > 1000) {
-    telemetry.ibusConnected = false;
-  }
-  
-  // Calculate approximate frame rate (iBUS runs at ~143Hz)
-  static unsigned long frameCount = 0;
-  static unsigned long lastFrameCheck = 0;
-  frameCount++;
+  // readChannel returns cached values even after radio loss. Count NEW packets.
+  telemetry.ibusConnected = ibusSeen && allValid && millis() - lastIbusPacket <= 250;
   
   if (millis() - lastFrameCheck >= 1000) {
-    telemetry.ibusFrameRate = frameCount;
-    frameCount = 0;
+    telemetry.ibusFrameRate = packetCount;
+    packetCount = 0;
     lastFrameCheck = millis();
   }
 }
@@ -229,15 +266,35 @@ int getIbusChannel(int ch) {
 void handleCommand(String cmd) {
   cmd.trim();
   
-  if (cmd.startsWith("MOVE:")) {
-    // Format: MOVE:throttle,steering
+  if (cmd == "ARM" && !driveEstop) {
+    driveArmed = true;
+    lastDriveCommand = millis();
+    sendToHoverboard(0, 0);
+    Serial.println("{\"event\":\"drive_armed\",\"protocol\":1}");
+  }
+  else if (cmd.startsWith("DRIVE:") && driveArmed && !driveEstop) {
     int commaIdx = cmd.indexOf(',');
-    int throttle = cmd.substring(5, commaIdx).toInt();
-    int steering = cmd.substring(commaIdx + 1).toInt();
+    if (commaIdx <= 6 || cmd.indexOf(',', commaIdx + 1) >= 0) return;
+    char *endThrottle, *endSteering;
+    String a = cmd.substring(6, commaIdx), b = cmd.substring(commaIdx + 1);
+    long throttle = strtol(a.c_str(), &endThrottle, 10);
+    long steering = strtol(b.c_str(), &endSteering, 10);
+    if (!a.length() || !b.length() || *endThrottle || *endSteering ||
+        throttle < -150 || throttle > 150 || steering < -150 || steering > 150) return;
+    if (millis() - lastDriveCommand > DRIVE_TIMEOUT_MS) {
+      driveArmed = false;
+      sendToHoverboard(0, 0);
+      return;
+    }
+    lastDriveCommand = millis();
     sendToHoverboard(throttle, steering);
   }
-  else if (cmd == "STOP") {
+  else if (cmd == "STOP" || cmd == "ESTOP" || cmd == "RESET_STOP") {
+    driveArmed = false;
+    if (cmd == "ESTOP") driveEstop = true;
+    if (cmd == "RESET_STOP") driveEstop = false;
     sendToHoverboard(0, 0);
+    if (cmd == "RESET_STOP") Serial.println("{\"event\":\"drive_reset\",\"protocol\":1}");
     Serial.println("{\"event\":\"stopped\"}");
   }
   else if (cmd == "PING") {
@@ -287,28 +344,10 @@ void sendIbusData() {
 
 // ===== HOVERBOARD FOC CONTROL =====
 void sendToHoverboard(int throttle, int steering) {
-  // Emmanuel Feru's Hoverboard FOC protocol
-  throttle = constrain(throttle, -1000, 1000);
-  steering = constrain(steering, -1000, 1000);
-  
-  // Calculate left/right motor speeds (differential drive)
-  int leftSpeed = throttle + steering;
-  int rightSpeed = throttle - steering;
-  
-  leftSpeed = constrain(leftSpeed, -1000, 1000);
-  rightSpeed = constrain(rightSpeed, -1000, 1000);
-  
-  // Send FOC command frame
+  throttle = constrain(throttle, -150, 150);
+  steering = constrain(steering, -150, 150);
   byte packet[8];
-  packet[0] = 0xCD;  // Start frame
-  packet[1] = (leftSpeed >> 8) & 0xFF;
-  packet[2] = leftSpeed & 0xFF;
-  packet[3] = (rightSpeed >> 8) & 0xFF;
-  packet[4] = rightSpeed & 0xFF;
-  packet[5] = 0x00;  // Reserved
-  packet[6] = 0x00;  // Reserved
-  packet[7] = (packet[1] ^ packet[2] ^ packet[3] ^ packet[4]) & 0xFF;  // Checksum
-  
+  packFeruCommand(throttle, steering, packet);
   hoverSerial.write(packet, 8);
 }
 
@@ -344,7 +383,9 @@ void readLidar() {
 
 // ===== ULTRASONIC READING =====
 void readUltrasonic() {
-  for (int i = 0; i < 5; i++) {
+  // Stagger pings: five consecutive 30 ms waits would delay motor command processing.
+  static int i = 0;
+  {
     int trigPin = 22 + i*2;
     int echoPin = 23 + i*2;
     
@@ -356,7 +397,12 @@ void readUltrasonic() {
     
     long duration = pulseIn(echoPin, HIGH, 30000);
     telemetry.ultrasonic[i] = duration > 0 ? duration / 58 : 999;
+    if (driveArmed && millis() - lastDriveCommand > DRIVE_TIMEOUT_MS) {
+      driveArmed = false;
+      sendToHoverboard(0, 0);
+    }
   }
+  i = (i + 1) % 5;
 }
 
 // ===== IMU (MPU6050) =====
@@ -391,8 +437,9 @@ void readIMU() {
   
   Wire.beginTransmission(MPU6050_ADDR);
   Wire.write(0x3B);
-  Wire.endTransmission(false);
+  if (Wire.endTransmission(false) != 0) { lastImuRead = 0; return; }
   Wire.requestFrom(MPU6050_ADDR, 14, true);
+  if (Wire.available() != 14) { lastImuRead = 0; return; }
   
   ax = Wire.read() << 8 | Wire.read();
   ay = Wire.read() << 8 | Wire.read();
@@ -407,14 +454,36 @@ void readIMU() {
   telemetry.accelY = ay / 16384.0;
   telemetry.accelZ = az / 16384.0;
   
-  // Calculate pitch and roll from accelerometer
-  telemetry.pitch = atan2(ax, sqrt(ay*ay + az*az)) * 180.0 / PI;
-  telemetry.roll = atan2(ay, sqrt(ax*ax + az*az)) * 180.0 / PI;
-  
-  // Integrate gyroscope for heading (simplified)
-  static float headingAccum = 0;
-  headingAccum += (gz / 131.0) * 0.05;  // 50ms interval
-  telemetry.heading = fmod(headingAccum + 360, 360);
+  // Stationary startup bias calibration. MPU6050 yaw is RELATIVE, never compass north.
+  static uint8_t calibrationSamples = 0;
+  static float sumX = 0, sumY = 0, sumZ = 0, biasX = 0, biasY = 0, biasZ = 0;
+  static unsigned long previousMicros = 0;
+  float rateX = gx / 131.0, rateY = gy / 131.0, rateZ = gz / 131.0;
+  float norm = sqrt(telemetry.accelX * telemetry.accelX + telemetry.accelY * telemetry.accelY +
+                    telemetry.accelZ * telemetry.accelZ);
+  float accelPitch = atan2(-float(ax), sqrt(float(ay)*ay + float(az)*az)) * 180.0 / PI;
+  float accelRoll = atan2(float(ay), float(az)) * 180.0 / PI;
+  unsigned long nowMicros = micros();
+  float dt = previousMicros ? (nowMicros - previousMicros) / 1000000.0 : 0;
+  previousMicros = nowMicros;
+  lastImuRead = millis();
+  if (!imuCalibrated) {
+    if (abs(norm - 1) < 0.08 && abs(rateX) < 3 && abs(rateY) < 3 && abs(rateZ) < 3 && !driveArmed) {
+      sumX += rateX; sumY += rateY; sumZ += rateZ;
+      if (++calibrationSamples >= 64) {
+        biasX = sumX / 64; biasY = sumY / 64; biasZ = sumZ / 64;
+        imuCalibrated = true;
+        telemetry.heading = 0;
+      }
+    } else { calibrationSamples = 0; sumX = sumY = sumZ = 0; }
+    telemetry.pitch = accelPitch;
+    telemetry.roll = accelRoll;
+    return;
+  }
+  if (dt <= 0 || dt > 0.25) return; // No invented rotation across missing samples.
+  telemetry.pitch = 0.98 * (telemetry.pitch + (rateY - biasY) * dt) + 0.02 * accelPitch;
+  telemetry.roll = 0.98 * (telemetry.roll + (rateX - biasX) * dt) + 0.02 * accelRoll;
+  telemetry.heading = fmod(telemetry.heading + (rateZ - biasZ) * dt + 360, 360);
 }
 
 // ===== HUSKY LENS =====
@@ -482,6 +551,8 @@ void sendTelemetry() {
   Serial.print(telemetry.accelY, 2);
   Serial.print(",\"az\":");
   Serial.print(telemetry.accelZ, 2);
+  Serial.print(",\"valid\":");
+  Serial.print(imuCalibrated && lastImuRead && millis() - lastImuRead <= 250 ? "true" : "false");
   Serial.print("}");
   
   // LIDAR
@@ -499,6 +570,8 @@ void sendTelemetry() {
   // iBUS RC channels
   Serial.print(",\"ibus\":{\"con\":");
   Serial.print(telemetry.ibusConnected ? "true" : "false");
+  Serial.print(",\"age\":");
+  Serial.print(ibusSeen ? min(millis() - lastIbusPacket, 1000000UL) : 1000000UL);
   Serial.print(",\"ch\":[");
   for (int i = 0; i < IBUS_CHANNELS; i++) {
     Serial.print(telemetry.ibusChannels[i]);
@@ -507,6 +580,11 @@ void sendTelemetry() {
   Serial.print("]}");
   
   // Battery
+  Serial.print(",\"control\":{\"protocol\":1,\"watchdogMs\":350,\"armed\":");
+  Serial.print(driveArmed ? "true" : "false");
+  Serial.print(",\"estop\":");
+  Serial.print(driveEstop ? "true" : "false");
+  Serial.print("}");
   Serial.print(",\"bat\":");
   Serial.print(telemetry.battery, 1);
   
