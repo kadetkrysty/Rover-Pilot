@@ -1,6 +1,6 @@
 # RoverOS installation on the ACEPC AK1
 
-For centrally managed live maps, see [Google Maps configuration](GOOGLE_MAPS_CONFIGURATION.md).
+For centrally managed live maps, see [OpenStreetMap configuration](OPENSTREETMAP_CONFIGURATION.md). No Google key is needed.
 The owner configures the MiniPC once through Map Settings; offline Demo uses a local sample map.
 
 For rover camera capture, storage limits, privacy and Android/Windows playback,

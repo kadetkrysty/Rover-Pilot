@@ -27,7 +27,7 @@ export default function Dashboard() {
       {/* Desktop Layout (≥1024px): 3 columns - strict viewport fit, NO scrolling */}
       <main className="hidden lg:grid grid-cols-12 gap-1.5 p-1.5 h-full">
         
-        {/* Left Column - Core Systems (50%), Google Maps (50%) */}
+        {/* Left Column - Core Systems (50%), OpenStreetMap (50%) */}
         <div className="col-span-3 grid grid-rows-2 gap-1.5 min-h-0">
           {/* Core Systems - 50% height */}
           <div className="hud-panel p-[10px] min-h-0 overflow-hidden">
@@ -36,9 +36,11 @@ export default function Dashboard() {
             </ScrollArea>
           </div>
           
-          {/* Google Maps - 50% height */}
+          {/* OpenStreetMap - 50% height */}
           <div className="hud-panel min-h-0 overflow-hidden">
             <RoverLocationMap 
+              roverLat={roverLat ?? undefined}
+              roverLng={roverLng ?? undefined}
               height="100%"
               showUserLocation
             />
@@ -189,7 +191,7 @@ export default function Dashboard() {
         
         <div className="flex flex-col gap-2">
           <div className="hud-panel h-[25vh] overflow-hidden">
-            <RoverLocationMap height="100%" showUserLocation />
+            <RoverLocationMap height="100%" showUserLocation roverLat={roverLat ?? undefined} roverLng={roverLng ?? undefined} />
           </div>
             
           <div className="hud-panel p-[10px]">
@@ -291,7 +293,7 @@ export default function Dashboard() {
         </div>
         
         <div className="hud-panel h-[25vh] overflow-hidden">
-          <RoverLocationMap height="100%" showUserLocation />
+          <RoverLocationMap height="100%" showUserLocation roverLat={roverLat ?? undefined} roverLng={roverLng ?? undefined} />
         </div>
         
         <div className="hud-panel p-[10px] h-[35vh]">

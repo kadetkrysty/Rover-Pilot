@@ -70,6 +70,7 @@ function createWindow() {
   });
 
   mainWindow.once("ready-to-show", () => mainWindow.show());
+  mainWindow.webContents.setUserAgent(`${mainWindow.webContents.getUserAgent()} RoverOS/1.0`);
   mainWindow.webContents.session.webRequest.onBeforeRequest(
     { urls: ["http://*/*", "https://*/*", "ws://*/*", "wss://*/*"] },
     (details, callback) => callback({

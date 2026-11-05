@@ -11,6 +11,8 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(RoverProvisioningPlugin.class);
         registerPlugin(RoverMediaPlugin.class);
         super.onCreate(savedInstanceState);
+        String userAgent = getBridge().getWebView().getSettings().getUserAgentString();
+        getBridge().getWebView().getSettings().setUserAgentString(userAgent + " RoverOS/1.0");
         getBridge().setWebViewClient(new RoverPinnedWebViewClient(getBridge()));
     }
 }

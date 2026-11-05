@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { getMapsConfig, saveMapsConfig } from "./mapsConfig";
+import { getMapsConfig, saveMapsConfig, searchMapAddress } from "./mapsConfig";
+import { defaultMapsSettings } from "@shared/maps";
 
 test("offline Demo refuses live Maps configuration reads and writes", async () => {
   const previous = globalThis.window;
@@ -11,7 +12,8 @@ test("offline Demo refuses live Maps configuration reads and writes", async () =
   } as unknown as Window & typeof globalThis;
   try {
     await assert.rejects(getMapsConfig(), /disabled in offline demo/);
-    await assert.rejects(saveMapsConfig(""), /cannot be changed in offline demo/);
+    await assert.rejects(saveMapsConfig(defaultMapsSettings), /cannot be changed in offline demo/);
+    await assert.rejects(searchMapAddress("London"), /disabled in offline demo/);
     assert.equal(calls, 0);
   } finally { globalThis.window = previous; }
 });

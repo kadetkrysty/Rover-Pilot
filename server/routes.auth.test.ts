@@ -147,8 +147,15 @@ test("Maps configuration requires pinned transport and pairing, without weakenin
   })).status, 400);
   assert.equal((await fetch(`${origin}/api/maps/config`, {
     method: "POST", headers: operatorHeaders,
-    body: JSON.stringify({ browserKey: "", publicBrowserKey: true }),
+    body: JSON.stringify({ tilesEnabled: true, tileUrl: "https://tile.openstreetmap.org/{z}/{x}/{y}.png", searchEnabled: true }),
   })).status, 403);
+  assert.equal((await fetch(`${origin}/api/config`, {
+    method: "POST", headers: operatorHeaders,
+    body: JSON.stringify({ key: "maps_settings", value: "{}" }),
+  })).status, 400, "generic config cannot bypass owner map management");
+  assert.equal((await fetch(`${origin}/api/maps/search`, {
+    method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ query: "London" }),
+  })).status, 401);
 });
 
 test("revoked clients cannot read settings or issue control commands", async () => {

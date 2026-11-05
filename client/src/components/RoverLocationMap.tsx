@@ -1,11 +1,7 @@
-import { GoogleMap, MarkerF, Circle } from '@react-google-maps/api';
-import { useMapsConfig } from '@/lib/mapsConfig';
-import { MapLoadError, useRoverMapsScript } from '@/components/MapsScript';
-import { useLocation } from '@/hooks/useLocation';
-import { MapPin, Loader2, AlertCircle, LocateFixed } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { useMemo, useState, useEffect } from 'react';
-import { isDemoMode } from '@/lib/demoMode';
+import { useLocation } from "@/hooks/useLocation";
+import { useMapsConfig } from "@/lib/mapsConfig";
+import { isDemoMode } from "@/lib/demoMode";
+import OpenStreetMap from "@/components/OpenStreetMap";
 
 interface RoverLocationMapProps {
   roverLat?: number;
@@ -14,267 +10,33 @@ interface RoverLocationMapProps {
   showUserLocation?: boolean;
 }
 
-const mapContainerStyle = {
-  width: '100%',
-  height: '100%',
-};
-
-const darkMapStyle = [
-  { elementType: 'geometry', stylers: [{ color: '#1a1a2e' }] },
-  { elementType: 'labels.text.stroke', stylers: [{ color: '#1a1a2e' }] },
-  { elementType: 'labels.text.fill', stylers: [{ color: '#4a9eff' }] },
-  {
-    featureType: 'road',
-    elementType: 'geometry',
-    stylers: [{ color: '#2d2d44' }],
-  },
-  {
-    featureType: 'road',
-    elementType: 'geometry.stroke',
-    stylers: [{ color: '#1a1a2e' }],
-  },
-  {
-    featureType: 'water',
-    elementType: 'geometry',
-    stylers: [{ color: '#0d1b2a' }],
-  },
-  {
-    featureType: 'poi',
-    elementType: 'geometry',
-    stylers: [{ color: '#1a1a2e' }],
-  },
-];
-
-function GoogleMapWrapper({ 
-  apiKey, 
-  lat, 
-  lng, 
-  location, 
-  showUserLocation,
-  height,
-}: { 
-  apiKey: string;
-  lat: number; 
-  lng: number; 
-  location: ReturnType<typeof useLocation>; 
-  showUserLocation: boolean;
-  height: string;
-}) {
-  const { isLoaded, loadError, authError, requiresReload, timedOut } = useRoverMapsScript(apiKey);
-
-  const roverIcon = useMemo(() => {
-    if (!isLoaded || typeof google === 'undefined') return undefined;
-    return {
-      path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
-      fillColor: '#00ff88',
-      fillOpacity: 1,
-      strokeColor: '#004422',
-      strokeWeight: 2,
-      scale: 6,
-      rotation: location.heading || 0,
-    };
-  }, [isLoaded, location.heading]);
-
-  const userIcon = useMemo(() => {
-    if (!isLoaded || typeof google === 'undefined') return undefined;
-    return {
-      path: google.maps.SymbolPath.CIRCLE,
-      fillColor: '#4a9eff',
-      fillOpacity: 1,
-      strokeColor: '#ffffff',
-      strokeWeight: 2,
-      scale: 6,
-    };
-  }, [isLoaded]);
-
-  if (loadError || authError || requiresReload || timedOut) {
-    return (
-      <div 
-        className="bg-black/50 border border-border rounded flex items-center justify-center"
-        style={{ height }}
-        data-testid="rover-map-load-error"
-      >
-        <MapLoadError changed={requiresReload} />
-      </div>
-    );
-  }
-
-  if (!isLoaded) {
-    return (
-      <div 
-        className="bg-black/50 border border-border rounded flex items-center justify-center"
-        style={{ height }}
-        data-testid="rover-map-loading-script"
-      >
-        <div className="flex flex-col items-center gap-2 text-muted-foreground">
-          <Loader2 className="w-6 h-6 animate-spin text-primary" />
-          <span className="text-xs font-mono">LOADING MAP...</span>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div 
-      className="rounded overflow-hidden border border-border relative"
-      style={{ height }}
-      data-testid="rover-map-container"
-    >
-      <GoogleMap
-        mapContainerStyle={mapContainerStyle}
-        center={{ lat, lng }}
-        zoom={17}
-        options={{
-          styles: darkMapStyle,
-          disableDefaultUI: true,
-          zoomControl: true,
-          mapTypeControl: false,
-          streetViewControl: false,
-          fullscreenControl: false,
-        }}
-      >
-        <MarkerF
-          position={{ lat, lng }}
-          icon={roverIcon}
-        />
-        
-        {location.accuracy && (
-          <Circle
-            center={{ lat, lng }}
-            radius={location.accuracy}
-            options={{
-              fillColor: '#00ff88',
-              fillOpacity: 0.1,
-              strokeColor: '#00ff88',
-              strokeOpacity: 0.3,
-              strokeWeight: 1,
-            }}
-          />
-        )}
-
-        {showUserLocation && location.latitude && location.longitude && 
-         (location.latitude !== lat || location.longitude !== lng) && (
-          <MarkerF
-            position={{ lat: location.latitude, lng: location.longitude }}
-            icon={userIcon}
-          />
-        )}
-      </GoogleMap>
-
-      <div className="absolute bottom-2 left-2 bg-black/70 px-2 py-1 rounded text-[10px] font-mono text-green-400">
-        {lat.toFixed(6)}, {lng.toFixed(6)}
-      </div>
-
-      {location.accuracy && (
-        <div className="absolute bottom-2 right-2 bg-black/70 px-2 py-1 rounded text-[10px] font-mono text-cyan-400">
-          ±{location.accuracy.toFixed(0)}m
-        </div>
-      )}
-    </div>
-  );
-}
-
-export default function RoverLocationMap({
-  roverLat,
-  roverLng,
-  height = '200px',
-  showUserLocation = false,
-}: RoverLocationMapProps) {
-  const mapsConfig = useMapsConfig();
-  const apiKeyLoading = mapsConfig.isLoading;
-
-  const location = useLocation(true);
-  const mapApiKey = mapsConfig.data?.browserKey || '';
-
-  const lat = roverLat ?? location.latitude ?? 34.0522;
-  const lng = roverLng ?? location.longitude ?? -118.2437;
-  const hasValidLocation = (roverLat !== undefined && roverLng !== undefined) || 
-                           (location.latitude !== null && location.longitude !== null);
-
-  if (isDemoMode()) {
-    return (
-      <div style={{ height }} className="relative overflow-hidden bg-background border border-primary/20" data-testid="demo-offline-map">
-        <svg viewBox="0 0 300 200" className="w-full h-full" role="img" aria-label="Offline sample rover route, not a live map">
-          <defs><pattern id="demo-map-grid" width="25" height="25" patternUnits="userSpaceOnUse"><path d="M25 0H0V25" fill="none" stroke="#00ffff" strokeOpacity=".12" /></pattern></defs>
-          <rect width="300" height="200" fill="url(#demo-map-grid)" />
-          <path d="M40 150L90 130L115 75L190 95L245 45" fill="none" stroke="#00ffff" strokeWidth="2" strokeDasharray="6 5" />
-          <circle cx="115" cy="75" r="8" fill="#00ffff" />
-          <circle cx="115" cy="75" r="22" fill="none" stroke="#00ffff" strokeOpacity=".4" />
-          <text x="12" y="185" fill="#9faec3" fontSize="10" fontFamily="monospace">OFFLINE SAMPLE MAP · 34.0522, -118.2437</text>
-        </svg>
-      </div>
-    );
-  }
-
-  if (apiKeyLoading || location.loading) {
-    return (
-      <div 
-        className="bg-black/50 border border-border rounded flex items-center justify-center"
-        style={{ height }}
-        data-testid="rover-map-loading"
-      >
-        <div className="flex flex-col items-center gap-2 text-muted-foreground">
-          <Loader2 className="w-6 h-6 animate-spin text-primary" />
-          <span className="text-xs font-mono">ACQUIRING GPS...</span>
-        </div>
-      </div>
-    );
-  }
-
-  if (!mapApiKey) {
-    return (
-      <div 
-        className="bg-black/50 border border-border rounded flex items-center justify-center"
-        style={{ height }}
-        data-testid="rover-map-no-key"
-      >
-        <div className="flex flex-col items-center gap-2 text-muted-foreground p-4">
-          <MapPin className="w-6 h-6 text-yellow-500" />
-          <span className="text-xs font-mono text-center">
-            GPS: {lat.toFixed(4)}, {lng.toFixed(4)}
-          </span>
-          <span className="text-[10px] text-muted-foreground/50">
-            {mapsConfig.error ? "MiniPC map settings unavailable" : "Configure live maps in Map Settings"}
-          </span>
-          <a href="/settings/maps" className="text-xs text-primary underline underline-offset-4">Map Settings</a>
-        </div>
-      </div>
-    );
-  }
-
-  if (location.error && !hasValidLocation) {
-    return (
-      <div 
-        className="bg-black/50 border border-border rounded flex items-center justify-center"
-        style={{ height }}
-        data-testid="rover-map-error"
-      >
-        <div className="flex flex-col items-center gap-2 text-muted-foreground p-4">
-          <AlertCircle className="w-6 h-6 text-red-500" />
-          <span className="text-xs font-mono text-center">{location.error}</span>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={location.requestPermission}
-            className="text-xs"
-            data-testid="btn-request-location"
-          >
-            <LocateFixed className="w-3 h-3 mr-1" />
-            Enable Location
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <GoogleMapWrapper
-      apiKey={mapApiKey}
-      lat={lat}
-      lng={lng}
-      location={location}
-      showUserLocation={showUserLocation}
-      height={height}
-    />
-  );
+export default function RoverLocationMap({ roverLat, roverLng, height = "200px", showUserLocation = false }: RoverLocationMapProps) {
+  const maps = useMapsConfig();
+  const hasRover = roverLat !== undefined && roverLng !== undefined &&
+    Number.isFinite(roverLat) && Number.isFinite(roverLng) && Math.abs(roverLat) <= 90 && Math.abs(roverLng) <= 180;
+  const location = useLocation(!hasRover || showUserLocation);
+  const lat = hasRover ? roverLat! : location.latitude;
+  const lng = hasRover ? roverLng! : location.longitude;
+  if (isDemoMode()) return <div style={{ height }} className="relative overflow-hidden bg-background border border-primary/20" data-testid="demo-offline-map">
+    <svg viewBox="0 0 300 200" className="w-full h-full" role="img" aria-label="Offline sample rover route, not a live map">
+      <defs><pattern id="demo-map-grid" width="25" height="25" patternUnits="userSpaceOnUse"><path d="M25 0H0V25" fill="none" stroke="#00ffff" strokeOpacity=".12" /></pattern></defs>
+      <rect width="300" height="200" fill="url(#demo-map-grid)" />
+      <path d="M40 150L90 130L115 75L190 95L245 45" fill="none" stroke="#00ffff" strokeWidth="2" strokeDasharray="6 5" />
+      <circle cx="115" cy="75" r="8" fill="#00ffff" /><circle cx="115" cy="75" r="22" fill="none" stroke="#00ffff" strokeOpacity=".4" />
+      <text x="12" y="185" fill="#9faec3" fontSize="10" fontFamily="monospace">OFFLINE SAMPLE MAP · 34.0522, -118.2437</text>
+    </svg>
+  </div>;
+  const status = maps.isLoading ? "Loading MiniPC map settings…" : maps.error ? maps.error.message :
+    !maps.data?.tilesEnabled ? "Live map tiles are disabled by the owner." :
+    lat === null || lng === null ? (location.error || "Waiting for GPS location…") : null;
+  if (status || !maps.data || lat === null || lng === null) return <div style={{ height }} className="flex flex-col items-center justify-center gap-2 border border-border bg-black/30 p-4 text-center text-xs text-muted-foreground" role="status">
+    <span>{status}</span>
+    {!hasRover && location.error && <button type="button" onClick={location.requestPermission} className="min-h-11 text-primary underline">Enable client location</button>}
+    <a href="/settings/maps" className="text-primary underline">Map Settings</a>
+  </div>;
+  return <div style={{ height }} className="relative overflow-hidden border border-border" data-testid="rover-map-container">
+    <OpenStreetMap tileUrl={maps.data.tileUrl} tileAttribution={maps.data.tileAttribution} rover={{ lat, lng, heading: location.heading ?? undefined }}
+      accuracy={!hasRover ? location.accuracy ?? undefined : undefined} followRover
+      user={showUserLocation && location.latitude !== null && location.longitude !== null ? { lat: location.latitude, lng: location.longitude } : undefined} />
+  </div>;
 }

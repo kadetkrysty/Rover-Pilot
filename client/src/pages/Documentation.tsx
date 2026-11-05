@@ -549,10 +549,12 @@ set_tilt(0)`}
                                         <li>• Map configuration is managed separately in Map Settings</li>
                                     </ul>
                                     <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
-                                        For live maps, the owner saves a restricted Google Maps JavaScript browser key once on RoverOS-Server in <a href="/settings/maps" className="text-primary underline">Map Settings</a>.
+                                        Live maps use OpenStreetMap with the bundled Leaflet renderer. No Google key or billing account is required.
                                         Connected clients share that configuration; it is not stored in each browser.
-                                        Browser keys are visible to clients by design and require Google API/website restrictions, billing and quotas.
-                                        Demo Mode uses an offline sample map and never accepts keys or loads Google Maps.
+                                        The owner manages the tile provider, additional attribution and address-search toggle centrally on the MiniPC in <a href="/settings/maps" className="text-primary underline">Map Settings</a>.
+                                        Clients need internet access for live tiles; explicit address searches use the MiniPC’s cached, throttled Photon gateway.
+                                        Public services are best effort, not guaranteed infrastructure. OpenStreetMap tiles cannot be bulk-downloaded for offline use.
+                                        Demo Mode uses a bundled offline sample with no map/search requests. Standard maps do not include satellite imagery or turn-by-turn road routing.
                                     </p>
                                 </div>
                             </div>

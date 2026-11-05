@@ -156,6 +156,8 @@ async function authenticateToken(token: string | undefined): Promise<Authenticat
 }
 
 function isPrivateConfigKey(key: string): boolean {
+  // Maps settings are owner-managed only through the dedicated paired endpoint.
+  if (key === "maps_settings") return true;
   return key === CLIENT_AUTH_CONFIG_KEY || /(?:auth|token|secret|password|credential|api[_-]?key)/i.test(key);
 }
 

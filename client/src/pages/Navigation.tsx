@@ -1,15 +1,16 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { MapPin, Trash2, Play, Pause, RotateCcw, Search, Key, Save, Download, Upload, Navigation2, Flag, LocateFixed } from 'lucide-react';
+import { MapPin, Trash2, Play, Pause, RotateCcw, Search, Save, Download, Upload, Navigation2, Flag, LocateFixed } from 'lucide-react';
 import { useRoverData } from '@/lib/mockData';
-import { GoogleMap, MarkerF, Polyline } from '@react-google-maps/api';
+import type { Map as LeafletMap } from 'leaflet';
+import OpenStreetMap, { type MapPoint } from '@/components/OpenStreetMap';
+import { parseCoordinates } from '@shared/maps';
 import { Link } from 'wouter';
 import { isDemoMode } from '@/lib/demoMode';
-import { useMapsConfig } from '@/lib/mapsConfig';
-import MapsScript from '@/components/MapsScript';
+import { useMapsConfig, searchMapAddress } from '@/lib/mapsConfig';
 import RoverLocationMap from '@/components/RoverLocationMap';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getRoutes, createRoute, createWaypoints, getWaypoints, deleteRoute, startNavigation as apiStartNavigation } from '@/lib/api';
@@ -38,11 +39,6 @@ interface Waypoint {
   description?: string;
 }
 
-const mapContainerStyle = {
-  width: '100%',
-  height: '100%'
-};
-
 export default function Navigation() {
   const [waypoints, setWaypoints] = useState<Waypoint[]>([]);
   const [newWaypointName, setNewWaypointName] = useState('');
@@ -62,18 +58,16 @@ export default function Navigation() {
   const [routeDescription, setRouteDescription] = useState('');
   const [currentRouteId, setCurrentRouteId] = useState<number | null>(null);
   
-  // Google Maps State
-  const [map, setMap] = useState<google.maps.Map | null>(null);
+  const [map, setMap] = useState<LeafletMap | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [mapInitialized, setMapInitialized] = useState(false);
+  const [searching, setSearching] = useState(false);
+  const [gpsCentered, setGpsCentered] = useState(false);
   
   const data = useRoverData();
-  const mapRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
 
   const demo = isDemoMode();
   const mapsConfig = useMapsConfig();
-  const mapApiKey = mapsConfig.data?.browserKey || '';
 
   // Fetch saved routes
   const { data: savedRoutes = [] } = useQuery({
@@ -213,11 +207,9 @@ export default function Navigation() {
     setCurrentRouteId(null);
   };
 
-  const handleMarkerDragEnd = (id: string, e: google.maps.MapMouseEvent) => {
-    if (e.latLng) {
-      updateWaypointPosition(id, e.latLng.lat(), e.latLng.lng());
-      toast.success('Waypoint position updated');
-    }
+  const handleMarkerDragEnd = (id: string, point: MapPoint) => {
+    updateWaypointPosition(id, point.lat, point.lng);
+    toast.success('Waypoint position updated');
   };
 
   const setAsStartFromCurrentLocation = () => {
@@ -314,56 +306,32 @@ export default function Navigation() {
     return (total / 1000).toFixed(2); // Convert to km
   };
 
-  // Center map on current GPS location when it loads
+  const onMapLoad = useCallback((instance: LeafletMap | null) => setMap(instance), []);
   useEffect(() => {
-    if (map && !mapInitialized && data.gps.lat && data.gps.lng) {
-      map.setCenter({ lat: data.gps.lat, lng: data.gps.lng });
-      setMapInitialized(true);
+    const { lat, lng } = data.gps;
+    if (map && !gpsCentered && Number.isFinite(lat) && Number.isFinite(lng) &&
+        Math.abs(lat) <= 90 && Math.abs(lng) <= 180 && (lat !== 0 || lng !== 0)) {
+      map.setView([lat, lng], map.getZoom());
+      setGpsCentered(true);
     }
-  }, [map, data.gps, mapInitialized]);
+  }, [map, gpsCentered, data.gps.lat, data.gps.lng]);
+  const onMapClick = (point: MapPoint) => addWaypoint(point.lat, point.lng);
 
-  // Google Maps Handlers
-  const onMapLoad = useCallback((map: google.maps.Map) => {
-    setMap(map);
-    // Center on GPS location immediately if available
-    if (data.gps.lat && data.gps.lng) {
-      map.setCenter({ lat: data.gps.lat, lng: data.gps.lng });
-    }
-  }, [data.gps]);
-
-  const onUnmount = useCallback(() => {
-    setMap(null);
-  }, []);
-
-  const onMapClick = (e: google.maps.MapMouseEvent) => {
-    if (e.latLng) {
-      // Small delay to prevent conflict if clicking a marker
-      setTimeout(() => {
-        addWaypoint(e.latLng!.lat(), e.latLng!.lng());
-      }, 100);
-    }
-  };
-
-  // Search using Geocoding API
+  // Manual search only: coordinates are local; addresses use the paired MiniPC.
   const handleManualSearch = async () => {
-    if (!searchQuery.trim() || !map) return;
-    
+    if (demo || searching || !searchQuery.trim() || !map) return;
+    setSearching(true);
     try {
-      const geocoder = new google.maps.Geocoder();
-      geocoder.geocode({ address: searchQuery }, (results, status) => {
-        if (status === 'OK' && results && results[0]) {
-          const location = results[0].geometry.location;
-          map.panTo(location);
-          map.setZoom(16);
-          setNewWaypointName(results[0].formatted_address || searchQuery);
-          toast.success('Location found');
-        } else {
-          toast.error('Location not found');
-        }
-      });
+      const coordinates = parseCoordinates(searchQuery);
+      if (!coordinates && !mapsConfig.data?.searchEnabled) throw new Error("Address search is disabled. Enter latitude, longitude instead.");
+      const result = coordinates ?? (await searchMapAddress(searchQuery))[0];
+      if (!result) throw new Error("Location not found.");
+      map.setView([result.lat, result.lng], 16);
+      setNewWaypointName(result.label || searchQuery);
+      toast.success('Location found — click the map to add a waypoint.');
     } catch (error) {
-      toast.error('Search failed');
-    }
+      toast.error(error instanceof Error ? error.message : 'Search failed');
+    } finally { setSearching(false); }
   };
 
   const handleSearchKeyPress = (e: React.KeyboardEvent) => {
@@ -416,62 +384,29 @@ export default function Navigation() {
               <div className="h-full relative" data-testid="demo-navigation-map">
                 <RoverLocationMap height="100%" showUserLocation={false} />
                 <p className="absolute left-2 right-2 top-2 rounded border border-primary/30 bg-background/95 p-3 text-xs leading-relaxed text-primary">
-                  OFFLINE SAMPLE MAP · Google Maps and address search are disabled in Demo Mode. No API key is needed.
+                  OFFLINE SAMPLE MAP · Live tiles and address search are disabled in Demo Mode. No API key is needed.
                 </p>
               </div>
-            ) : !mapApiKey ? (
+            ) : !mapsConfig.data?.tilesEnabled ? (
                 <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center bg-background/90 z-20">
-                    <Key className="w-12 h-12 text-primary mb-4" />
-                    <h3 className="text-xl font-display text-foreground mb-2">{mapsConfig.isLoading ? "LOADING MAP SETTINGS" : mapsConfig.error ? "MAP SETTINGS UNAVAILABLE" : "LIVE MAPS NOT CONFIGURED"}</h3>
+                    <MapPin className="w-12 h-12 text-primary mb-4" />
+                    <h3 className="text-xl font-display text-foreground mb-2">{mapsConfig.isLoading ? "LOADING MAP SETTINGS" : mapsConfig.error ? "MAP SETTINGS UNAVAILABLE" : "LIVE MAPS DISABLED"}</h3>
                     <p className="text-sm text-muted-foreground mb-6 max-w-md">
-                        {mapsConfig.error ? mapsConfig.error.message : "The owner configures Google Maps once on the MiniPC in Map Settings. Connected clients use that shared configuration."}
+                        {mapsConfig.error ? mapsConfig.error.message : "The owner manages OpenStreetMap settings once on the MiniPC. No Google key is required."}
                     </p>
                     <Button asChild><Link href="/settings/maps">Open Map Settings</Link></Button>
                 </div>
             ) : (
-                <MapsScript browserKey={mapApiKey}>
-                    <GoogleMap
-                        mapContainerStyle={mapContainerStyle}
-                        center={{ lat: data.gps.lat, lng: data.gps.lng }}
-                        zoom={18}
-                        onLoad={onMapLoad}
-                        onUnmount={onUnmount}
-                        onClick={onMapClick}
-                        options={{
-                            mapTypeId: 'hybrid',
-                            disableDefaultUI: false,
-                            streetViewControl: false,
-                            mapTypeControl: false,
-                            styles: [
-                                { elementType: "geometry", stylers: [{ color: "#242f3e" }] },
-                                { elementType: "labels.text.stroke", stylers: [{ color: "#242f3e" }] },
-                                { elementType: "labels.text.fill", stylers: [{ color: "#746855" }] },
-                                { featureType: "administrative.locality", elementType: "labels.text.fill", stylers: [{ color: "#d59563" }] },
-                                { featureType: "poi", elementType: "labels.text.fill", stylers: [{ color: "#d59563" }] },
-                                { featureType: "poi.park", elementType: "geometry", stylers: [{ color: "#263c3f" }] },
-                                { featureType: "poi.park", elementType: "labels.text.fill", stylers: [{ color: "#6b9a76" }] },
-                                { featureType: "road", elementType: "geometry", stylers: [{ color: "#38414e" }] },
-                                { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#212a37" }] },
-                                { featureType: "road", elementType: "labels.text.fill", stylers: [{ color: "#9ca5b3" }] },
-                                { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#746855" }] },
-                                { featureType: "road.highway", elementType: "geometry.stroke", stylers: [{ color: "#1f2835" }] },
-                                { featureType: "road.highway", elementType: "labels.text.fill", stylers: [{ color: "#f3d19c" }] },
-                                { featureType: "transit", elementType: "geometry", stylers: [{ color: "#2f3948" }] },
-                                { featureType: "transit.station", elementType: "labels.text.fill", stylers: [{ color: "#d59563" }] },
-                                { featureType: "water", elementType: "geometry", stylers: [{ color: "#17263c" }] },
-                                { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#515c6d" }] },
-                                { featureType: "water", elementType: "labels.text.stroke", stylers: [{ color: "#17263c" }] }
-                            ]
-                        }}
-                    >
-                        {/* Search Box - Using Geocoding for reliability */}
-                        <div className="absolute top-2 left-2 right-14 z-10">
+                <div className="h-full flex flex-col">
+                        <div className="shrink-0 border-b border-border p-2">
                             <div className="relative flex gap-1">
                                 <div className="relative flex-1">
                                     <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                                     <input
                                         type="text"
-                                        placeholder="Search location (press Enter)..."
+                                        aria-label="Search address or latitude, longitude"
+                                        maxLength={160}
+                                        placeholder={mapsConfig.data?.searchEnabled ? "Address or latitude, longitude…" : "Latitude, longitude…"}
                                         value={searchQuery}
                                         onChange={(e) => setSearchQuery(e.target.value)}
                                         onKeyDown={handleSearchKeyPress}
@@ -482,8 +417,9 @@ export default function Navigation() {
                                 <Button 
                                     size="sm" 
                                     onClick={handleManualSearch}
+                                    aria-label="Search location"
                                     className="h-10 px-3 shadow-md"
-                                    disabled={!searchQuery.trim()}
+                                    disabled={!searchQuery.trim() || searching || !map}
                                     data-testid="button-search-location"
                                 >
                                     <Search className="h-4 w-4" />
@@ -491,67 +427,14 @@ export default function Navigation() {
                             </div>
                         </div>
 
-                        {/* Rover Position Marker */}
-                        {map && (
-                        <MarkerF
-                            position={{ lat: data.gps.lat, lng: data.gps.lng }}
-                            icon={{
-                                path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
-                                scale: 6,
-                                fillColor: "#00ff00",
-                                fillOpacity: 1,
-                                strokeWeight: 2,
-                                rotation: data.heading
-                            }}
-                        />
-                        )}
-
-                        {/* Waypoints - Draggable */}
-                        {waypoints.map((wp, idx) => (
-                            <MarkerF
-                                key={wp.id}
-                                position={{ lat: wp.lat, lng: wp.lng }}
-                                draggable={true}
-                                onDragEnd={(e) => handleMarkerDragEnd(wp.id, e)}
-                                label={{
-                                    text: (idx + 1).toString(),
-                                    color: "white",
-                                    fontWeight: "bold"
-                                }}
-                                icon={idx === 0 ? {
-                                    path: google.maps.SymbolPath.CIRCLE,
-                                    scale: 12,
-                                    fillColor: "#22c55e",
-                                    fillOpacity: 1,
-                                    strokeColor: "#fff",
-                                    strokeWeight: 2,
-                                } : idx === waypoints.length - 1 ? {
-                                    path: google.maps.SymbolPath.BACKWARD_CLOSED_ARROW,
-                                    scale: 8,
-                                    fillColor: "#ef4444",
-                                    fillOpacity: 1,
-                                    strokeColor: "#fff",
-                                    strokeWeight: 2,
-                                    rotation: 180
-                                } : undefined}
-                            />
-                        ))}
-
-                        {/* Path Polyline */}
-                        <Polyline
-                            path={[
-                                { lat: data.gps.lat, lng: data.gps.lng },
-                                ...waypoints.map(wp => ({ lat: wp.lat, lng: wp.lng }))
-                            ]}
-                            options={{
-                                strokeColor: "#0ea5e9", // Cyan color
-                                strokeOpacity: 0.8,
-                                strokeWeight: 4,
-                                geodesic: true,
-                            }}
-                        />
-                    </GoogleMap>
-                </MapsScript>
+                        <p className="shrink-0 px-2 py-1 text-[10px] text-muted-foreground">Address searches are sent to Photon via the MiniPC. Click the map to add waypoints; drag markers to move them.</p>
+                        <div className="flex-1 min-h-0">
+                          <OpenStreetMap tileUrl={mapsConfig.data!.tileUrl} tileAttribution={mapsConfig.data!.tileAttribution}
+                            rover={{ lat: data.gps.lat, lng: data.gps.lng, heading: data.heading }}
+                            waypoints={waypoints} zoom={18} onReady={onMapLoad}
+                            onMapClick={onMapClick} onWaypointMove={handleMarkerDragEnd} />
+                        </div>
+                </div>
             )}
           </div>
         </div>

@@ -59,7 +59,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li className="flex items-center gap-2">
                   <CheckCircle className="w-4 h-4 text-secondary" />
-                  Configure Google Maps API key for navigation
+                  Review OpenStreetMap settings for navigation (no API key needed)
                 </li>
                 <li className="flex items-center gap-2">
                   <CheckCircle className="w-4 h-4 text-secondary" />

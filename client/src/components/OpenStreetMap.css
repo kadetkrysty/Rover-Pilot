@@ -1,0 +1,12 @@
+.rover-osm .leaflet-container { background: #101b29; font-family: inherit; }
+.rover-osm .leaflet-control-attribution { background: #f5f7fa; color: #17212f; font: 11px/1.5 Arial, sans-serif; max-width: 100%; white-space: normal; }
+.rover-osm .leaflet-control-attribution a { color: #064b79; }
+.rover-osm .leaflet-control-zoom a { background: #151e2e; color: #00eeee; border-color: #31747c; }
+.rover-osm .leaflet-control-zoom a:focus-visible,
+.rover-osm button:focus-visible { outline: 2px solid #00eeee; outline-offset: 2px; }
+.rover-waypoint { border: 2px solid white; border-radius: 50%; background: #1664a2; color: white; text-align: center; font: bold 14px/24px Arial, sans-serif; }
+.rover-waypoint-start { background: #126a35; }
+.rover-waypoint-end { background: #b82235; }
+.rover-map-position { color: #00e6b0; text-shadow: 0 1px 2px #000; font: 25px/26px Arial, sans-serif; text-align: center; }
+.rover-map-position span { display: block; }
+.rover-map-notice { position: absolute; z-index: 1001; top: 8px; left: 48px; right: 8px; padding: 8px; background: #101b29f2; color: #e9f2ff; border: 1px solid #31747c; font-size: 12px; }
