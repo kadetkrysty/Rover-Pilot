@@ -20,6 +20,7 @@ const navItems = [
   { path: '/sync', label: 'CLOUD', icon: Cloud },
   { path: '/setup', label: 'CONFIG', icon: Settings },
   { path: '/security', label: 'PAIRED CLIENTS', icon: ShieldCheck },
+  { path: '/settings/maps', label: 'MAP SETTINGS', icon: Settings },
 ];
 
 export default function Header() {

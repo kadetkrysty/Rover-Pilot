@@ -8,3 +8,4 @@
 - [Owner client pairing](owner-client-pairing.md) — keep first-run setup credentials separate from the normal-operation owner enrollment credential.
 - [MiniPC updater privilege boundary](minipc-update-privilege-boundary.md) — retain `NoNewPrivileges` on the app and use a restricted systemd socket to trigger root-only maintenance.
 - [Rover recording transport](rover-recording-transport.md) — MiniPC capture, private media sidecars and authenticated chunks preserve native certificate pinning.
+- [Google Maps configuration](google-maps-configuration.md) — MiniPC-owned settings; public browser keys are distinct from server secrets; preserve WebView key restrictions.

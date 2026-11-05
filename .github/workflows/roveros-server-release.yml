@@ -76,6 +76,7 @@ jobs:
         run: |
           npm run check
           npm run test:client-connection
+          npm run test:client-auth
           npm run test:desktop
           npm run test:provisioning
           npm run test:recordings

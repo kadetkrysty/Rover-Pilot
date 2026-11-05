@@ -5,7 +5,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { MapPin, Trash2, Play, Pause, RotateCcw, Search, Key, Save, Download, Upload, Navigation2, Flag, LocateFixed } from 'lucide-react';
 import { useRoverData } from '@/lib/mockData';
-import { GoogleMap, LoadScript, MarkerF, Polyline } from '@react-google-maps/api';
+import { GoogleMap, MarkerF, Polyline } from '@react-google-maps/api';
+import { Link } from 'wouter';
+import { isDemoMode } from '@/lib/demoMode';
+import { useMapsConfig } from '@/lib/mapsConfig';
+import MapsScript from '@/components/MapsScript';
+import RoverLocationMap from '@/components/RoverLocationMap';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getRoutes, createRoute, createWaypoints, getWaypoints, deleteRoute, startNavigation as apiStartNavigation } from '@/lib/api';
 import {
@@ -38,8 +43,6 @@ const mapContainerStyle = {
   height: '100%'
 };
 
-const libraries: ("places")[] = ["places"];
-
 export default function Navigation() {
   const [waypoints, setWaypoints] = useState<Waypoint[]>([]);
   const [newWaypointName, setNewWaypointName] = useState('');
@@ -60,7 +63,6 @@ export default function Navigation() {
   const [currentRouteId, setCurrentRouteId] = useState<number | null>(null);
   
   // Google Maps State
-  const [tempApiKey, setTempApiKey] = useState('');
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [mapInitialized, setMapInitialized] = useState(false);
@@ -69,19 +71,9 @@ export default function Navigation() {
   const mapRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
 
-  // Fetch Google Maps API key from server
-  const { data: apiKeyConfig } = useQuery({
-    queryKey: ['config', 'google_maps_api_key'],
-    queryFn: async () => {
-      try {
-        return await import('@/lib/api').then(m => m.getConfig('google_maps_api_key'));
-      } catch {
-        return null;
-      }
-    },
-  });
-
-  const mapApiKey = apiKeyConfig?.value || '';
+  const demo = isDemoMode();
+  const mapsConfig = useMapsConfig();
+  const mapApiKey = mapsConfig.data?.browserKey || '';
 
   // Fetch saved routes
   const { data: savedRoutes = [] } = useQuery({
@@ -380,48 +372,8 @@ export default function Navigation() {
     }
   };
 
-  // Save API key mutation
-  const saveApiKeyMutation = useMutation({
-    mutationFn: async (key: string) => {
-      const { setConfig } = await import('@/lib/api');
-      return setConfig({
-        key: 'google_maps_api_key',
-        value: key.trim(),
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['config', 'google_maps_api_key'] });
-      setTempApiKey('');
-      toast.success('API key saved successfully');
-    },
-    onError: (error) => {
-      toast.error(`Failed to save API key: ${error.message}`);
-    },
-  });
-
-  const saveApiKey = () => {
-    if (tempApiKey.trim()) {
-      saveApiKeyMutation.mutate(tempApiKey);
-    }
-  };
-
-  const clearApiKey = async () => {
-    try {
-      const { setConfig } = await import('@/lib/api');
-      await setConfig({
-        key: 'google_maps_api_key',
-        value: '',
-      });
-      queryClient.invalidateQueries({ queryKey: ['config', 'google_maps_api_key'] });
-      setTempApiKey('');
-      toast.success('API key cleared');
-    } catch (error) {
-      toast.error('Failed to clear API key');
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-background text-foreground font-sans p-6" data-testid="page-navigation">
+    <div className="min-h-screen bg-background text-foreground font-sans p-4 sm:p-6" data-testid="page-navigation">
       <div className="mb-6">
         <h1 className="text-3xl font-display font-bold text-primary">WAYPOINT NAVIGATION</h1>
         <p className="text-muted-foreground font-mono mt-1">Route planning with GPS-based autonomous navigation</p>
@@ -453,40 +405,31 @@ export default function Navigation() {
 
       <div className="grid grid-cols-12 gap-6">
         {/* Map Area */}
-        <div className="col-span-8 hud-panel p-4 h-[600px] relative flex flex-col">
+        <div className="col-span-12 lg:col-span-8 hud-panel p-4 h-[500px] sm:h-[600px] relative flex flex-col min-w-0">
           <div className="flex justify-between items-center mb-3">
              <h2 className="text-sm font-display text-primary">MISSION MAP</h2>
-             {mapApiKey && (
-                 <Button variant="ghost" size="sm" onClick={clearApiKey} className="h-6 text-[10px] text-muted-foreground hover:text-destructive">
-                     CHANGE API KEY
-                 </Button>
-             )}
+             <Button variant="ghost" size="sm" asChild><Link href={demo ? "/settings/maps?demo=1" : "/settings/maps"}>Map Settings</Link></Button>
           </div>
           
           <div className="flex-1 bg-black/50 border border-primary/20 rounded overflow-hidden relative">
-            {!mapApiKey ? (
+            {demo ? (
+              <div className="h-full relative" data-testid="demo-navigation-map">
+                <RoverLocationMap height="100%" showUserLocation={false} />
+                <p className="absolute left-2 right-2 top-2 rounded border border-primary/30 bg-background/95 p-3 text-xs leading-relaxed text-primary">
+                  OFFLINE SAMPLE MAP · Google Maps and address search are disabled in Demo Mode. No API key is needed.
+                </p>
+              </div>
+            ) : !mapApiKey ? (
                 <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center bg-background/90 z-20">
                     <Key className="w-12 h-12 text-primary mb-4" />
-                    <h3 className="text-xl font-display text-foreground mb-2">GOOGLE MAPS API KEY REQUIRED</h3>
+                    <h3 className="text-xl font-display text-foreground mb-2">{mapsConfig.isLoading ? "LOADING MAP SETTINGS" : mapsConfig.error ? "MAP SETTINGS UNAVAILABLE" : "LIVE MAPS NOT CONFIGURED"}</h3>
                     <p className="text-sm text-muted-foreground mb-6 max-w-md">
-                        To enable satellite navigation and POI search, please enter your Google Maps API Key. 
-                        This key is stored locally in your browser.
+                        {mapsConfig.error ? mapsConfig.error.message : "The owner configures Google Maps once on the MiniPC in Map Settings. Connected clients use that shared configuration."}
                     </p>
-                    <div className="flex gap-2 w-full max-w-sm">
-                        <Input 
-                            type="password" 
-                            placeholder="Enter API Key (AIza...)" 
-                            value={tempApiKey}
-                            onChange={(e) => setTempApiKey(e.target.value)}
-                            className="font-mono text-sm"
-                        />
-                        <Button onClick={saveApiKey} disabled={!tempApiKey}>
-                            <Save className="w-4 h-4 mr-2" /> SAVE
-                        </Button>
-                    </div>
+                    <Button asChild><Link href="/settings/maps">Open Map Settings</Link></Button>
                 </div>
             ) : (
-                <LoadScript googleMapsApiKey={mapApiKey} libraries={libraries}>
+                <MapsScript browserKey={mapApiKey}>
                     <GoogleMap
                         mapContainerStyle={mapContainerStyle}
                         center={{ lat: data.gps.lat, lng: data.gps.lng }}
@@ -608,13 +551,13 @@ export default function Navigation() {
                             }}
                         />
                     </GoogleMap>
-                </LoadScript>
+                </MapsScript>
             )}
           </div>
         </div>
 
         {/* Navigation Panel */}
-        <div className="col-span-4 space-y-4">
+        <div className="col-span-12 lg:col-span-4 space-y-4 min-w-0">
           {/* Status */}
           <div className="hud-panel p-4">
             <h3 className="font-display text-sm text-primary mb-4">NAVIGATION STATUS</h3>

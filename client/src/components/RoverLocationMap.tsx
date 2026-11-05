@@ -1,6 +1,6 @@
-import { GoogleMap, useLoadScript, MarkerF, Circle } from '@react-google-maps/api';
-import { useQuery } from '@tanstack/react-query';
-import { getConfig } from '@/lib/api';
+import { GoogleMap, MarkerF, Circle } from '@react-google-maps/api';
+import { useMapsConfig } from '@/lib/mapsConfig';
+import { MapLoadError, useRoverMapsScript } from '@/components/MapsScript';
 import { useLocation } from '@/hooks/useLocation';
 import { MapPin, Loader2, AlertCircle, LocateFixed } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -60,10 +60,7 @@ function GoogleMapWrapper({
   showUserLocation: boolean;
   height: string;
 }) {
-  const { isLoaded, loadError } = useLoadScript({
-    googleMapsApiKey: apiKey,
-    id: 'rover-google-map',
-  });
+  const { isLoaded, loadError, authError, requiresReload, timedOut } = useRoverMapsScript(apiKey);
 
   const roverIcon = useMemo(() => {
     if (!isLoaded || typeof google === 'undefined') return undefined;
@@ -90,17 +87,14 @@ function GoogleMapWrapper({
     };
   }, [isLoaded]);
 
-  if (loadError) {
+  if (loadError || authError || requiresReload || timedOut) {
     return (
       <div 
         className="bg-black/50 border border-border rounded flex items-center justify-center"
         style={{ height }}
         data-testid="rover-map-load-error"
       >
-        <div className="flex flex-col items-center gap-2 text-muted-foreground p-4">
-          <AlertCircle className="w-6 h-6 text-red-500" />
-          <span className="text-xs font-mono text-center">Failed to load map</span>
-        </div>
+        <MapLoadError changed={requiresReload} />
       </div>
     );
   }
@@ -186,19 +180,11 @@ export default function RoverLocationMap({
   height = '200px',
   showUserLocation = false,
 }: RoverLocationMapProps) {
-  const { data: apiKeyConfig, isLoading: apiKeyLoading } = useQuery({
-    queryKey: ['config', 'google_maps_api_key'],
-    queryFn: async () => {
-      try {
-        return await getConfig('google_maps_api_key');
-      } catch {
-        return null;
-      }
-    },
-  });
+  const mapsConfig = useMapsConfig();
+  const apiKeyLoading = mapsConfig.isLoading;
 
   const location = useLocation(true);
-  const mapApiKey = apiKeyConfig?.value || '';
+  const mapApiKey = mapsConfig.data?.browserKey || '';
 
   const lat = roverLat ?? location.latitude ?? 34.0522;
   const lng = roverLng ?? location.longitude ?? -118.2437;
@@ -248,8 +234,9 @@ export default function RoverLocationMap({
             GPS: {lat.toFixed(4)}, {lng.toFixed(4)}
           </span>
           <span className="text-[10px] text-muted-foreground/50">
-            Map requires API key
+            {mapsConfig.error ? "MiniPC map settings unavailable" : "Configure live maps in Map Settings"}
           </span>
+          <a href="/settings/maps" className="text-xs text-primary underline underline-offset-4">Map Settings</a>
         </div>
       </div>
     );

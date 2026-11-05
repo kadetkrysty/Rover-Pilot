@@ -546,8 +546,14 @@ set_tilt(0)`}
                                         <li>• All saved navigation routes</li>
                                         <li>• Waypoints with coordinates</li>
                                         <li>• System configuration settings</li>
-                                        <li>• Google Maps API key (if saved)</li>
+                                        <li>• Map configuration is managed separately in Map Settings</li>
                                     </ul>
+                                    <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
+                                        For live maps, the owner saves a restricted Google Maps JavaScript browser key once on RoverOS-Server in <a href="/settings/maps" className="text-primary underline">Map Settings</a>.
+                                        Connected clients share that configuration; it is not stored in each browser.
+                                        Browser keys are visible to clients by design and require Google API/website restrictions, billing and quotas.
+                                        Demo Mode uses an offline sample map and never accepts keys or loads Google Maps.
+                                    </p>
                                 </div>
                             </div>
                         </div>

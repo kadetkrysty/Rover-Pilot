@@ -131,6 +131,26 @@ test("recordings require secure transport and a currently paired client", async 
   assert.equal((await fetch(`${origin}/api/recordings/id/chunks/0`)).status, 401);
 });
 
+test("Maps configuration requires pinned transport and pairing, without weakening generic key protection", async () => {
+  pretendTls = false;
+  assert.equal((await fetch(`${origin}/api/maps/config`)).status, 426);
+  pretendTls = true;
+  assert.equal((await fetch(`${origin}/api/maps/config`)).status, 401);
+  assert.equal((await fetch(`${origin}/api/maps/config`, {
+    headers: { authorization: `Bearer ${REVOKED_TOKEN}` },
+  })).status, 401);
+  const operatorHeaders = { authorization: `Bearer ${OPERATOR_TOKEN}`, "content-type": "application/json" };
+  assert.equal((await fetch(`${origin}/api/config/google_maps_api_key`, { headers: operatorHeaders })).status, 404);
+  assert.equal((await fetch(`${origin}/api/config`, {
+    method: "POST", headers: operatorHeaders,
+    body: JSON.stringify({ key: "google_maps_api_key", value: "not accepted" }),
+  })).status, 400);
+  assert.equal((await fetch(`${origin}/api/maps/config`, {
+    method: "POST", headers: operatorHeaders,
+    body: JSON.stringify({ browserKey: "", publicBrowserKey: true }),
+  })).status, 403);
+});
+
 test("revoked clients cannot read settings or issue control commands", async () => {
   const headers = { authorization: `Bearer ${REVOKED_TOKEN}` };
   const read = await fetch(`${origin}/api/config`, { headers });

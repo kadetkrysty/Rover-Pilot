@@ -108,6 +108,7 @@ app.use((req, res, next) => {
       let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
         const containsSensitiveData =
           path.startsWith("/api/recordings") ||
+          path.startsWith("/api/maps") ||
           path.startsWith("/api/clients") ||
           path.startsWith("/api/config") ||
           path === "/api/export/all" ||
