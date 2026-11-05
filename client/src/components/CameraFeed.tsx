@@ -49,7 +49,6 @@ export default function CameraFeed({
   const { isConnected } = useWebSocket();
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
-  const [recordingTime, setRecordingTime] = useState(863);
   const [streamError, setStreamError] = useState(false);
   const [detectedObjects, setDetectedObjects] = useState<DetectedObject[]>([
     { id: 'OBJ_001', type: 'OBSTACLE_ROCK', confidence: 94, x: 25, y: 25, width: 15, height: 15 },
@@ -81,13 +80,6 @@ export default function CameraFeed({
       window.removeEventListener('resize', updateSize);
       observer.disconnect();
     };
-  }, []);
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setRecordingTime(t => t + 1);
-    }, 1000);
-    return () => clearInterval(timer);
   }, []);
 
   useEffect(() => {
@@ -137,7 +129,6 @@ export default function CameraFeed({
         
         {showOverlay && (
           <HaloHudOverlay 
-            recordingTime={recordingTime}
             detectedObjects={showDetectedObjects ? detectedObjects : []}
             isDemoMode={isDemoMode}
             latitude={latitude}

@@ -1,304 +1,205 @@
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { 
-  Video, Play, Pause, Square, Trash2, 
-  Download, Clock, HardDrive, Calendar, Film
-} from 'lucide-react';
-
-interface VideoRecording {
-  id: number;
-  name: string;
-  description?: string;
-  duration: number;
-  fileSize: number;
-  status: 'recording' | 'completed' | 'failed';
-  createdAt: string;
-  thumbnailPath?: string;
-}
-
-const mockRecordings: VideoRecording[] = [
-  {
-    id: 1,
-    name: 'Mission Alpha - Perimeter Scan',
-    description: 'Full perimeter patrol recording',
-    duration: 342,
-    fileSize: 256000000,
-    status: 'completed',
-    createdAt: '2025-01-02T10:30:00Z'
-  },
-  {
-    id: 2,
-    name: 'Obstacle Course Test',
-    description: 'Testing obstacle avoidance in courtyard',
-    duration: 180,
-    fileSize: 134000000,
-    status: 'completed',
-    createdAt: '2025-01-02T09:15:00Z'
-  },
-  {
-    id: 3,
-    name: 'Current Session',
-    description: 'Live recording in progress',
-    duration: 45,
-    fileSize: 33000000,
-    status: 'recording',
-    createdAt: '2025-01-02T11:25:00Z'
-  }
-];
+import { useRef } from "react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { isDemoMode } from "@/lib/demoMode";
+import { demoVideoRecording } from "@/lib/demoVideos";
+import { Clock, Download, Film, HardDrive, Info, Play, Video } from "lucide-react";
 
 export default function VideoRecordings() {
-  const [recordings] = useState<VideoRecording[]>(mockRecordings);
-  const [isRecording, setIsRecording] = useState(true);
-  const [selectedVideo, setSelectedVideo] = useState<number | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const demoMode = isDemoMode();
 
-  const formatDuration = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  const formatFileSize = (bytes: number) => {
-    if (bytes >= 1000000000) return `${(bytes / 1000000000).toFixed(1)} GB`;
-    if (bytes >= 1000000) return `${(bytes / 1000000).toFixed(0)} MB`;
-    return `${(bytes / 1000).toFixed(0)} KB`;
-  };
-
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleString();
-  };
-
-  const handleStartRecording = () => {
-    setIsRecording(true);
-  };
-
-  const handleStopRecording = () => {
-    setIsRecording(false);
+  const playSample = () => {
+    void videoRef.current?.play().catch(() => {
+      videoRef.current?.focus();
+    });
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground font-sans p-6" data-testid="page-video-recordings">
-      <div className="mb-6">
-        <h1 className="text-3xl font-display font-bold text-primary" data-testid="text-video-title">VIDEO RECORDINGS</h1>
-        <p className="text-muted-foreground font-mono mt-1">Mission footage and playback</p>
-      </div>
+    <main
+      className="min-h-screen bg-background p-4 font-sans text-foreground sm:p-6"
+      data-testid="page-video-recordings"
+    >
+      <header className="mb-6">
+        <h1
+          className="text-2xl font-display font-bold text-primary sm:text-3xl"
+          data-testid="text-video-title"
+        >
+          VIDEO RECORDINGS
+        </h1>
+        <p className="mt-1 text-sm text-muted-foreground sm:text-base">
+          Mission footage and playback
+        </p>
+      </header>
 
-      <div className="grid grid-cols-12 gap-6">
-        {/* Recording Controls */}
-        <div className="col-span-4 space-y-4">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-12 xl:gap-6">
+        <div className="space-y-4 xl:col-span-4">
           <Card className="hud-panel p-4">
-            <h3 className="text-sm font-display text-primary mb-4">RECORDING CONTROLS</h3>
-            
-            <div className="flex items-center gap-4 mb-4">
-              {isRecording ? (
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-destructive rounded-full animate-pulse" />
-                  <span className="text-sm font-mono text-destructive">RECORDING</span>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-muted rounded-full" />
-                  <span className="text-sm font-mono text-muted-foreground">STANDBY</span>
-                </div>
-              )}
+            <h2 className="mb-4 text-sm font-display text-primary">
+              RECORDING CONTROLS
+            </h2>
+            <div
+              className="flex items-center gap-2"
+              role="status"
+              data-testid="recording-service-status"
+            >
+              <span
+                aria-hidden="true"
+                className={`h-3 w-3 rounded-full ${demoMode ? "bg-primary" : "bg-muted-foreground"}`}
+              />
+              <span className="font-mono text-sm">
+                {demoMode ? "DEMO PLAYBACK ONLY" : "SERVER RECORDING UNAVAILABLE"}
+              </span>
             </div>
-
-            <div className="flex gap-2">
-              {isRecording ? (
-                <>
-                  <Button 
-                    variant="outline" 
-                    className="flex-1"
-                    data-testid="button-pause-recording"
-                  >
-                    <Pause className="w-4 h-4 mr-2" /> Pause
-                  </Button>
-                  <Button 
-                    variant="destructive" 
-                    className="flex-1"
-                    onClick={handleStopRecording}
-                    data-testid="button-stop-recording"
-                  >
-                    <Square className="w-4 h-4 mr-2" /> Stop
-                  </Button>
-                </>
-              ) : (
-                <Button 
-                  className="w-full bg-destructive hover:bg-destructive/90"
-                  onClick={handleStartRecording}
-                  data-testid="button-start-recording"
-                >
-                  <Video className="w-4 h-4 mr-2" /> Start Recording
-                </Button>
-              )}
-            </div>
-
-            {isRecording && (
-              <div className="mt-4 p-3 bg-destructive/10 border border-destructive/30 rounded">
-                <div className="flex justify-between text-xs font-mono">
-                  <span>Duration</span>
-                  <span className="text-destructive" data-testid="text-recording-duration">00:45</span>
-                </div>
-                <div className="flex justify-between text-xs font-mono mt-1">
-                  <span>Size</span>
-                  <span data-testid="text-recording-size">33 MB</span>
-                </div>
-              </div>
-            )}
+            <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+              {demoMode
+                ? "The bundled sample can be played and downloaded. Demo Mode does not record or save camera footage."
+                : "This MiniPC build has no recording API or file storage service. The live camera feed does not create saved recordings."}
+            </p>
           </Card>
 
           <Card className="hud-panel p-4">
-            <h3 className="text-sm font-display text-primary mb-4">STORAGE</h3>
-            <div className="space-y-3">
-              <div className="flex justify-between text-xs font-mono">
-                <span className="text-muted-foreground">Used</span>
-                <span data-testid="text-storage-used">423 MB</span>
+            <h2 className="mb-4 flex items-center gap-2 text-sm font-display text-primary">
+              <HardDrive aria-hidden="true" className="h-4 w-4" />
+              STORAGE
+            </h2>
+            <dl className="space-y-3 text-sm">
+              <div className="flex flex-wrap justify-between gap-2">
+                <dt className="text-muted-foreground">MiniPC recording storage</dt>
+                <dd>{demoMode ? "Not used" : "Not configured"}</dd>
               </div>
-              <div className="flex justify-between text-xs font-mono">
-                <span className="text-muted-foreground">Available</span>
-                <span className="text-secondary" data-testid="text-storage-available">15.6 GB</span>
+              <div className="flex flex-wrap justify-between gap-2">
+                <dt className="text-muted-foreground">Included sample clips</dt>
+                <dd>{demoMode ? "1 (bundled with app)" : "0"}</dd>
               </div>
-              <div className="w-full h-2 bg-muted rounded overflow-hidden">
-                <div className="h-full bg-primary" style={{ width: '3%' }} />
-              </div>
-              <div className="flex justify-between text-xs font-mono">
-                <span className="text-muted-foreground">Recordings</span>
-                <span data-testid="text-recording-count">{recordings.length}</span>
-              </div>
-            </div>
+            </dl>
+            <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
+              {demoMode
+                ? "The sample is an app asset, not a recording on the MiniPC."
+                : "No storage capacity or saved-recording count is reported because the MiniPC recording service is not implemented."}
+            </p>
           </Card>
 
           <Card className="hud-panel p-4">
-            <h3 className="text-sm font-display text-primary mb-4">SETTINGS</h3>
-            <div className="space-y-3 text-xs font-mono">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Resolution</span>
-                <span>1080p</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Frame Rate</span>
-                <span>30 fps</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Codec</span>
-                <span>H.264</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Auto-record</span>
-                <span className="text-secondary">On Mission</span>
-              </div>
-            </div>
+            <h2 className="mb-3 text-sm font-display text-primary">VIDEO SOURCE</h2>
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              {demoMode
+                ? demoVideoRecording.source
+                : "The rover live camera is separate from recording. This page currently has no way to capture or retrieve live footage."}
+            </p>
           </Card>
         </div>
 
-        {/* Recording List */}
-        <div className="col-span-8">
-          <Card className="hud-panel p-4">
-            <h3 className="text-sm font-display text-primary mb-4">SAVED RECORDINGS</h3>
-            
-            <div className="space-y-3">
-              {recordings.map((recording) => (
-                <div
-                  key={recording.id}
-                  className={`border rounded p-4 transition-all cursor-pointer ${
-                    selectedVideo === recording.id 
-                      ? 'border-primary bg-primary/10' 
-                      : 'border-border hover:border-primary/50'
-                  }`}
-                  onClick={() => setSelectedVideo(recording.id)}
-                  data-testid={`card-recording-${recording.id}`}
-                >
-                  <div className="flex items-start gap-4">
-                    {/* Thumbnail */}
-                    <div className="w-32 h-20 bg-muted rounded flex items-center justify-center shrink-0">
-                      {recording.status === 'recording' ? (
-                        <div className="flex flex-col items-center">
-                          <div className="w-4 h-4 bg-destructive rounded-full animate-pulse" />
-                          <span className="text-xs mt-1 text-destructive">LIVE</span>
-                        </div>
-                      ) : (
-                        <Film className="w-8 h-8 text-muted-foreground" />
-                      )}
-                    </div>
+        <section aria-labelledby="saved-recordings-title" className="xl:col-span-8">
+          <Card className="hud-panel p-4 sm:p-5">
+            <h2
+              id="saved-recordings-title"
+              className="mb-4 text-sm font-display text-primary"
+            >
+              {demoMode ? "DEMO VIDEO PLAYER" : "SAVED RECORDINGS"}
+            </h2>
 
-                    {/* Info */}
-                    <div className="flex-1 min-w-0">
-                      <h4 className="font-mono font-bold text-foreground truncate">
-                        {recording.name}
-                      </h4>
-                      {recording.description && (
-                        <p className="text-xs text-muted-foreground mt-1 truncate">
-                          {recording.description}
-                        </p>
-                      )}
-                      
-                      <div className="flex items-center gap-4 mt-2 text-xs font-mono text-muted-foreground">
-                        <div className="flex items-center gap-1">
-                          <Clock className="w-3 h-3" />
-                          <span>{formatDuration(recording.duration)}</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <HardDrive className="w-3 h-3" />
-                          <span>{formatFileSize(recording.fileSize)}</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Calendar className="w-3 h-3" />
-                          <span>{formatDate(recording.createdAt)}</span>
-                        </div>
+            {demoMode ? (
+              <div className="space-y-4">
+                <figure className="overflow-hidden rounded border border-primary/30 bg-black">
+                  <video
+                    ref={videoRef}
+                    className="aspect-video w-full bg-black"
+                    src={demoVideoRecording.url}
+                    controls
+                    playsInline
+                    preload="metadata"
+                    aria-label={`${demoVideoRecording.title}, six-second silent demo video`}
+                    data-testid="demo-video-player"
+                  >
+                    Your browser does not support the bundled WebM sample video.
+                  </video>
+                  <figcaption className="sr-only">
+                    Silent simulated rover footage included to test video playback.
+                  </figcaption>
+                </figure>
+
+                <article
+                  className="flex flex-col gap-4 rounded border border-primary/40 bg-primary/5 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4"
+                  data-testid={`card-recording-${demoVideoRecording.id}`}
+                >
+                  <div className="flex min-w-0 items-start gap-3">
+                    <div
+                      aria-hidden="true"
+                      className="flex h-16 w-20 shrink-0 items-center justify-center rounded bg-muted sm:h-20 sm:w-32"
+                    >
+                      <Film className="h-8 w-8 text-muted-foreground" />
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="break-words font-mono text-sm font-bold text-foreground">
+                        {demoVideoRecording.title}
+                      </h3>
+                      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                        {demoVideoRecording.description}
+                      </p>
+                      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                        <span className="inline-flex items-center gap-1">
+                          <Clock aria-hidden="true" className="h-3 w-3" />
+                          0:06
+                        </span>
+                        <span>WebM · silent</span>
+                        <span>Included with app</span>
                       </div>
                     </div>
-
-                    {/* Actions */}
-                    <div className="flex gap-2 shrink-0">
-                      {recording.status === 'completed' && (
-                        <>
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            data-testid={`button-play-${recording.id}`}
-                          >
-                            <Play className="w-4 h-4" />
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            data-testid={`button-download-${recording.id}`}
-                          >
-                            <Download className="w-4 h-4" />
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            variant="outline" 
-                            className="text-destructive hover:bg-destructive/10"
-                            data-testid={`button-delete-${recording.id}`}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </>
-                      )}
-                      {recording.status === 'recording' && (
-                        <span className="px-2 py-1 bg-destructive/20 text-destructive text-xs font-mono rounded">
-                          RECORDING
-                        </span>
-                      )}
-                    </div>
                   </div>
-                </div>
-              ))}
 
-              {recordings.length === 0 && (
-                <div className="text-center py-12">
-                  <Video className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
-                  <p className="text-muted-foreground font-mono">No recordings yet</p>
-                  <p className="text-xs text-muted-foreground/70 mt-1">
-                    Start recording to capture mission footage
-                  </p>
-                </div>
-              )}
-            </div>
+                  <div className="flex shrink-0 flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={playSample}
+                      aria-label={`Play ${demoVideoRecording.title}`}
+                      data-testid={`button-play-${demoVideoRecording.id}`}
+                    >
+                      <Play aria-hidden="true" className="mr-2 h-4 w-4" />
+                      Play
+                    </Button>
+                    <a
+                      href={demoVideoRecording.url}
+                      download={demoVideoRecording.fileName}
+                      className="inline-flex min-h-10 items-center justify-center rounded-md border border-input bg-background px-3 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      aria-label={`Download ${demoVideoRecording.fileName}`}
+                      data-testid={`button-download-${demoVideoRecording.id}`}
+                    >
+                      <Download aria-hidden="true" className="mr-2 h-4 w-4" />
+                      Download
+                    </a>
+                  </div>
+                </article>
+              </div>
+            ) : (
+              <div className="rounded border border-border px-4 py-10 text-center sm:py-14">
+                <Info aria-hidden="true" className="mx-auto mb-3 h-9 w-9 text-muted-foreground" />
+                <h3 className="font-mono text-sm font-semibold text-foreground">
+                  Recording service not configured
+                </h3>
+                <p className="mx-auto mt-2 max-w-xl text-sm leading-relaxed text-muted-foreground">
+                  No saved videos are available. The client currently does not have a
+                  MiniPC recording or playback endpoint, so recording controls are
+                  intentionally unavailable rather than showing fake recordings.
+                </p>
+              </div>
+            )}
+
+            {!demoMode && (
+              <p className="mt-4 flex items-start gap-2 text-xs leading-relaxed text-muted-foreground">
+                <Video aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
+                <span>
+                  To test the player offline, open Demo Mode. Its short sample clip is
+                  packaged in the Windows and Android clients and can be played without
+                  a network connection.
+                </span>
+              </p>
+            )}
           </Card>
-        </div>
+        </section>
       </div>
-    </div>
+    </main>
   );
 }

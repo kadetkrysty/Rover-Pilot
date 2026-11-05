@@ -19,6 +19,7 @@ export default function GamepadControl() {
   const gamepadInput = useGamepad();
   const { sendCommand, isConnected: wsConnected } = useWebSocket();
   const performanceSettings = usePerformanceSettings();
+  const isDemoMode = !wsConnected;
   
   const [throttle, setThrottle] = useState(0);
   const [direction, setDirection] = useState<'FORWARD' | 'REVERSE' | 'NEUTRAL'>('NEUTRAL');
@@ -89,10 +90,14 @@ export default function GamepadControl() {
 
       if (isButtonJustPressed(gamepadInput.circle, prev?.circle)) {
         if (!isRecording) {
-          setIsRecording(true);
-          setRecordingTime(0);
-          sendCommand({ type: 'command', action: 'START_RECORDING', timestamp: Date.now() });
-          toast.success('Recording Started');
+          if (isDemoMode) {
+            toast.info('Offline Demo does not record video. Play the bundled sample from Video Recordings.');
+          } else {
+            setIsRecording(true);
+            setRecordingTime(0);
+            sendCommand({ type: 'command', action: 'START_RECORDING', timestamp: Date.now() });
+            toast.info('Recording request sent. Saved recordings are not available in this build.');
+          }
         }
       }
 
@@ -138,7 +143,7 @@ export default function GamepadControl() {
     }
 
     prevInputRef.current = { ...gamepadInput };
-  }, [gamepadInput]);
+  }, [gamepadInput, isDemoMode, isRecording, sendCommand]);
 
   useEffect(() => {
     if (isRecording) {
@@ -162,8 +167,6 @@ export default function GamepadControl() {
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
-
-  const isDemoMode = !wsConnected;
 
   return (
     <div className="min-h-screen bg-background text-foreground font-sans p-4" data-testid="page-gamepad-control">
@@ -704,7 +707,28 @@ function DeviceCameraFeed({ zoom, pan, tilt, isRecording }: {
   const [cameraStatus, setCameraStatus] = useState<'loading' | 'active' | 'denied' | 'error'>('loading');
   const [errorMessage, setErrorMessage] = useState('');
 
+  const attachStream = (stream: MediaStream) => {
+    streamRef.current = stream;
+    const video = videoRef.current;
+    if (!video) return;
+
+    video.srcObject = stream;
+    video.onloadedmetadata = () => {
+      void video.play().then(() => {
+        setCameraStatus('active');
+      }).catch(() => {
+        setCameraStatus('error');
+        setErrorMessage('Failed to play the device camera stream.');
+      });
+    };
+    video.onerror = () => {
+      setCameraStatus('error');
+      setErrorMessage('Device camera stream error.');
+    };
+  };
+
   useEffect(() => {
+    let cancelled = false;
     const startCamera = async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -713,29 +737,15 @@ function DeviceCameraFeed({ zoom, pan, tilt, isRecording }: {
             height: { ideal: 720 },
             facingMode: 'user'
           },
-          audio: true
+          audio: false
         });
-
-        streamRef.current = stream;
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          
-          videoRef.current.onloadedmetadata = () => {
-            videoRef.current?.play().then(() => {
-              setCameraStatus('active');
-            }).catch((err) => {
-              console.error('Video play error:', err);
-              setCameraStatus('error');
-              setErrorMessage('Failed to play video stream.');
-            });
-          };
-          
-          videoRef.current.onerror = () => {
-            setCameraStatus('error');
-            setErrorMessage('Video stream error.');
-          };
+        if (cancelled) {
+          stream.getTracks().forEach((track) => track.stop());
+          return;
         }
+        attachStream(stream);
       } catch (err: any) {
+        if (cancelled) return;
         console.error('Camera access error:', err);
         if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
           setCameraStatus('denied');
@@ -756,11 +766,12 @@ function DeviceCameraFeed({ zoom, pan, tilt, isRecording }: {
     startCamera();
 
     return () => {
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
-      }
+      cancelled = true;
       if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
         mediaRecorderRef.current.stop();
+      }
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
       }
     };
   }, []);
@@ -771,9 +782,24 @@ function DeviceCameraFeed({ zoom, pan, tilt, isRecording }: {
     if (isRecording) {
       chunksRef.current = [];
       try {
-        const mediaRecorder = new MediaRecorder(streamRef.current, {
-          mimeType: 'video/webm;codecs=vp9,opus'
-        });
+        if (typeof MediaRecorder === 'undefined') {
+          throw new Error('This browser does not support local video recording.');
+        }
+        const supportedTypes = [
+          'video/webm;codecs=vp9',
+          'video/webm;codecs=vp8',
+          'video/webm',
+          'video/mp4;codecs=avc1.42E01E',
+          'video/mp4',
+        ];
+        const mimeType = typeof MediaRecorder.isTypeSupported === 'function'
+          ? supportedTypes.find((type) => MediaRecorder.isTypeSupported(type))
+          : undefined;
+        const mediaRecorder = mimeType
+          ? new MediaRecorder(streamRef.current, { mimeType })
+          : new MediaRecorder(streamRef.current);
+        const recordingType = mediaRecorder.mimeType || mimeType || 'video/webm';
+        const extension = recordingType.toLowerCase().includes('mp4') ? 'mp4' : 'webm';
         
         mediaRecorder.ondataavailable = (e) => {
           if (e.data.size > 0) {
@@ -782,21 +808,27 @@ function DeviceCameraFeed({ zoom, pan, tilt, isRecording }: {
         };
         
         mediaRecorder.onstop = () => {
-          const blob = new Blob(chunksRef.current, { type: 'video/webm' });
+          const blob = new Blob(chunksRef.current, { type: recordingType });
+          if (blob.size === 0) {
+            toast.error('No video data was captured.');
+            return;
+          }
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
           a.href = url;
-          a.download = `rover-recording-${Date.now()}.webm`;
+          const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+          a.download = `RoverOS-Device-Camera-${timestamp}.${extension}`;
           document.body.appendChild(a);
           a.click();
           document.body.removeChild(a);
-          URL.revokeObjectURL(url);
+          window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
         };
         
         mediaRecorder.start(1000);
         mediaRecorderRef.current = mediaRecorder;
       } catch (err) {
         console.error('MediaRecorder error:', err);
+        toast.error(err instanceof Error ? err.message : 'Could not start video recording.');
       }
     } else {
       if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
@@ -810,13 +842,14 @@ function DeviceCameraFeed({ zoom, pan, tilt, isRecording }: {
     setCameraStatus('loading');
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' },
-        audio: true
+        video: {
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          facingMode: 'user'
+        },
+        audio: false
       });
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        setCameraStatus('active');
-      }
+      attachStream(stream);
     } catch (err: any) {
       setCameraStatus('denied');
       setErrorMessage(err.message || 'Permission denied');
@@ -841,7 +874,7 @@ function DeviceCameraFeed({ zoom, pan, tilt, isRecording }: {
         <div className="text-center absolute inset-0 flex flex-col items-center justify-center">
           <div className="w-16 h-16 border-4 border-primary/30 border-t-primary rounded-full animate-spin mx-auto mb-4"></div>
           <div className="text-primary font-mono text-sm">REQUESTING CAMERA ACCESS...</div>
-          <div className="text-muted-foreground font-mono text-xs mt-2">Please allow camera and microphone permissions</div>
+    <div className="text-muted-foreground font-mono text-xs mt-2">Please allow camera permission</div>
         </div>
       )}
 
@@ -872,8 +905,8 @@ function DeviceCameraFeed({ zoom, pan, tilt, isRecording }: {
             </div>
           </div>
           <div className="absolute top-4 left-4 text-xs font-mono text-primary/70">
-            <div>DEVICE CAMERA</div>
-            <div>DEMO MODE ACTIVE</div>
+            <div>CLIENT DEVICE CAMERA</div>
+            <div>{isRecording ? 'LOCAL RECORDING' : 'PREVIEW ONLY'}</div>
           </div>
         </div>
       )}

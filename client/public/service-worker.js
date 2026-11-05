@@ -1,8 +1,9 @@
-const CACHE_NAME = 'rover-os-v2.5';
+const CACHE_NAME = 'rover-os-v2.6';
 const urlsToCache = [
   '/',
   '/index.html',
-  '/favicon.png'
+  '/favicon.png',
+  '/demo/roveros-demo-terrain-survey.webm'
 ];
 
 self.addEventListener('install', event => {

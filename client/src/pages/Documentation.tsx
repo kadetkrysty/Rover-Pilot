@@ -471,40 +471,31 @@ set_tilt(0)`}
                                     <Video className="w-6 h-6" /> VIDEO RECORDING
                                 </h3>
                                 <p className="text-sm text-muted-foreground">
-                                    Record mission footage from the HuskyLens AI camera for review and analysis.
+                                    The rover live camera and saved video recordings are separate features. This build displays the configured rover camera stream, but does not yet save or retrieve rover-camera recordings from the MiniPC.
                                 </p>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                                 <div className="bg-card border border-border p-4 rounded">
-                                    <h5 className="text-sm font-bold text-secondary mb-2">STARTING A RECORDING</h5>
-                                    <ol className="text-xs font-mono text-muted-foreground space-y-1 list-decimal list-inside">
-                                        <li>Navigate to RECORDINGS page</li>
-                                        <li>Click "Start Recording" button</li>
-                                        <li>Red indicator shows recording is active</li>
-                                        <li>Recording continues until stopped</li>
-                                    </ol>
+                                    <h5 className="text-sm font-bold text-secondary mb-2">CURRENT ROVER CAMERA SOURCE</h5>
+                                    <p className="text-xs font-mono leading-relaxed text-muted-foreground">
+                                        The live camera uses IMOU_CAMERA_STREAM_URL when configured; otherwise it uses the RoverOS camera bridge at ROVER_HOST:8081/camera/stream. That stream is displayed by the camera view only. The RECORDINGS page has no MiniPC recording API, media-file storage, or saved-video playback endpoint yet.
+                                    </p>
                                 </div>
 
                                 <div className="bg-card border border-border p-4 rounded">
-                                    <h5 className="text-sm font-bold text-secondary mb-2">PLAYBACK</h5>
-                                    <ol className="text-xs font-mono text-muted-foreground space-y-1 list-decimal list-inside">
-                                        <li>Select a completed recording from list</li>
-                                        <li>Click Play to view footage</li>
-                                        <li>Pause/Resume as needed</li>
-                                        <li>Download for offline viewing</li>
-                                    </ol>
+                                    <h5 className="text-sm font-bold text-secondary mb-2">OFFLINE DEMO PLAYER</h5>
+                                    <p className="text-xs font-mono leading-relaxed text-muted-foreground">
+                                        Open VIDEO RECORDINGS in Demo Mode to play the bundled six-second simulated clip. It is packaged in the Android and Windows clients, works offline, and can be downloaded as RoverOS-Demo-Terrain-Survey-01.webm. It is sample footage, not a rover recording.
+                                    </p>
                                 </div>
                             </div>
 
                             <div className="bg-accent/10 border border-accent/30 p-4 rounded">
-                                <h5 className="font-display text-accent mb-2">STORAGE INFO</h5>
-                                <ul className="text-xs font-mono text-muted-foreground space-y-1">
-                                    <li>• Recordings stored on Mini PC</li>
-                                    <li>• 1080p @ 60FPS default resolution</li>
-                                    <li>• ~250MB per 5 minutes of footage</li>
-                                    <li>• Auto-cleanup when storage is low</li>
-                                </ul>
+                                <h5 className="font-display text-accent mb-2">SEPARATE DEVICE-CAMERA CAPTURE</h5>
+                                <p className="text-xs font-mono leading-relaxed text-muted-foreground">
+                                    GAMEPAD CONTROL &gt; DEVICE CAM can capture video from that Android or Windows device’s own front camera, without microphone audio. When stopped, the app asks the client platform to download the file; it is not uploaded to the MiniPC and does not appear in the RECORDINGS list. Names use RoverOS-Device-Camera-&lt;UTC timestamp&gt;.webm or .mp4. Android WebView download behavior depends on the installed build and device.
+                                </p>
                             </div>
                         </div>
                     </ScrollArea>

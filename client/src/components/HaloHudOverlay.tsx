@@ -4,7 +4,6 @@ import { RotateCcw } from 'lucide-react';
 import { useWebSocket } from '@/lib/useWebSocket';
 
 interface HaloHudOverlayProps {
-  recordingTime: number;
   detectedObjects: Array<{
     id: string;
     type: string;
@@ -20,14 +19,7 @@ interface HaloHudOverlayProps {
   cameraSource?: string;
 }
 
-export function HaloHudOverlay({ recordingTime, detectedObjects, isDemoMode, latitude = 34.0522, longitude = -118.2437, cameraSource = 'DEMO' }: HaloHudOverlayProps) {
-  const formatTime = (seconds: number) => {
-    const hrs = Math.floor(seconds / 3600);
-    const mins = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-    return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
-
+export function HaloHudOverlay({ detectedObjects, isDemoMode, latitude = 34.0522, longitude = -118.2437, cameraSource = 'DEMO' }: HaloHudOverlayProps) {
   return (
     <div className="absolute inset-0 pointer-events-none overflow-hidden">
       <svg 
@@ -273,9 +265,10 @@ export function HaloHudOverlay({ recordingTime, detectedObjects, isDemoMode, lat
       <div className="absolute bottom-[3%] left-1/2 -translate-x-1/2 pointer-events-auto z-10">
         <div className="flex items-center gap-3 text-[10px] font-mono">
           <div className="flex items-center gap-1.5">
-            <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse shadow-[0_0_6px_rgba(239,68,68,0.8)]" />
-            <span className="text-red-400 font-bold">REC</span>
-            <span className="text-cyan-300">{formatTime(recordingTime)}</span>
+            <div className={`w-2 h-2 rounded-full ${cameraSource === 'IMOU_CELL_GO' ? 'bg-secondary' : 'bg-muted-foreground'}`} />
+            <span className={cameraSource === 'IMOU_CELL_GO' ? 'text-secondary font-bold' : 'text-muted-foreground font-bold'}>
+              {cameraSource === 'IMOU_CELL_GO' ? 'LIVE FEED' : 'SIMULATED FEED'}
+            </span>
           </div>
           <span className="text-cyan-400/40">|</span>
           <span className="text-cyan-300/90">CAM: {cameraSource === 'IMOU_CELL_GO' ? 'IMOU_CELL_GO' : 'SIMULATION'}</span>
