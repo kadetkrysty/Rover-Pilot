@@ -67,6 +67,9 @@ jobs:
           echo "::error::npm ci failed after three attempts."
           exit 1
 
+      - name: Test bundled fonts and license notices
+        run: node --test client/src/assets/fonts/fonts.test.mjs
+
       - name: Build web assets
         run: npm run build
 

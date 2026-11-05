@@ -15,7 +15,7 @@
     "predesktop:win": "npm run desktop:assets",
     "desktop:assets": "node desktop/scripts/generate-installer-theme.mjs",
     "test:desktop": "node --test desktop/server-url.test.cjs desktop/build-config.test.cjs desktop/secure-api-request.test.cjs desktop/scripts/generate-installer-theme.test.mjs scripts/normalize-github-npm-lock.test.mjs",
-    "test:client-connection": "node --import tsx --test client/src/lib/roverConnection.test.ts client/src/lib/discoveredServer.test.ts client/src/lib/demoMode.test.ts",
+    "test:client-connection": "node --import tsx --test client/src/lib/roverConnection.test.ts client/src/lib/discoveredServer.test.ts client/src/lib/demoMode.test.ts && node --test client/src/assets/fonts/fonts.test.mjs",
     "test:client-auth": "node --import tsx --test server/clientAuth.test.ts server/routes.auth.test.ts",
     "start": "NODE_ENV=production node dist/index.cjs",
     "check": "tsc",

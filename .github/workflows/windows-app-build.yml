@@ -57,6 +57,9 @@ jobs:
       - name: Test desktop address validation
         run: npm run test:desktop
 
+      - name: Test bundled fonts and license notices
+        run: node --test client/src/assets/fonts/fonts.test.mjs
+
       - name: Build RoverOS web app
         run: npm run build
 

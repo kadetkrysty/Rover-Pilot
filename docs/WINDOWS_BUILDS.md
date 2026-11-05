@@ -16,6 +16,16 @@ checks, update behavior and default handling of user data. Windows security
 prompts and some OS-drawn controls retain their system appearance; they are not
 HTML controls and do not run the application's CSS.
 
+The NSIS bundle is DPI-aware so Windows does not blur its wizard text. Its
+finish-page checkbox also disables themed drawing for that checkbox only,
+allowing the configured light text to remain readable against the dark
+background.
+
+The web app's Rajdhani, Orbitron, and JetBrains Mono WOFF2 fonts are bundled
+locally, rather than fetched from Google Fonts. Windows, Android, and the
+MiniPC-hosted app therefore use the same fonts when offline. Their SIL Open
+Font License notices are included beside the font files.
+
 ## Test installers
 
 Normal pushes, pull requests, and manual runs with the default options build

@@ -4,6 +4,10 @@
 !include "MUI2.nsh"
 !include "LogicLib.nsh"
 
+; Avoid Windows DPI virtualization, which makes installer fonts blurry.
+; NSIS retains fixed-size bitmaps, so the main icon artwork stays crisp.
+ManifestDPIAware true
+
 !define MUI_BGCOLOR "${ROVER_BG}"
 !define MUI_TEXTCOLOR "${ROVER_TEXT}"
 !define MUI_DIRECTORYPAGE_BGCOLOR "${ROVER_PANEL}"
@@ -43,6 +47,21 @@
     System::Call 'user32::GetClassNameW(p r0, w .r2, i 128)'
     ${If} $2 == "Edit"
       SetCtlColors $0 "${ROVER_TEXT}" "${ROVER_PANEL}"
+    ${ElseIf} $2 == "Button"
+      ; Native themed checkboxes ignore SetCtlColors for their label text.
+      ; Disable theming only on checkbox/radio controls so MUI's dark-page
+      ; foreground remains legible; ordinary Windows buttons keep native style.
+      System::Call 'user32::GetWindowLongW(p r0, i -16) i.r2'
+      IntOp $2 $2 & 0xF
+      ${If} $2 == 2
+      ${OrIf} $2 == 3
+      ${OrIf} $2 == 4
+      ${OrIf} $2 == 5
+      ${OrIf} $2 == 9
+      ${OrIf} $2 == 10
+        System::Call 'uxtheme::SetWindowTheme(p r0, w" ", w" ")'
+        SetCtlColors $0 "${ROVER_TEXT}" "${ROVER_BG}"
+      ${EndIf}
     ${ElseIf} $2 == "msctls_progress32"
       ; The themed Windows progress bar ignores PBM_SETBARCOLOR. Disable its
       ; visual style only on this control, then apply the CSS-derived cyan.
