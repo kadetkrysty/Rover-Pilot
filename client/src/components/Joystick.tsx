@@ -1,5 +1,6 @@
 import { motion, useMotionValue, animate } from 'framer-motion';
 import { useRef, useState, useEffect } from 'react';
+import { fitJoystick } from '@/lib/joystickLayout';
 
 interface JoystickProps {
   onMove?: (x: number, y: number) => void;
@@ -18,7 +19,9 @@ export default function Joystick({ onMove, onHeadingChange, className, size = 19
   const containerRef = useRef<HTMLDivElement>(null);
   const joystickRef = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState(false);
-  const [computedSize, setComputedSize] = useState<number>(typeof size === 'number' ? size : 192);
+  const [bounds, setBounds] = useState({ width: 0, height: 0 });
+  const { diameter: computedSize, outerSize: containerSize, labelOffset, labelScale } =
+    fitJoystick(bounds.width, bounds.height, size);
   const [heading, setHeading] = useState<number | null>(null);
   const [magnitude, setMagnitude] = useState(0);
 
@@ -26,39 +29,30 @@ export default function Joystick({ onMove, onHeadingChange, className, size = 19
   const y = useMotionValue(0);
 
   useEffect(() => {
-    if (typeof size === 'string' && size.endsWith('%')) {
-      const updateSize = () => {
-        const panel = containerRef.current?.closest('[data-joystick-panel]') as HTMLElement;
-        if (panel) {
-          const panelWidth = panel.clientWidth - 48;
-          const percentage = parseFloat(size) / 100;
-          const newSize = panelWidth * percentage;
-          setComputedSize(newSize);
-        }
-      };
-      
-      updateSize();
-      window.addEventListener('resize', updateSize);
-      
-      const observer = new ResizeObserver(updateSize);
-      const panel = containerRef.current?.closest('[data-joystick-panel]') as HTMLElement;
-      if (panel) {
-        observer.observe(panel);
-      }
-      
-      return () => {
-        window.removeEventListener('resize', updateSize);
-        observer.disconnect();
-      };
-    } else if (typeof size === 'number') {
-      setComputedSize(size);
-    }
-  }, [size]);
+    const container = containerRef.current;
+    if (!container) return;
+    const updateSize = () => {
+      setBounds({ width: container.clientWidth, height: container.clientHeight });
+    };
+    updateSize();
+    const observer = new ResizeObserver(updateSize);
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, []);
 
-  const knobSize = Math.max(computedSize * 0.15, 24);
+  const knobSize = Math.min(computedSize * 0.4, Math.max(computedSize * 0.15, 24));
   const maxDistance = (computedSize / 2) - (knobSize / 2);
 
+  useEffect(() => {
+    x.set(0);
+    y.set(0);
+    setActive(false);
+    setHeading(null);
+    setMagnitude(0);
+  }, [computedSize, x, y]);
+
   const handleDrag = () => {
+    if (maxDistance <= 0) return;
     const currentX = x.get();
     const currentY = y.get();
     
@@ -92,10 +86,8 @@ export default function Joystick({ onMove, onHeadingChange, className, size = 19
     if (onMove) onMove(0, 0);
   };
 
-  const labelOffset = 18;
-  const containerSize = computedSize + labelOffset * 2;
   const center = containerSize / 2;
-  const labelRadius = computedSize / 2 + labelOffset / 2 + 2;
+  const labelRadius = computedSize / 2 + labelOffset / 2;
 
   const getRadialPosition = (angleDeg: number) => {
     const angleRad = (angleDeg - 90) * (Math.PI / 180);
@@ -109,21 +101,24 @@ export default function Joystick({ onMove, onHeadingChange, className, size = 19
   };
 
   return (
-    <div ref={containerRef} className={`flex flex-col items-center w-full ${className}`}>
+    <div ref={containerRef} className={`flex items-center justify-center w-full h-full min-w-0 min-h-0 ${className ?? ''}`}
+      data-testid="navigation-joystick">
       <div 
-        className="relative"
-        style={{ width: containerSize, height: containerSize }}
+        className="relative shrink-0"
+        style={{ width: containerSize, height: containerSize, visibility: containerSize > 0 ? 'visible' : 'hidden' }}
+        data-testid="navigation-compass"
       >
         {/* All cardinal point labels positioned radially */}
-        <div className="absolute inset-0 pointer-events-none font-bold text-sm">
+        <div className="absolute inset-0 pointer-events-none font-bold leading-none"
+          style={{ fontSize: 14 * labelScale }}>
           <div className="absolute text-primary" style={getRadialPosition(0)}>N</div>
-          <div className="absolute text-xs text-primary/50" style={getRadialPosition(45)}>NE</div>
+          <div className="absolute text-primary/50" style={{ ...getRadialPosition(45), fontSize: 12 * labelScale }}>NE</div>
           <div className="absolute text-primary/60" style={getRadialPosition(90)}>E</div>
-          <div className="absolute text-xs text-primary/50" style={getRadialPosition(135)}>SE</div>
+          <div className="absolute text-primary/50" style={{ ...getRadialPosition(135), fontSize: 12 * labelScale }}>SE</div>
           <div className="absolute text-primary/60" style={getRadialPosition(180)}>S</div>
-          <div className="absolute text-xs text-primary/50" style={getRadialPosition(225)}>SW</div>
+          <div className="absolute text-primary/50" style={{ ...getRadialPosition(225), fontSize: 12 * labelScale }}>SW</div>
           <div className="absolute text-primary/60" style={getRadialPosition(270)}>W</div>
-          <div className="absolute text-xs text-primary/50" style={getRadialPosition(315)}>NW</div>
+          <div className="absolute text-primary/50" style={{ ...getRadialPosition(315), fontSize: 12 * labelScale }}>NW</div>
         </div>
 
         {/* Joystick circle container */}

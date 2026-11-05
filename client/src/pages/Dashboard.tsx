@@ -135,14 +135,14 @@ export default function Dashboard() {
           {/* Nav Control Panel - Moved from center column */}
           <div className="hud-panel navigation-control-panel p-[10px] flex-1 min-h-0" data-joystick-panel>
             <div className="map-background" aria-hidden="true"></div>
-            <div className="panel-content flex flex-col h-full">
-              <div className="flex justify-between items-center pb-1">
+            <div className="panel-content flex flex-col h-full min-h-0 min-w-0">
+              <div className="flex shrink-0 justify-between items-center pb-1">
                 <h3 className="text-[10px] font-display text-primary/80">NAV CONTROL</h3>
                 <div className="font-mono text-[10px] text-primary/80">
                   {joystickData.heading !== null ? `${joystickData.heading.toFixed(0)}° ${joystickData.cardinalDirection}` : '---'}
                 </div>
               </div>
-              <div className="flex-1 flex items-center justify-center">
+              <div className="flex-1 min-h-0 min-w-0 flex items-center justify-center">
                 <Joystick 
                   onMove={(x, y) => { if (x === 0 && y === 0) reset(); }} 
                   onHeadingChange={handleHeadingChange}
@@ -169,14 +169,14 @@ export default function Dashboard() {
             
           <div className="hud-panel navigation-control-panel p-[10px] aspect-square max-h-[35vh]" data-joystick-panel>
             <div className="map-background" aria-hidden="true"></div>
-            <div className="panel-content flex flex-col h-full">
-              <div className="flex justify-between items-center pb-1">
+            <div className="panel-content flex flex-col h-full min-h-0 min-w-0">
+              <div className="flex shrink-0 justify-between items-center pb-1">
                 <h3 className="text-[10px] font-display text-primary/80">NAV</h3>
                 <div className="font-mono text-[10px] text-primary/80">
                   {joystickData.heading !== null ? `${joystickData.heading.toFixed(0)}°` : '---'}
                 </div>
               </div>
-              <div className="flex-1 flex items-center justify-center">
+              <div className="flex-1 min-h-0 min-w-0 flex items-center justify-center">
                 <Joystick 
                   onMove={(x, y) => { if (x === 0 && y === 0) reset(); }} 
                   onHeadingChange={handleHeadingChange}
@@ -273,14 +273,14 @@ export default function Dashboard() {
         
         <div className="hud-panel navigation-control-panel p-[10px] aspect-square" data-joystick-panel>
           <div className="map-background" aria-hidden="true"></div>
-          <div className="panel-content flex flex-col h-full">
-            <div className="flex justify-between items-center pb-1">
+          <div className="panel-content flex flex-col h-full min-h-0 min-w-0">
+            <div className="flex shrink-0 justify-between items-center pb-1">
               <h3 className="text-[10px] font-display text-primary/80">NAVIGATION</h3>
               <div className="font-mono text-[10px] text-primary/80">
                 {joystickData.heading !== null ? `${joystickData.heading.toFixed(0)}° ${joystickData.cardinalDirection}` : '---'}
               </div>
             </div>
-            <div className="flex-1 flex items-center justify-center">
+            <div className="flex-1 min-h-0 min-w-0 flex items-center justify-center">
               <Joystick 
                 onMove={(x, y) => { if (x === 0 && y === 0) reset(); }} 
                 onHeadingChange={handleHeadingChange}
