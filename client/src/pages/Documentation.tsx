@@ -471,7 +471,7 @@ set_tilt(0)`}
                                     <Video className="w-6 h-6" /> VIDEO RECORDING
                                 </h3>
                                 <p className="text-sm text-muted-foreground">
-                                    The rover live camera and saved video recordings are separate features. This build displays the configured rover camera stream, but does not yet save or retrieve rover-camera recordings from the MiniPC.
+                                    RoverOS records the configured rover camera on the MiniPC. Paired Android and Windows clients share the same saved-video library. Demo Mode remains playback-only and never starts a real recording.
                                 </p>
                             </div>
 
@@ -479,7 +479,7 @@ set_tilt(0)`}
                                 <div className="bg-card border border-border p-4 rounded">
                                     <h5 className="text-sm font-bold text-secondary mb-2">CURRENT ROVER CAMERA SOURCE</h5>
                                     <p className="text-xs font-mono leading-relaxed text-muted-foreground">
-                                        The live camera uses IMOU_CAMERA_STREAM_URL when configured; otherwise it uses the RoverOS camera bridge at ROVER_HOST:8081/camera/stream. That stream is displayed by the camera view only. The RECORDINGS page has no MiniPC recording API, media-file storage, or saved-video playback endpoint yet.
+                                        Recording uses ROVEROS_RECORDING_STREAM_URL first, then IMOU_CAMERA_STREAM_URL, or the camera bridge at ROVER_HOST:8081/camera/stream. Configure the source on the MiniPC, not on individual clients. HTTP(S) MJPEG and RTSP(S) inputs are supported when the camera exposes them. FFmpeg must be installed; the MiniPC installer and updater install it automatically.
                                     </p>
                                 </div>
 
@@ -492,9 +492,15 @@ set_tilt(0)`}
                             </div>
 
                             <div className="bg-accent/10 border border-accent/30 p-4 rounded">
-                                <h5 className="font-display text-accent mb-2">SEPARATE DEVICE-CAMERA CAPTURE</h5>
+                                <h5 className="font-display text-accent mb-2">STORAGE, PLAYBACK AND PERMISSIONS</h5>
                                 <p className="text-xs font-mono leading-relaxed text-muted-foreground">
-                                    GAMEPAD CONTROL &gt; DEVICE CAM can capture video from that Android or Windows device’s own front camera, without microphone audio. When stopped, the app asks the client platform to download the file; it is not uploaded to the MiniPC and does not appear in the RECORDINGS list. Names use RoverOS-Device-Camera-&lt;UTC timestamp&gt;.webm or .mp4. Android WebView download behavior depends on the installed build and device.
+                                    Start or stop capture from RECORDINGS, or with Circle/Square in GAMEPAD CONTROL. Owners and operators can record; paired viewers can watch and export. Only the owner can permanently delete shared footage. DEVICE CAM is preview-only: rover recording does not capture the phone/PC camera or microphone.
+                                </p>
+                                <p className="mt-3 text-xs font-mono leading-relaxed text-muted-foreground">
+                                    Videos and their metadata are stored under /var/lib/roveros/recordings on the MiniPC, outside the app release directory. Files use UUIDs internally; export names use RoverOS-&lt;UTC timestamp&gt;-&lt;UUID&gt;.mp4. Capture is video-only H.264 MP4, up to 720p/15 fps. Each clip stops after 120 seconds or approximately 32 MiB. Footage expires after 7 days; oldest clips are also removed when the 2 GiB quota or 200-clip limit is reached.
+                                </p>
+                                <p className="mt-3 text-xs font-mono leading-relaxed text-muted-foreground">
+                                    Clients load one bounded clip through certificate-pinned, authenticated chunks, then play it locally with seeking and fullscreen controls. Android Export opens the system file picker; Windows uses the client download destination. Exports are independent copies. Record only where authorized; footage can contain personal information. Use MiniPC disk encryption when storing sensitive footage.
                                 </p>
                             </div>
                         </div>

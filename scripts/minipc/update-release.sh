@@ -127,7 +127,7 @@ NODE
 
 stage="provenance_verification"
 apt-get update
-DEBIAN_FRONTEND=noninteractive apt-get install -y ca-certificates curl python3
+DEBIAN_FRONTEND=noninteractive apt-get install -y ca-certificates curl python3 ffmpeg
 if ! command -v gh >/dev/null || ! gh attestation verify --help 2>/dev/null | grep -q -- '--source-ref'; then
   download https://cli.github.com/packages/githubcli-archive-keyring.gpg "$WORK_DIR/githubcli.gpg" 1048576
   printf '6084d5d7bd8e288441e0e94fc6275570895da18e6751f70f057485dc2d1a811b  %s\n' "$WORK_DIR/githubcli.gpg" | sha256sum -c -

@@ -69,12 +69,16 @@ jobs:
           echo "::error::npm ci failed after three attempts."
           exit 1
 
+      - name: Install camera recording test dependencies
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
       - name: Check TypeScript and client connection tests
         run: |
           npm run check
           npm run test:client-connection
           npm run test:desktop
           npm run test:provisioning
+          npm run test:recordings
           bash -n scripts/minipc/*.sh
 
       - name: Build production server and web assets

@@ -101,7 +101,7 @@ find "$staging" -type d -exec chmod 0755 {} +
 find "$staging" -type f -exec chmod 0644 {} +
 
 stage="database"
-DEBIAN_FRONTEND=noninteractive apt-get install -y postgresql-16 postgresql-client-16
+DEBIAN_FRONTEND=noninteractive apt-get install -y postgresql-16 postgresql-client-16 ffmpeg
 systemctl enable --now postgresql.service
 id -u roveros >/dev/null 2>&1 || useradd --system --create-home --user-group \
   --home-dir /var/lib/roveros --shell /usr/sbin/nologin roveros

@@ -3,11 +3,15 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { isDemoMode } from "@/lib/demoMode";
 import { demoVideoRecording } from "@/lib/demoVideos";
-import { Clock, Download, Film, HardDrive, Info, Play, Video } from "lucide-react";
+import { Clock, Download, Film, HardDrive, Play } from "lucide-react";
+import ServerRecordings from "@/components/ServerRecordings";
 
 export default function VideoRecordings() {
+  return isDemoMode() ? <DemoVideoRecordings /> : <ServerRecordings />;
+}
+
+function DemoVideoRecordings() {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const demoMode = isDemoMode();
 
   const playSample = () => {
     void videoRef.current?.play().catch(() => {
@@ -45,16 +49,14 @@ export default function VideoRecordings() {
             >
               <span
                 aria-hidden="true"
-                className={`h-3 w-3 rounded-full ${demoMode ? "bg-primary" : "bg-muted-foreground"}`}
+                className="h-3 w-3 rounded-full bg-primary"
               />
               <span className="font-mono text-sm">
-                {demoMode ? "DEMO PLAYBACK ONLY" : "SERVER RECORDING UNAVAILABLE"}
+                DEMO PLAYBACK ONLY
               </span>
             </div>
             <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-              {demoMode
-                ? "The bundled sample can be played and downloaded. Demo Mode does not record or save camera footage."
-                : "This MiniPC build has no recording API or file storage service. The live camera feed does not create saved recordings."}
+              The bundled sample can be played and downloaded. Demo Mode does not record or save camera footage.
             </p>
           </Card>
 
@@ -66,26 +68,22 @@ export default function VideoRecordings() {
             <dl className="space-y-3 text-sm">
               <div className="flex flex-wrap justify-between gap-2">
                 <dt className="text-muted-foreground">MiniPC recording storage</dt>
-                <dd>{demoMode ? "Not used" : "Not configured"}</dd>
+                <dd>Not used</dd>
               </div>
               <div className="flex flex-wrap justify-between gap-2">
                 <dt className="text-muted-foreground">Included sample clips</dt>
-                <dd>{demoMode ? "1 (bundled with app)" : "0"}</dd>
+                <dd>1 (bundled with app)</dd>
               </div>
             </dl>
             <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
-              {demoMode
-                ? "The sample is an app asset, not a recording on the MiniPC."
-                : "No storage capacity or saved-recording count is reported because the MiniPC recording service is not implemented."}
+              The sample is an app asset, not a recording on the MiniPC.
             </p>
           </Card>
 
           <Card className="hud-panel p-4">
             <h2 className="mb-3 text-sm font-display text-primary">VIDEO SOURCE</h2>
             <p className="text-sm leading-relaxed text-muted-foreground">
-              {demoMode
-                ? demoVideoRecording.source
-                : "The rover live camera is separate from recording. This page currently has no way to capture or retrieve live footage."}
+              {demoVideoRecording.source}
             </p>
           </Card>
         </div>
@@ -96,10 +94,9 @@ export default function VideoRecordings() {
               id="saved-recordings-title"
               className="mb-4 text-sm font-display text-primary"
             >
-              {demoMode ? "DEMO VIDEO PLAYER" : "SAVED RECORDINGS"}
+              DEMO VIDEO PLAYER
             </h2>
 
-            {demoMode ? (
               <div className="space-y-4">
                 <figure className="overflow-hidden rounded border border-primary/30 bg-black">
                   <video
@@ -173,30 +170,6 @@ export default function VideoRecordings() {
                   </div>
                 </article>
               </div>
-            ) : (
-              <div className="rounded border border-border px-4 py-10 text-center sm:py-14">
-                <Info aria-hidden="true" className="mx-auto mb-3 h-9 w-9 text-muted-foreground" />
-                <h3 className="font-mono text-sm font-semibold text-foreground">
-                  Recording service not configured
-                </h3>
-                <p className="mx-auto mt-2 max-w-xl text-sm leading-relaxed text-muted-foreground">
-                  No saved videos are available. The client currently does not have a
-                  MiniPC recording or playback endpoint, so recording controls are
-                  intentionally unavailable rather than showing fake recordings.
-                </p>
-              </div>
-            )}
-
-            {!demoMode && (
-              <p className="mt-4 flex items-start gap-2 text-xs leading-relaxed text-muted-foreground">
-                <Video aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
-                <span>
-                  To test the player offline, open Demo Mode. Its short sample clip is
-                  packaged in the Windows and Android clients and can be played without
-                  a network connection.
-                </span>
-              </p>
-            )}
           </Card>
         </section>
       </div>

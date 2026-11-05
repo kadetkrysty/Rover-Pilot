@@ -1,5 +1,9 @@
 # RoverOS installation on the ACEPC AK1
 
+For rover camera capture, storage limits, privacy and Android/Windows playback,
+see [Video recording and shared playback](VIDEO_RECORDING.md). The MiniPC
+installer and updater install FFmpeg; saved footage lives outside app releases.
+
 ## Supported first target
 
 - **MiniPC:** ACEPC AK1, **8 GB RAM configuration**, as specified by the owner.

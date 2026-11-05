@@ -10,6 +10,9 @@ import { toast } from 'sonner';
 import { usePerformanceSettings } from '@/lib/performanceSettings';
 import CameraFeed from '@/components/CameraFeed';
 import { AspectRatio } from '@/components/ui/aspect-ratio';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { getRecordingLibrary, startServerRecording, stopServerRecording } from '@/lib/recordingApi';
+import { isDemoMode as isOfflineDemoMode } from '@/lib/demoMode';
 
 const ThreeRoverSimulation = lazy(() => import('@/components/ThreeRoverSimulation'));
 
@@ -20,6 +23,18 @@ export default function GamepadControl() {
   const { sendCommand, isConnected: wsConnected } = useWebSocket();
   const performanceSettings = usePerformanceSettings();
   const isDemoMode = !wsConnected;
+  const offlineDemo = isOfflineDemoMode();
+  const queryClient = useQueryClient();
+  const { data: recordingLibrary } = useQuery({
+    queryKey: ['rover-recordings'],
+    queryFn: getRecordingLibrary,
+    enabled: wsConnected && !offlineDemo,
+    refetchInterval: 3000,
+    retry: false,
+  });
+  const isRecording = Boolean(recordingLibrary?.active);
+  const recordingTime = recordingLibrary?.active?.durationSeconds || 0;
+  const recordingRequestRef = useRef(false);
   
   const [throttle, setThrottle] = useState(0);
   const [direction, setDirection] = useState<'FORWARD' | 'REVERSE' | 'NEUTRAL'>('NEUTRAL');
@@ -31,14 +46,11 @@ export default function GamepadControl() {
   const [cameraZoom, setCameraZoom] = useState(1.0);
   const [cameraExposure, setCameraExposure] = useState(0);
   const [lightsEnabled, setLightsEnabled] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
   const [hornActive, setHornActive] = useState(false);
-  const [recordingTime, setRecordingTime] = useState(0);
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [viewMode, setViewMode] = useState<'rover_cam' | 'simulation' | 'device_cam'>('rover_cam');
   
   const prevInputRef = useRef<GamepadInput | null>(null);
-  const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const isButtonJustPressed = (current: boolean, prev: boolean | undefined) => {
     return current && !prev;
@@ -89,23 +101,29 @@ export default function GamepadControl() {
       setCameraTilt(-gamepadInput.leftStickY * 45);
 
       if (isButtonJustPressed(gamepadInput.circle, prev?.circle)) {
-        if (!isRecording) {
-          if (isDemoMode) {
+        if (!isRecording && !recordingRequestRef.current) {
+          if (isDemoMode || offlineDemo) {
             toast.info('Offline Demo does not record video. Play the bundled sample from Video Recordings.');
           } else {
-            setIsRecording(true);
-            setRecordingTime(0);
-            sendCommand({ type: 'command', action: 'START_RECORDING', timestamp: Date.now() });
-            toast.info('Recording request sent. Saved recordings are not available in this build.');
+            recordingRequestRef.current = true;
+            void startServerRecording().then(() => {
+              toast.success('MiniPC rover camera recording is starting.');
+              void queryClient.invalidateQueries({ queryKey: ['rover-recordings'] });
+            }).catch((error: Error) => toast.error(error.message))
+              .finally(() => { recordingRequestRef.current = false; });
           }
         }
       }
 
       if (isButtonJustPressed(gamepadInput.square, prev?.square)) {
-        if (isRecording) {
-          setIsRecording(false);
-          sendCommand({ type: 'command', action: 'STOP_RECORDING', timestamp: Date.now() });
-          toast.success('Recording Stopped');
+        if (isRecording && !recordingRequestRef.current && !offlineDemo) {
+          recordingRequestRef.current = true;
+          void stopServerRecording().then((entry) => {
+            if (entry.status === 'failed') toast.error(entry.error || 'Recording failed.');
+            else toast.success('Rover recording saved on the MiniPC.');
+            void queryClient.invalidateQueries({ queryKey: ['rover-recordings'] });
+          }).catch((error: Error) => toast.error(error.message))
+            .finally(() => { recordingRequestRef.current = false; });
         }
       }
 
@@ -143,28 +161,11 @@ export default function GamepadControl() {
     }
 
     prevInputRef.current = { ...gamepadInput };
-  }, [gamepadInput, isDemoMode, isRecording, sendCommand]);
-
-  useEffect(() => {
-    if (isRecording) {
-      recordingTimerRef.current = setInterval(() => {
-        setRecordingTime(t => t + 1);
-      }, 1000);
-    } else {
-      if (recordingTimerRef.current) {
-        clearInterval(recordingTimerRef.current);
-      }
-    }
-    return () => {
-      if (recordingTimerRef.current) {
-        clearInterval(recordingTimerRef.current);
-      }
-    };
-  }, [isRecording]);
+  }, [gamepadInput, isDemoMode, offlineDemo, isRecording, sendCommand, queryClient]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
+    const secs = Math.floor(seconds % 60);
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
@@ -249,7 +250,6 @@ export default function GamepadControl() {
                   zoom={cameraZoom}
                   pan={cameraPan}
                   tilt={cameraTilt}
-                  isRecording={isRecording}
                 />
               ) : viewMode === 'simulation' ? (
                 performanceSettings.enable3DSimulation ? (
@@ -694,15 +694,12 @@ function DemoCameraFeed({ zoom, exposure, isRecording, recordingTime, pan, tilt 
   );
 }
 
-function DeviceCameraFeed({ zoom, pan, tilt, isRecording }: {
+function DeviceCameraFeed({ zoom, pan, tilt }: {
   zoom: number;
   pan: number;
   tilt: number;
-  isRecording: boolean;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
   const [cameraStatus, setCameraStatus] = useState<'loading' | 'active' | 'denied' | 'error'>('loading');
   const [errorMessage, setErrorMessage] = useState('');
@@ -767,76 +764,11 @@ function DeviceCameraFeed({ zoom, pan, tilt, isRecording }: {
 
     return () => {
       cancelled = true;
-      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-        mediaRecorderRef.current.stop();
-      }
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(track => track.stop());
       }
     };
   }, []);
-
-  useEffect(() => {
-    if (!streamRef.current || cameraStatus !== 'active') return;
-
-    if (isRecording) {
-      chunksRef.current = [];
-      try {
-        if (typeof MediaRecorder === 'undefined') {
-          throw new Error('This browser does not support local video recording.');
-        }
-        const supportedTypes = [
-          'video/webm;codecs=vp9',
-          'video/webm;codecs=vp8',
-          'video/webm',
-          'video/mp4;codecs=avc1.42E01E',
-          'video/mp4',
-        ];
-        const mimeType = typeof MediaRecorder.isTypeSupported === 'function'
-          ? supportedTypes.find((type) => MediaRecorder.isTypeSupported(type))
-          : undefined;
-        const mediaRecorder = mimeType
-          ? new MediaRecorder(streamRef.current, { mimeType })
-          : new MediaRecorder(streamRef.current);
-        const recordingType = mediaRecorder.mimeType || mimeType || 'video/webm';
-        const extension = recordingType.toLowerCase().includes('mp4') ? 'mp4' : 'webm';
-        
-        mediaRecorder.ondataavailable = (e) => {
-          if (e.data.size > 0) {
-            chunksRef.current.push(e.data);
-          }
-        };
-        
-        mediaRecorder.onstop = () => {
-          const blob = new Blob(chunksRef.current, { type: recordingType });
-          if (blob.size === 0) {
-            toast.error('No video data was captured.');
-            return;
-          }
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-          a.download = `RoverOS-Device-Camera-${timestamp}.${extension}`;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
-        };
-        
-        mediaRecorder.start(1000);
-        mediaRecorderRef.current = mediaRecorder;
-      } catch (err) {
-        console.error('MediaRecorder error:', err);
-        toast.error(err instanceof Error ? err.message : 'Could not start video recording.');
-      }
-    } else {
-      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-        mediaRecorderRef.current.stop();
-        mediaRecorderRef.current = null;
-      }
-    }
-  }, [isRecording, cameraStatus]);
 
   const requestPermission = async () => {
     setCameraStatus('loading');
@@ -906,7 +838,7 @@ function DeviceCameraFeed({ zoom, pan, tilt, isRecording }: {
           </div>
           <div className="absolute top-4 left-4 text-xs font-mono text-primary/70">
             <div>CLIENT DEVICE CAMERA</div>
-            <div>{isRecording ? 'LOCAL RECORDING' : 'PREVIEW ONLY'}</div>
+            <div>PREVIEW ONLY · NOT RECORDED</div>
           </div>
         </div>
       )}

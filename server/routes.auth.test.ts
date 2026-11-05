@@ -83,7 +83,7 @@ before(async () => {
   const app = express();
   app.use(express.json());
   app.use((req, _res, next) => {
-    if (pretendTls) Object.defineProperty(req.socket, "encrypted", { value: true, configurable: true });
+    Object.defineProperty(req.socket, "encrypted", { value: pretendTls, configurable: true });
     next();
   });
   server = createServer(app);
@@ -117,6 +117,18 @@ test("unpaired clients cannot read configuration or issue control commands", asy
   });
   assert.equal(read.status, 401);
   assert.equal(control.status, 401);
+});
+
+test("recordings require secure transport and a currently paired client", async () => {
+  pretendTls = false;
+  assert.equal((await fetch(`${origin}/api/recordings`)).status, 426);
+  pretendTls = true;
+  assert.equal((await fetch(`${origin}/api/recordings`)).status, 401);
+  assert.equal((await fetch(`${origin}/api/recordings`, {
+    headers: { authorization: `Bearer ${REVOKED_TOKEN}` },
+  })).status, 401);
+  assert.equal((await fetch(`${origin}/api/recordings/start`, { method: "POST" })).status, 401);
+  assert.equal((await fetch(`${origin}/api/recordings/id/chunks/0`)).status, 401);
 });
 
 test("revoked clients cannot read settings or issue control commands", async () => {

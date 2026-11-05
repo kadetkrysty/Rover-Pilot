@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage, db } from "./storage";
 import { getProvisioningStatus } from "./provisioningState";
+import { registerRecordingRoutes } from "./recordingRoutes";
 import { sql } from "drizzle-orm";
 import { 
   insertRouteSchema, 
@@ -237,6 +238,13 @@ export async function registerRoutes(
     }
     return client;
   };
+
+  registerRecordingRoutes(app, async (req, res) => {
+    if (!secureTransportOnly(req, res)) return null;
+    const client = await authenticateClient(req);
+    if (!client) res.status(401).json({ error: "Pair this device before accessing recordings." });
+    return client;
+  });
 
   app.get("/api/system/update", async (req, res) => {
     res.setHeader("Cache-Control", "no-store");

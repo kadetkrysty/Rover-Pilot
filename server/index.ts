@@ -4,6 +4,7 @@ import { serveStatic } from "./static";
 import { createServer } from "http";
 import { createServer as createHttpsServer } from "https";
 import { existsSync, readFileSync } from "node:fs";
+import { recordingService } from "./recordingRoutes";
 
 const app = express();
 const httpServer = createServer(app);
@@ -20,6 +21,21 @@ const secureServer =
         app,
       )
     : undefined;
+
+let shuttingDown = false;
+for (const signal of ["SIGTERM", "SIGINT"] as const) {
+  process.once(signal, () => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    const deadline = setTimeout(() => process.exit(1), 15000);
+    deadline.unref();
+    void recordingService.shutdown().finally(() => {
+      httpServer.close();
+      secureServer?.close();
+      process.exit(0);
+    });
+  });
+}
 
 // Capacitor Android serves the bundled UI from https://localhost. Allow that
 // exact origin to call the MiniPC API; do not use a wildcard for rover controls.
@@ -91,6 +107,7 @@ app.use((req, res, next) => {
     if (path.startsWith("/api")) {
       let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
         const containsSensitiveData =
+          path.startsWith("/api/recordings") ||
           path.startsWith("/api/clients") ||
           path.startsWith("/api/config") ||
           path === "/api/export/all" ||
