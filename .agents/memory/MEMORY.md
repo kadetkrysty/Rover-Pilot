@@ -9,3 +9,4 @@
 - [MiniPC updater privilege boundary](minipc-update-privilege-boundary.md) — retain `NoNewPrivileges` on the app and use a restricted systemd socket to trigger root-only maintenance.
 - [Rover recording transport](rover-recording-transport.md) — MiniPC capture, private media sidecars and authenticated chunks preserve native certificate pinning.
 - [Maps provider policy](maps-provider-policy.md) — OpenStreetMap, MiniPC-owned settings and offline Demo; respect community service limits and avoid planet-wide geocoding on the AK1.
+- [Rover hardware](rover-hardware.md) — user-confirmed IMU6050/MPU6050 orientation sensor and gamepad, joystick and FlySky driving inputs.
