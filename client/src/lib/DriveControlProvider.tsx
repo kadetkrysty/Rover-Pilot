@@ -3,7 +3,7 @@ import { driveStatusSchema, type DriveAction, type DriveSource, type DriveStatus
 import { isDemoMode } from "@/lib/demoMode";
 import { roverFetch } from "@/lib/roverConnection";
 import { isFlyskyArmReady, readGamepadDriveSample } from "@/lib/driveMapping";
-import { shouldActivateAfterArm } from "@/lib/driveLifecycle";
+import { hasConfirmedDriveLease, shouldActivateAfterArm } from "@/lib/driveLifecycle";
 
 interface DriveControlContextValue {
   status: DriveStatus;
@@ -16,7 +16,7 @@ interface DriveControlContextValue {
   gamepadReady: boolean;
   joystickReady: boolean;
   selectSource: (source: DriveSource) => Promise<void>;
-  arm: () => Promise<void>;
+  arm: () => Promise<boolean>;
   stop: () => Promise<void>;
   emergencyStop: () => Promise<void>;
   resetEmergencyStop: () => Promise<void>;
@@ -170,64 +170,68 @@ export function DriveControlProvider({ children }: { children: React.ReactNode }
     }
   }, [demo, post]);
 
-  const arm = useCallback(async () => {
+  const arm = useCallback(async (): Promise<boolean> => {
     if (demo || demoRef.current) {
       setError(DEMO_REASON);
-      return;
+      return false;
     }
     if (inFlightRef.current || pendingActionRef.current > 0) {
       setError("Wait for the current rover control request to finish before arming.");
-      return;
+      return false;
     }
     if (staleArmStopPendingRef.current) {
       setError("A previously armed drive lease is being disarmed. Try again after it completes.");
-      return;
+      return false;
     }
     if (statusRef.current.armed) {
       setError("The drive is already armed. Disarm it before requesting a new arm.");
-      return;
+      return false;
     }
     const selected = sourceRef.current;
     if (!selected) {
       setError("Select a drive source before arming.");
-      return;
+      return false;
     }
     if (selected === "joystick" && !joystickReady) {
       setError("Release the on-screen joystick and return it to center before arming.");
-      return;
+      return false;
     }
     if (selected === "gamepad" && !gamepadRef.current.neutralAndReleased) {
       setError("Center both sticks and release R1 before arming.");
-      return;
+      return false;
     }
     if (selected === "flysky") {
       if (!isFlyskyArmReady(statusRef.current.receiver)) {
         setError("FlySky must be connected and fresh, with CH1 steering centered, CH3 throttle centered, and CH5 held high.");
-        return;
+        return false;
       }
     }
     if (!statusRef.current.canDrive || !statusRef.current.available || !statusRef.current.commissioned) {
       setError(statusRef.current.reason || "This client cannot drive the rover.");
-      return;
+      return false;
     }
     const armEpoch = controlEpochRef.current;
     if (statusRef.current.source !== selected || !statusRef.current.owned) {
       invalidatedRef.current = true;
-      if (!(await post({ action: "select", source: selected }))) return;
-      if (armEpoch !== controlEpochRef.current) return;
+      if (!(await post({ action: "select", source: selected }))) return false;
+      if (armEpoch !== controlEpochRef.current) return false;
       const selectedStatus = statusRef.current;
       if (selectedStatus.armed || !selectedStatus.owned || selectedStatus.source !== selected) {
         setError("Source selection did not establish an unarmed lease for this client.");
-        return;
+        return false;
       }
       invalidatedRef.current = false;
     }
-    if (armEpoch !== controlEpochRef.current) return;
+    if (armEpoch !== controlEpochRef.current) return false;
     invalidatedRef.current = false;
-    if (await post({ action: "arm", neutral: true }) &&
-      shouldActivateAfterArm(armEpoch, controlEpochRef.current, invalidatedRef.current) && !demoRef.current) {
-      engagementActiveRef.current = true;
+    const accepted = await post({ action: "arm", neutral: true });
+    if (!accepted || !shouldActivateAfterArm(armEpoch, controlEpochRef.current, invalidatedRef.current) || demoRef.current) return false;
+    if (!hasConfirmedDriveLease(statusRef.current, selected)) {
+      setError("The drive controller did not confirm an active, owned lease.");
+      return false;
     }
+    engagementActiveRef.current = true;
+    return true;
   }, [demo, joystickReady, post]);
 
   const stop = useCallback(async () => {

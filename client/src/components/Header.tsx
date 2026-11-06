@@ -10,6 +10,7 @@ import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import DriveControlPanel from '@/components/DriveControlPanel';
+import { pageForDriveSource } from '@/lib/driveLifecycle';
 
 const navItems = [
   { path: '/', label: 'DASHBOARD', icon: Activity },
@@ -27,10 +28,11 @@ const navItems = [
 ];
 
 export default function Header() {
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const { isConnected } = useWebSocket();
   const { emergencyStop, status: driveStatus, demo } = useDriveControl();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [driveDialogOpen, setDriveDialogOpen] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const firstNavRef = useRef<HTMLAnchorElement>(null);
 
@@ -85,7 +87,7 @@ export default function Header() {
         </div>
 
         <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-          <Dialog>
+          <Dialog open={driveDialogOpen} onOpenChange={setDriveDialogOpen}>
             <DialogTrigger asChild>
               <Button
                 variant="outline"
@@ -106,7 +108,10 @@ export default function Header() {
                   Safe control access. Source selection never arms the rover; arming requires an explicit action.
                 </DialogDescription>
               </DialogHeader>
-              <DriveControlPanel />
+              <DriveControlPanel onArmed={(source) => {
+                setDriveDialogOpen(false);
+                setLocation(pageForDriveSource(source));
+              }} />
             </DialogContent>
           </Dialog>
           <Button
@@ -147,21 +152,13 @@ export default function Header() {
               className="fixed bottom-0 left-0 top-14 z-40 w-[min(19rem,calc(100vw-2rem))] overflow-y-auto border-r border-primary/25 bg-card p-3 shadow-2xl sm:bottom-auto sm:left-3 sm:top-[4.25rem] sm:max-h-[calc(100dvh-5.5rem)] sm:rounded-md sm:border"
               data-testid="dropdown-menu"
             >
-              <div className="mb-3 flex items-center justify-between border-b border-border/70 px-2 pb-3">
+              <div className="mb-3 flex items-center border-b border-border/70 px-2 pb-3">
                 <img
                   src="/icons/roveros-app-icon-192.png"
                   alt="RoverOS rover app icon"
-                  className="h-14 w-14 shrink-0 rounded-lg border border-primary/25 object-cover"
+                  className="h-10 w-10 shrink-0 rounded-lg border border-primary/25 object-cover"
                   data-testid="menu-brand-icon"
                 />
-                <button
-                  type="button"
-                  className="rounded p-2 text-muted-foreground hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
-                  onClick={() => { setMenuOpen(false); menuButtonRef.current?.focus(); }}
-                  aria-label="Close navigation menu"
-                >
-                  <X className="h-4 w-4" />
-                </button>
               </div>
               <div className="space-y-1">
                 {navItems.map((item, index) => (

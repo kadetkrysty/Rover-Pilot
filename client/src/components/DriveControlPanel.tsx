@@ -2,6 +2,11 @@ import { AlertTriangle, Radio, Shield, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useDriveControl } from "@/lib/DriveControlProvider";
 import { isFlyskyArmReady } from "@/lib/driveMapping";
+import type { DriveSource } from "@shared/drive";
+
+interface DriveControlPanelProps {
+  onArmed?: (source: DriveSource) => void;
+}
 
 const sources = [
   { value: "joystick", label: "On-screen joystick" },
@@ -9,12 +14,16 @@ const sources = [
   { value: "flysky", label: "FlySky receiver" },
 ] as const;
 
-export default function DriveControlPanel() {
+export default function DriveControlPanel({ onArmed }: DriveControlPanelProps) {
   const { status, source, busy, error, demo, gamepadConnected, gamepadStandard, gamepadReady, joystickReady, selectSource, arm, stop, emergencyStop, resetEmergencyStop } = useDriveControl();
   const selected = status.source ?? source;
   const flyskyReady = isFlyskyArmReady(status.receiver);
   const canArm = !demo && status.available && status.commissioned && status.serialConnected && status.firmwareReady && status.canDrive && !status.estop && !status.armed &&
     (selected === "joystick" ? joystickReady : selected === "gamepad" ? gamepadReady : selected === "flysky" ? flyskyReady : false);
+  const handleArm = async () => {
+    if (!selected) return;
+    if (await arm()) onArmed?.(selected);
+  };
 
   return (
     <section className="hud-panel mx-2 mt-2 p-3 sm:mx-3 sm:mt-3 sm:p-4" aria-label="Safe rover drive controls" data-testid="drive-control-panel">
@@ -46,7 +55,7 @@ export default function DriveControlPanel() {
               </select>
             </label>
             <div className="flex flex-wrap items-end gap-2">
-              <Button onClick={() => void arm()} disabled={busy || !canArm} className="h-10 min-w-24 font-mono text-xs" aria-label="Arm rover drive">
+              <Button onClick={() => void handleArm()} disabled={busy || !canArm} className="h-10 min-w-24 font-mono text-xs" aria-label="Arm rover drive">
                 <Shield className="mr-1.5 h-4 w-4" /> ARM
               </Button>
               <Button onClick={() => void stop()} disabled={demo} variant="outline" className="h-10 min-w-24 border-border font-mono text-xs">DISARM</Button>
