@@ -152,11 +152,11 @@ export default function Header() {
               className="fixed bottom-0 left-0 top-14 z-40 w-[min(19rem,calc(100vw-2rem))] overflow-y-auto border-r border-primary/25 bg-card p-3 shadow-2xl sm:bottom-auto sm:left-3 sm:top-[4.25rem] sm:max-h-[calc(100dvh-5.5rem)] sm:rounded-md sm:border"
               data-testid="dropdown-menu"
             >
-              <div className="mb-3 flex items-center border-b border-border/70 px-2 pb-3">
+              <div className="mb-3 -mx-[7px] -mt-[7px] border-b border-border/70 pb-[5px]">
                 <img
                   src="/icons/roveros-app-icon-192.png"
                   alt="RoverOS rover app icon"
-                  className="h-10 w-10 shrink-0 rounded-lg border border-primary/25 object-cover"
+                  className="block h-auto w-full rounded-lg border border-primary/25 object-contain"
                   data-testid="menu-brand-icon"
                 />
               </div>
