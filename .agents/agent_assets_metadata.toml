@@ -28,3 +28,17 @@ mtime_ms = 1793951333686
 storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:9b4fc033-f0b9-4851-a2bf-8089906dc1e5/4b54a491-aa09-4e94-b934-db87377ff6c0/faec4bd0-0cd2-478b-8216-5c7ef013d159"
 storage_version_token = "1793951649386519"
 content_type = "image/png"
+
+[[outputs]]
+id = "eIbqmCN7NRuWzM2pFPrvv"
+uri = "file://generated-artifacts/RoverOS-6-Wheel-Concept-Blueprint.pdf"
+type = "pdf"
+title = "RoverOS Rover Build Blueprint (PDF)"
+description = "16-page preliminary design pack with a provisional six-wheel layout, documented parts inventory and procurement list, wiring/power diagrams, MiniPC and client integration steps, assembly sequence, and safety checks. Physical dimensions and electrical ratings are clearly marked for verification."
+logical_id = "a52f87b5-4307-4c03-a4b3-cda54f807310"
+content_hash = "sha256:305e589a8c5cfbf1019063d4054f0840b41bc1f737c1958d23b9f83510d38aac"
+size = 884139
+mtime_ms = 1793954392100
+storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:9b4fc033-f0b9-4851-a2bf-8089906dc1e5/a52f87b5-4307-4c03-a4b3-cda54f807310/a6a19776-b4ec-4ee2-9a61-313c10c5cbd6"
+storage_version_token = "1793954433817399"
+content_type = "application/pdf"
