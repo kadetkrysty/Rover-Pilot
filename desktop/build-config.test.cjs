@@ -1,5 +1,6 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
+const { readFileSync } = require("node:fs");
 const { build } = require("../package.json");
 const testBuild = require("./electron-builder.test.cjs");
 
@@ -18,4 +19,13 @@ test("production requires signing while test installers have an isolated identit
   assert.equal(testBuild.nsis.include, "desktop/installer/theme.nsh");
   assert.equal(testBuild.nsis.uninstallerSidebar, build.nsis.installerSidebar);
   assert.equal(testBuild.nsis.installerIcon, testBuild.nsis.uninstallerIcon);
+});
+
+test("native installer labels and progress track use the dark theme", () => {
+  const theme = readFileSync(`${__dirname}/installer/theme.nsh`, "utf8");
+
+  // Group boxes (BS_GROUPBOX = 7) must opt out of Windows' default black label text.
+  assert.match(theme, /\$\{OrIf\} \$2 == 7[\s\S]*?SetWindowTheme\(p r0, w" ", w" "\)/);
+  // Disable visual styling so the progress track honors the dark background color.
+  assert.match(theme, /msctls_progress32[\s\S]*?SetWindowTheme\(p r0, w" ", w" "\)[\s\S]*?0x2001/);
 });
