@@ -12,6 +12,9 @@ test("production requires signing while test installers have an isolated identit
   assert.match(testBuild.nsis.shortcutName, /Unsigned/);
   assert.ok(testBuild.files.includes("desktop/provisioning-request.cjs"));
   assert.ok(testBuild.files.includes("dist/public/**/*"), "Offline demo assets must ship inside the installer");
+  assert.equal(build.win.icon, "desktop/assets/roveros.ico");
+  assert.equal(build.nsis.installerIcon, build.win.icon);
+  assert.equal(build.nsis.uninstallerIcon, build.win.icon);
   assert.equal(testBuild.nsis.include, "desktop/installer/theme.nsh");
   assert.equal(testBuild.nsis.uninstallerSidebar, build.nsis.installerSidebar);
   assert.equal(testBuild.nsis.installerIcon, testBuild.nsis.uninstallerIcon);

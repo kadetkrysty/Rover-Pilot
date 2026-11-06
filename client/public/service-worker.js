@@ -1,8 +1,13 @@
-const CACHE_NAME = 'rover-os-v2.7';
+const CACHE_NAME = 'rover-os-v2.8';
 const urlsToCache = [
   '/',
   '/index.html',
   '/favicon.png',
+  '/apple-touch-icon.png',
+  '/manifest.json',
+  '/icons/roveros-app-icon-192.png',
+  '/icons/roveros-app-icon-512.png',
+  '/icons/roveros-app-icon-maskable-512.png',
   '/demo/roveros-demo-mars-perseverance.mp4'
 ];
 

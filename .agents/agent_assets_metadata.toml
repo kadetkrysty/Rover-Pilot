@@ -1,0 +1,30 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "zVQUoMrMx1z-4B8hPiakr"
+uri = "file://client/public/demo/roveros-demo-mars-perseverance.mp4"
+type = "video"
+title = "Mars rover demo — 10 seconds, 1080p"
+description = "AI-generated Perseverance-style rover exploring Mars-like terrain. Silent landscape MP4, bundled with RoverOS for offline playback."
+logical_id = "01e451dc-2461-4673-9a49-c297e2c5155f"
+content_hash = "sha256:5d504dfd2b3815af5c1e79c5385b844193474dabc76155f12fb72d3e38e4378e"
+size = 3370631
+mtime_ms = 1793950104865
+storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:9b4fc033-f0b9-4851-a2bf-8089906dc1e5/01e451dc-2461-4673-9a49-c297e2c5155f/d080f202-2e35-4daf-a6c9-704de623981b"
+storage_version_token = "1793950208097332"
+content_type = "video/mp4"
+
+[[outputs]]
+id = "hXikjPQxT4x1ErAoDG1fk"
+uri = "file://client/public/icons/roveros-app-icon-512.png"
+type = "image"
+title = "RoverOS Mars rover app icon"
+description = "512×512px launcher artwork in RoverOS navy, cyan and red. The desktop, Android and web/PWA variants are wired to their platform resources."
+logical_id = "4b54a491-aa09-4e94-b934-db87377ff6c0"
+content_hash = "sha256:cd0faa8f7f4eb271e29eba2994664f91ed449212e8bcb0d8e8f5aab7fb22185d"
+size = 301054
+mtime_ms = 1793951333686
+storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:9b4fc033-f0b9-4851-a2bf-8089906dc1e5/4b54a491-aa09-4e94-b934-db87377ff6c0/faec4bd0-0cd2-478b-8216-5c7ef013d159"
+storage_version_token = "1793951649386519"
+content_type = "image/png"
