@@ -23,11 +23,12 @@ test("camera input is server configuration, never an arbitrary local file or com
 });
 
 test("captures an HTTP camera, finalizes MP4, transfers bounded chunks and deletes it", { timeout: 30000 }, async () => {
-  const directory = await mkdtemp(path.join(tmpdir(), "rover-recordings-"));
+  // Keep the camera fixture independent of replaceable UI demo media.
   const { stdout: jpeg } = await run("ffmpeg", [
-    "-hide_banner", "-loglevel", "error", "-i", "client/public/demo/roveros-demo-terrain-survey.webm",
+    "-hide_banner", "-loglevel", "error", "-f", "lavfi", "-i", "testsrc2=size=320x180:rate=25",
     "-frames:v", "1", "-c:v", "mjpeg", "-threads", "1", "-f", "image2pipe", "pipe:1",
   ], { encoding: "buffer", maxBuffer: 1024 * 1024 });
+  const directory = await mkdtemp(path.join(tmpdir(), "rover-recordings-"));
   const camera = createServer((_req, res) => {
     res.writeHead(200, { "Content-Type": "multipart/x-mixed-replace; boundary=frame", Connection: "close" });
     const frame = () => {
