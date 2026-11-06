@@ -544,7 +544,7 @@ set_tilt(0)`}
                                 <div className="bg-card border border-border p-4 rounded">
                                     <h5 className="text-sm font-bold text-secondary mb-2">OFFLINE DEMO PLAYER</h5>
                                     <p className="text-xs font-mono leading-relaxed text-muted-foreground">
-                                        Open VIDEO RECORDINGS in Demo Mode to play the bundled six-second simulated clip. It is packaged in the Android and Windows clients, works offline, and can be downloaded as RoverOS-Demo-Terrain-Survey-01.webm. It is sample footage, not a rover recording.
+                                        Open VIDEO RECORDINGS in Demo Mode to play the bundled ten-second, 1080p AI-generated Perseverance-style rover clip on Mars-like terrain. It is packaged in the Android and Windows clients, works offline, and can be downloaded as RoverOS-Demo-Mars-Perseverance-01.mp4. It is AI-generated sample footage, not an actual Mars mission or rover recording.
                                     </p>
                                 </div>
                             </div>

@@ -106,13 +106,13 @@ function DemoVideoRecordings() {
                     controls
                     playsInline
                     preload="metadata"
-                    aria-label={`${demoVideoRecording.title}, six-second silent demo video`}
+                    aria-label={`${demoVideoRecording.title}, ${demoVideoRecording.durationSeconds}-second silent AI-generated demo video`}
                     data-testid="demo-video-player"
                   >
-                    Your browser does not support the bundled WebM sample video.
+                    Your browser does not support the bundled MP4 sample video.
                   </video>
                   <figcaption className="sr-only">
-                    Silent simulated rover footage included to test video playback.
+                    Silent AI-generated Perseverance-style rover footage on Mars-like terrain, included to test offline video playback. Not actual Mars mission footage.
                   </figcaption>
                 </figure>
 
@@ -137,9 +137,9 @@ function DemoVideoRecordings() {
                       <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
                         <span className="inline-flex items-center gap-1">
                           <Clock aria-hidden="true" className="h-3 w-3" />
-                          0:06
+                          {Math.floor(demoVideoRecording.durationSeconds / 60)}:{String(demoVideoRecording.durationSeconds % 60).padStart(2, "0")}
                         </span>
-                        <span>WebM · silent</span>
+                        <span>MP4 · 1080p · silent</span>
                         <span>Included with app</span>
                       </div>
                     </div>
