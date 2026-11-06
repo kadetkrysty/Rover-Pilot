@@ -5,7 +5,6 @@ import { useFlySky } from '@/hooks/useFlySky';
 import { useLocation } from '@/hooks/useLocation';
 import CameraFeed from '@/components/CameraFeed';
 import { AspectRatio } from '@/components/ui/aspect-ratio';
-import DriveControlPanel from '@/components/DriveControlPanel';
 
 const AVAILABLE_FUNCTIONS = [
   { value: 'steering', label: 'Steering' },
@@ -194,8 +193,6 @@ export default function FlySkyControl() {
         <h1 className="text-3xl font-display font-bold text-primary" data-testid="text-flysky-title">FLYSKY RECEIVER CONTROL</h1>
         <p className="text-muted-foreground font-mono mt-1">CH1 steering · CH3 centered throttle · CH5 held high deadman</p>
       </div>
-      <DriveControlPanel />
-
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 mt-4">
         {/* Left Panel: Camera Feed */}
         <div className="space-y-4 lg:col-span-8">
