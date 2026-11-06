@@ -148,10 +148,12 @@ export default function Header() {
               data-testid="dropdown-menu"
             >
               <div className="mb-3 flex items-center justify-between border-b border-border/70 px-2 pb-3">
-                <div>
-                  <p className="font-mono text-[10px] tracking-[0.18em] text-primary">ROVEROS / ROUTES</p>
-                  <p className="mt-1 text-xs text-muted-foreground">Navigation console</p>
-                </div>
+                <img
+                  src="/icons/roveros-app-icon-192.png"
+                  alt="RoverOS rover app icon"
+                  className="h-14 w-14 shrink-0 rounded-lg border border-primary/25 object-cover"
+                  data-testid="menu-brand-icon"
+                />
                 <button
                   type="button"
                   className="rounded p-2 text-muted-foreground hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
