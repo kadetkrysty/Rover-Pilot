@@ -56,3 +56,17 @@ mtime_ms = 1794213600502
 storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:9b4fc033-f0b9-4851-a2bf-8089906dc1e5/47c76c17-94c3-46be-b443-e0b2f5fd193a/6b658814-fae4-40b7-83fe-489fedc2b45e"
 storage_version_token = "1794213613862244"
 content_type = "application/pdf"
+
+[[outputs]]
+id = "iAEBzItCJx0AUQHwcuo_b"
+uri = "file://generated-artifacts/RoverOS-Full-Concept-Engineering-Drawings-RevB.pdf"
+type = "pdf"
+title = "RoverOS Full Concept Engineering Drawing Set"
+description = "Nine A3 sheets based on the rover reference image, with overall layout, enclosure/frame concept, running gear, camera mast, sensor/light placeholders, mounting coordinates, system architecture, procurement baseline and build release checks."
+logical_id = "cef5b024-eaaf-405b-a443-04726d660f0a"
+content_hash = "sha256:c528acb088770710dfb6da3a51d72c6111501dca4cd4ff5fd1d3e22da8201ab3"
+size = 597166
+mtime_ms = 1794218982251
+storage_uri = "gcs://replit-rams-assets-kirk/rams/assets/repl:9b4fc033-f0b9-4851-a2bf-8089906dc1e5/cef5b024-eaaf-405b-a443-04726d660f0a/c57b9ee3-044a-48f5-afe7-e2f9ddd5e772"
+storage_version_token = "1794218991370643"
+content_type = "application/pdf"
