@@ -2,7 +2,7 @@ import { Link, useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { 
   Wifi, Settings, FileText, Power, Activity, Radio, Map, 
-  Gamepad2, Video, Cloud, Menu, X, ChevronDown, ShieldCheck
+  Gamepad2, Video, Cloud, Menu, X, ChevronDown, ShieldCheck, Box
 } from 'lucide-react';
 import { useWebSocket } from '@/lib/useWebSocket';
 import { useDriveControl } from '@/lib/DriveControlProvider';
@@ -22,6 +22,7 @@ const navItems = [
   { path: '/setup', label: 'CONFIG', icon: Settings },
   { path: '/security', label: 'PAIRED CLIENTS', icon: ShieldCheck },
   { path: '/settings/maps', label: 'MAP SETTINGS', icon: Settings },
+  { path: '/model', label: '3D MODEL', icon: Box },
 ];
 
 export default function Header() {

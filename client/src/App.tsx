@@ -23,6 +23,7 @@ const VideoRecordings = lazy(() => import("@/pages/VideoRecordings"));
 const CloudSync = lazy(() => import("@/pages/CloudSync"));
 const SecuritySettings = lazy(() => import("@/pages/SecuritySettings"));
 const MapSettings = lazy(() => import("@/pages/MapSettings"));
+const RoverModel = lazy(() => import("@/pages/RoverModel"));
 
 function SetupRoute() {
   return <Setup />;
@@ -56,6 +57,7 @@ function Router() {
           <Route path="/sync" component={CloudSync} />
           <Route path="/security" component={SecuritySettings} />
           <Route path="/settings/maps" component={MapSettings} />
+          <Route path="/model" component={RoverModel} />
           <Route component={NotFound} />
         </Switch>
       </Suspense>
