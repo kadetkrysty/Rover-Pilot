@@ -329,6 +329,58 @@
   padding: 5px 9px;
 }
 
+.rover-model__import,
+.rover-model__clear-import {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 6px 10px;
+  border: 1px solid #286575;
+  color: #b9f8fb !important;
+  background: rgba(34, 137, 156, 0.16);
+  cursor: pointer;
+  font-family: var(--font-mono, monospace) !important;
+  font-size: 10px !important;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.rover-model__import:hover,
+.rover-model__clear-import:hover {
+  border-color: var(--rv-cyan);
+  background: rgba(34, 137, 156, 0.28);
+}
+
+.rover-model__import:disabled {
+  cursor: progress;
+  opacity: 0.68;
+}
+
+.rover-model__file-input {
+  display: none;
+}
+
+.rover-model__import-feedback {
+  display: grid;
+  gap: 3px;
+  margin: 8px 2px 0;
+  color: #91a8b3;
+  font-family: var(--font-mono, monospace);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.rover-model__import-feedback p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.rover-model__import-feedback .is-error {
+  color: #ffaaa2;
+}
+
 .rover-model__dimensions {
   display: flex;
   flex-wrap: wrap;
@@ -392,6 +444,50 @@
 
 .rover-model__part-list {
   padding: 5px 8px 8px;
+}
+
+.rover-model__part-search {
+  display: grid;
+  gap: 6px;
+  margin: 0 12px;
+  color: #92aab4;
+  font-family: var(--font-mono, monospace);
+  font-size: 10px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.rover-model__part-search input {
+  width: 100%;
+  min-height: 38px;
+  padding: 8px 10px;
+  border: 1px solid #29475a;
+  border-radius: 0;
+  color: #e7f0f3;
+  background: #071421;
+  font: 13px var(--font-sans, "Rajdhani", sans-serif);
+  text-transform: none;
+}
+
+.rover-model__part-search input::placeholder {
+  color: #718995;
+}
+
+.rover-model__part-search input:focus-visible {
+  outline: 2px solid #80f1fa;
+  outline-offset: 2px;
+}
+
+.rover-model__part-list.is-imported {
+  max-height: min(48vh, 420px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.rover-model__empty-parts {
+  margin: 8px;
+  color: #91a8b3;
+  font-size: 13px;
 }
 
 .rover-model__part {
@@ -654,6 +750,12 @@
     order: 1;
   }
 
+  .rover-model__import,
+  .rover-model__clear-import {
+    min-height: 40px;
+    padding: 7px;
+  }
+
   .rover-model__reset {
     margin-left: auto;
     order: 2;
@@ -682,6 +784,17 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 3px;
     padding: 7px;
+  }
+
+  .rover-model__part-list.is-imported {
+    display: flex;
+    max-height: 45vh;
+    grid-column: 1 / -1;
+    padding: 7px;
+  }
+
+  .rover-model__part-search {
+    margin: 4px 9px 0;
   }
 
   .rover-model__part {

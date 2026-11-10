@@ -22,6 +22,27 @@ or touch-drag to orbit; selecting a component highlights it and opens its
 description. The viewer is a visual concept, not a CAD release, rover-control
 surface, or live telemetry view.
 
+## Importing an external 3D model
+
+The viewer accepts one self-contained **GLB 2.0** file up to 50 MB. The model
+is parsed locally in the browser; it is not uploaded or saved by RoverOS.
+External buffer and image links are rejected. Export textures and geometry
+inside the GLB file before importing.
+
+The viewer scales the model to fit the viewport. This is for display only:
+original units, measurements, orientation, and engineering accuracy are not
+preserved as verified facts. Named nodes in the GLB appear in the part list and
+can be outlined; useful part selection depends on meaningful names in the
+source model. The “Use concept” control returns to the built-in exterior and
+internal views.
+
+Other formats could be supported with Three.js loaders, but are not accepted by
+the current importer. STL is useful for individual CAD parts but often lacks
+materials and assembly hierarchy. OBJ commonly depends on separate material and
+texture files. glTF JSON can also reference sidecar resources. Those formats
+need additional multi-file handling and validation before they can be imported
+safely and reliably.
+
 ## Internal / exploded-view hardware
 
 The internal view is an explanatory layout, not a measured assembly drawing.

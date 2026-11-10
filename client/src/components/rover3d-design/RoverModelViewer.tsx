@@ -1,10 +1,14 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode, RefObject } from "react";
-import { Canvas, useThree } from "@react-three/fiber";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import type { ThreeEvent } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import * as THREE from "three";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import type { GLTF } from "three/addons/loaders/GLTFLoader.js";
 import { ROVER_MODEL_SPEC } from "@/lib/roverModelSpec";
+import { MAX_LOCAL_GLB_BYTES, validateLocalGlb } from "@/lib/localGlb";
 import {
   Box,
   Camera,
@@ -16,6 +20,8 @@ import {
   RotateCcw,
   ScanLine,
   ShieldAlert,
+  Upload,
+  X,
 } from "lucide-react";
 import "./RoverModelViewer.css";
 
@@ -37,6 +43,20 @@ type PartId =
 
 type ViewPreset = "front" | "side" | "top";
 type ViewMode = "exterior" | "internal";
+
+type ImportedModelPart = {
+  id: string;
+  name: string;
+  object: THREE.Object3D;
+};
+
+type ImportedRoverModel = {
+  fileName: string;
+  root: THREE.Group;
+  parts: ImportedModelPart[];
+  sourceSize: THREE.Vector3;
+  partsTruncated: boolean;
+};
 
 const mm = (value: number) => value / 1000;
 const bodyLength = mm(ROVER_MODEL_SPEC.body.lengthMm);
@@ -62,6 +82,120 @@ const internalSpecIds = {
   battery: "battery-bms",
   wiring: "wiring",
 } as const;
+
+const MAX_IMPORTED_MESHES = 5000;
+const MAX_IMPORTED_VERTICES = 1_500_000;
+const MAX_IMPORTED_PARTS = 300;
+
+function isUsefulPartName(name: string): boolean {
+  const normalized = name.trim();
+  if (!normalized) return false;
+  return !/^(scene|root|rootnode|node|object|group|mesh|cube|armature)([._\s-]*\d+)?$/i.test(
+    normalized,
+  );
+}
+
+function disposeObjectTree(root: THREE.Object3D) {
+  const geometries = new Set<THREE.BufferGeometry>();
+  const materials = new Set<THREE.Material>();
+  const textures = new Set<THREE.Texture>();
+
+  root.traverse((object) => {
+    const mesh = object as THREE.Mesh;
+    if (mesh.geometry?.isBufferGeometry) geometries.add(mesh.geometry);
+    const meshMaterials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+    for (const material of meshMaterials) {
+      if (!material?.isMaterial) continue;
+      materials.add(material);
+      for (const value of Object.values(material)) {
+        if (value instanceof THREE.Texture) textures.add(value);
+      }
+    }
+  });
+
+  geometries.forEach((geometry) => geometry.dispose());
+  textures.forEach((texture) => texture.dispose());
+  materials.forEach((material) => material.dispose());
+}
+
+function buildImportedModel(scene: THREE.Object3D, fileName: string): ImportedRoverModel {
+  scene.updateMatrixWorld(true);
+  const bounds = new THREE.Box3().setFromObject(scene);
+  const sourceSize = new THREE.Vector3();
+  const center = new THREE.Vector3();
+  bounds.getSize(sourceSize);
+  bounds.getCenter(center);
+  const largestDimension = Math.max(sourceSize.x, sourceSize.y, sourceSize.z);
+
+  if (
+    !Number.isFinite(largestDimension) ||
+    largestDimension <= 1e-8 ||
+    ![sourceSize.x, sourceSize.y, sourceSize.z, center.x, center.y, center.z].every(Number.isFinite)
+  ) {
+    throw new Error("The GLB has no usable 3D geometry or contains invalid coordinates.");
+  }
+
+  const meshes: THREE.Mesh[] = [];
+  let vertexCount = 0;
+  scene.traverse((object) => {
+    const mesh = object as THREE.Mesh;
+    if (!mesh.isMesh) return;
+    meshes.push(mesh);
+    vertexCount += mesh.geometry?.getAttribute("position")?.count ?? 0;
+  });
+
+  if (meshes.length === 0) {
+    throw new Error("The GLB does not contain any renderable mesh geometry.");
+  }
+  if (meshes.length > MAX_IMPORTED_MESHES || vertexCount > MAX_IMPORTED_VERTICES) {
+    throw new Error(
+      `This model is too detailed for the viewer (${meshes.length.toLocaleString()} meshes, ${vertexCount.toLocaleString()} vertices). Reduce it and export again.`,
+    );
+  }
+
+  const selectable = new Set<THREE.Object3D>();
+  for (const mesh of meshes) {
+    let ancestor: THREE.Object3D | null = mesh;
+    while (ancestor && ancestor !== scene) {
+      if (isUsefulPartName(ancestor.name)) {
+        selectable.add(ancestor);
+        break;
+      }
+      ancestor = ancestor.parent;
+    }
+  }
+
+  const root = new THREE.Group();
+  root.name = "Imported GLB";
+  root.add(scene);
+  const scale = 1.25 / largestDimension;
+  root.scale.setScalar(scale);
+  root.position.set(-center.x * scale, 0.35 - center.y * scale, -center.z * scale);
+  root.updateMatrixWorld(true);
+
+  const allParts = Array.from(selectable, (object, index) => ({
+    id: `glb-part-${index}-${object.uuid}`,
+    name: object.name.trim(),
+    object,
+  }));
+  const partsTruncated = allParts.length > MAX_IMPORTED_PARTS;
+  const parts = allParts.slice(0, MAX_IMPORTED_PARTS);
+  if (parts.length === 0) {
+    parts.push({
+      id: `glb-model-${root.uuid}`,
+      name: "Entire model",
+      object: scene,
+    });
+  }
+
+  return { fileName, root, parts, sourceSize, partsTruncated };
+}
+
+function parseLocalGlb(buffer: ArrayBuffer): Promise<GLTF> {
+  return new Promise((resolve, reject) => {
+    new GLTFLoader().parse(buffer, "", resolve, reject);
+  });
+}
 
 function internalPosition(id: keyof typeof internalSpecIds): [number, number, number] {
   const componentId = internalSpecIds[id];
@@ -274,9 +408,63 @@ function ScenePart({
   );
 }
 
+function ImportedSelectionOutline({ object }: { object: THREE.Object3D }) {
+  const helper = useMemo(() => new THREE.BoxHelper(object, new THREE.Color("#48d7e7")), [object]);
+
+  useFrame(() => helper.update());
+  useEffect(
+    () => () => {
+      helper.geometry.dispose();
+      const material = helper.material;
+      if (Array.isArray(material)) material.forEach((entry) => entry.dispose());
+      else material.dispose();
+    },
+    [helper],
+  );
+
+  return <primitive object={helper} dispose={null} />;
+}
+
+function ImportedModelScene({
+  model,
+  selectedPartId,
+  onSelectPart,
+}: {
+  model: ImportedRoverModel;
+  selectedPartId: string;
+  onSelectPart: (id: string) => void;
+}) {
+  const selectedPart = model.parts.find((part) => part.id === selectedPartId) ?? model.parts[0];
+
+  return (
+    <>
+      <primitive
+        object={model.root}
+        onClick={(event: ThreeEvent<MouseEvent>) => {
+          event.stopPropagation();
+          let object: THREE.Object3D | null = event.object;
+          while (object) {
+            const part = model.parts.find((candidate) => candidate.object === object);
+            if (part) {
+              onSelectPart(part.id);
+              return;
+            }
+            object = object.parent;
+          }
+          if (model.parts[0]) onSelectPart(model.parts[0].id);
+        }}
+      />
+      {selectedPart && <ImportedSelectionOutline object={selectedPart.object} />}
+    </>
+  );
+}
+
 function RoverScene({
   selected,
   onSelect,
+  importedModel,
+  selectedImportedPart,
+  onSelectImportedPart,
   view,
   mode,
   controlsRef,
@@ -284,6 +472,9 @@ function RoverScene({
 }: {
   selected: PartId;
   onSelect: (id: PartId) => void;
+  importedModel: ImportedRoverModel | null;
+  selectedImportedPart: string;
+  onSelectImportedPart: (id: string) => void;
   view: ViewPreset;
   mode: ViewMode;
   controlsRef: RefObject<OrbitControlsImpl | null>;
@@ -292,15 +483,19 @@ function RoverScene({
   const { camera } = useThree();
 
   useEffect(() => {
-    const position: [number, number, number] = mode === "internal" ? internalViews[view] : initialView[view];
-    const target: [number, number, number] = mode === "internal" ? [0, 0.55, 0] : [0, 0.35, 0];
+    const position: [number, number, number] = !importedModel && mode === "internal"
+      ? internalViews[view]
+      : initialView[view];
+    const target: [number, number, number] = !importedModel && mode === "internal"
+      ? [0, 0.55, 0]
+      : [0, 0.35, 0];
     camera.position.set(...position);
     camera.lookAt(...target);
     if (controlsRef.current) {
       controlsRef.current.target.set(...target);
       controlsRef.current.update();
     }
-  }, [camera, controlsRef, mode, view]);
+  }, [camera, controlsRef, importedModel, mode, view]);
 
   const is = (id: PartId) => selected === id;
   const select = (id: PartId) => onSelect(id);
@@ -319,7 +514,13 @@ function RoverScene({
       </mesh>
       <gridHelper args={[8, 32, "#164151", "#102637"]} position={[0, 0.002, 0]} />
 
-      {mode === "exterior" ? (
+      {importedModel ? (
+        <ImportedModelScene
+          model={importedModel}
+          selectedPartId={selectedImportedPart}
+          onSelectPart={onSelectImportedPart}
+        />
+      ) : mode === "exterior" ? (
       <>
       {/* Deep equipment deck beneath the protective shell. */}
       <ScenePart id="shell" selected={is("shell")} onSelect={select}>
@@ -719,12 +920,25 @@ export default function RoverModelViewer() {
   const [selected, setSelected] = useState<PartId>("camera");
   const [view, setView] = useState<ViewPreset>("front");
   const [mode, setMode] = useState<ViewMode>("exterior");
+  const [importedModel, setImportedModel] = useState<ImportedRoverModel | null>(null);
+  const [selectedImportedPart, setSelectedImportedPart] = useState("");
+  const [partFilter, setPartFilter] = useState("");
+  const [isImporting, setIsImporting] = useState(false);
+  const [importStatus, setImportStatus] = useState("");
+  const [importError, setImportError] = useState("");
   const [reduceMotion, setReduceMotion] = useState(
     () => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches,
   );
   const controlsRef = useRef<OrbitControlsImpl>(null);
+  const glbInputRef = useRef<HTMLInputElement>(null);
+  const importRequestRef = useRef(0);
   const visibleParts = mode === "exterior" ? parts : internalParts;
   const detail = visibleParts.find((part) => part.id === selected) ?? visibleParts[0];
+  const importedDetail = importedModel?.parts.find((part) => part.id === selectedImportedPart)
+    ?? importedModel?.parts[0];
+  const filteredImportedParts = importedModel?.parts.filter((part) =>
+    part.name.toLocaleLowerCase().includes(partFilter.trim().toLocaleLowerCase()),
+  ) ?? [];
 
   useEffect(() => {
     const preference = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -733,6 +947,74 @@ export default function RoverModelViewer() {
     preference.addEventListener("change", updatePreference);
     return () => preference.removeEventListener("change", updatePreference);
   }, []);
+
+  useEffect(() => {
+    if (!importedModel) return;
+    return () => disposeObjectTree(importedModel.root);
+  }, [importedModel]);
+
+  const importGlb = async (file: File) => {
+    const requestId = ++importRequestRef.current;
+    let parsedScene: THREE.Object3D | null = null;
+    setImportError("");
+    setImportStatus("");
+    setIsImporting(true);
+
+    try {
+      if (!file.name.toLocaleLowerCase().endsWith(".glb")) {
+        throw new Error("Choose a .glb file. Other formats are not accepted by this importer.");
+      }
+      if (file.size > MAX_LOCAL_GLB_BYTES) {
+        throw new Error("GLB files must be 50 MB or smaller.");
+      }
+      if (file.size === 0) {
+        throw new Error("The selected GLB file is empty.");
+      }
+
+      const buffer = await file.arrayBuffer();
+      if (requestId !== importRequestRef.current) return;
+      validateLocalGlb(buffer);
+      setImportStatus("Reading the local model…");
+
+      const gltf = await parseLocalGlb(buffer);
+      parsedScene = gltf.scene;
+      const model = buildImportedModel(gltf.scene, file.name);
+      parsedScene = null;
+      if (requestId !== importRequestRef.current) {
+        disposeObjectTree(model.root);
+        return;
+      }
+
+      setImportedModel(model);
+      setSelectedImportedPart(model.parts[0]?.id ?? "");
+      setPartFilter("");
+      setMode("exterior");
+      setView("front");
+      setImportStatus(
+        `Loaded ${file.name}. Display is fitted to the viewer; original model units are not assumed.${model.partsTruncated ? " Only the first 300 named parts are listed." : ""}`,
+      );
+    } catch (error) {
+      if (parsedScene) disposeObjectTree(parsedScene);
+      if (requestId === importRequestRef.current) {
+        setImportError(error instanceof Error ? error.message : "The GLB could not be loaded.");
+      }
+    } finally {
+      if (requestId === importRequestRef.current) setIsImporting(false);
+    }
+  };
+
+  const clearImportedModel = () => {
+    importRequestRef.current += 1;
+    setImportedModel(null);
+    setSelectedImportedPart("");
+    setPartFilter("");
+    setIsImporting(false);
+    setImportError("");
+    setImportStatus("Showing the built-in rover concept.");
+    setMode("exterior");
+    setSelected("camera");
+    setView("front");
+  };
 
   const resetView = () => {
     setView("front");
@@ -757,34 +1039,45 @@ export default function RoverModelViewer() {
             <span className="rover-model__eyebrow-mark" aria-hidden="true" />
             ROVEROS / MODEL EXPLORER
           </div>
-          <h1 id="rover-model-title">Rover concept viewer</h1>
+          <h1 id="rover-model-title">{importedModel ? "Imported rover model" : "Rover concept viewer"}</h1>
           <p className="rover-model__intro">
-            Explore the exterior layout and the systems shown in the concept.
+            {importedModel
+              ? "Inspect the imported model and select named parts."
+              : "Explore the exterior layout and the systems shown in the concept."}
           </p>
         </div>
-        <div className="rover-model__status" aria-label="Static concept model">
+        <div className="rover-model__status" aria-label={importedModel ? "Local GLB model loaded" : "Static concept model"}>
           <span className="rover-model__status-dot" aria-hidden="true" />
-          STATIC CONCEPT
+          {importedModel ? "IMPORTED GLB" : "STATIC CONCEPT"}
         </div>
       </header>
 
       <div className="rover-model__notice" role="note">
         <ShieldAlert size={17} aria-hidden="true" />
         <p>
-          <strong>Visual concept only.</strong> Shapes and component locations are
-          inferred and approximate—not an exact CAD model, telemetry display, or
-          rover control interface.
+          {importedModel ? (
+            <>
+              <strong>Local file only.</strong> The GLB is parsed in this browser and is not uploaded.
+              The display is normalized to fit; its original units and engineering accuracy are not assumed.
+            </>
+          ) : (
+            <>
+              <strong>Visual concept only.</strong> Shapes and component locations are
+              inferred and approximate—not an exact CAD model, telemetry display, or
+              rover control interface.
+            </>
+          )}
         </p>
       </div>
 
       <div className="rover-model__workspace">
         <div className="rover-model__viewer-column">
-          <div className={`rover-model__canvas-wrap ${mode === "internal" ? "is-internal" : ""}`}>
+          <div className={`rover-model__canvas-wrap ${!importedModel && mode === "internal" ? "is-internal" : ""}`}>
           <div className="rover-model__canvas-label" aria-hidden="true">
-              <span>ROVER / {mode === "exterior" ? "EXTERIOR" : "INTERNAL SYSTEMS"}</span>
-              <span>{mode === "exterior" ? `${ROVER_MODEL_SPEC.body.lengthMm} × ${ROVER_MODEL_SPEC.body.widthMm} × ${ROVER_MODEL_SPEC.body.heightMm} MM NOMINAL` : "EXPLODED / CONCEPTUAL ARRANGEMENT"}</span>
+              <span>ROVER / {importedModel ? "IMPORTED MODEL" : mode === "exterior" ? "EXTERIOR" : "INTERNAL SYSTEMS"}</span>
+              <span>{importedModel ? "FIT TO VIEWER / SOURCE UNITS UNKNOWN" : mode === "exterior" ? `${ROVER_MODEL_SPEC.body.lengthMm} × ${ROVER_MODEL_SPEC.body.widthMm} × ${ROVER_MODEL_SPEC.body.heightMm} MM NOMINAL` : "EXPLODED / CONCEPTUAL ARRANGEMENT"}</span>
             </div>
-            <div className="rover-model__canvas" role="img" aria-label={mode === "exterior" ? "Interactive 3D visual concept of the rover exterior. Drag to rotate, use the controls for standard views." : "Interactive 3D conceptual exploded view of internal rover modules and illustrative wiring. Drag to rotate, use the controls for standard views."}>
+            <div className="rover-model__canvas" role="img" aria-label={importedModel ? "Interactive 3D view of the locally imported rover model. Drag to rotate. Select named parts to highlight them." : mode === "exterior" ? "Interactive 3D visual concept of the rover exterior. Drag to rotate, use the controls for standard views." : "Interactive 3D conceptual exploded view of internal rover modules and illustrative wiring. Drag to rotate, use the controls for standard views."}>
               <Canvas
                 camera={{ position: initialView.front, fov: 34, near: 0.1, far: 30 }}
                 dpr={[1, 1.5]}
@@ -796,6 +1089,9 @@ export default function RoverModelViewer() {
                 <RoverScene
                   selected={selected}
                   onSelect={setSelected}
+                  importedModel={importedModel}
+                  selectedImportedPart={selectedImportedPart}
+                  onSelectImportedPart={setSelectedImportedPart}
                   view={view}
                   mode={mode}
                   controlsRef={controlsRef}
@@ -812,14 +1108,16 @@ export default function RoverModelViewer() {
               </div>
             </div>
             <div className="rover-model__viewbar">
-              <div className="rover-model__mode-toggle" role="group" aria-label="Choose rover model view">
-                <button type="button" onClick={() => changeMode("exterior")} aria-pressed={mode === "exterior"} className={mode === "exterior" ? "is-active" : ""}>
-                  Exterior
-                </button>
-                <button type="button" onClick={() => changeMode("internal")} aria-pressed={mode === "internal"} className={mode === "internal" ? "is-active" : ""}>
-                  Internal / exploded
-                </button>
-              </div>
+              {!importedModel && (
+                <div className="rover-model__mode-toggle" role="group" aria-label="Choose rover model view">
+                  <button type="button" onClick={() => changeMode("exterior")} aria-pressed={mode === "exterior"} className={mode === "exterior" ? "is-active" : ""}>
+                    Exterior
+                  </button>
+                  <button type="button" onClick={() => changeMode("internal")} aria-pressed={mode === "internal"} className={mode === "internal" ? "is-active" : ""}>
+                    Internal / exploded
+                  </button>
+                </div>
+              )}
               <div className="rover-model__presets" role="group" aria-label="Choose model orientation">
                 {(["front", "side", "top"] as const).map((preset) => (
                   <button
@@ -837,10 +1135,51 @@ export default function RoverModelViewer() {
                 <RotateCcw size={14} aria-hidden="true" />
                 Reset view
               </button>
+              <button
+                type="button"
+                className="rover-model__import"
+                onClick={() => glbInputRef.current?.click()}
+                disabled={isImporting}
+                aria-describedby="rover-model-import-help"
+              >
+                <Upload size={14} aria-hidden="true" />
+                {isImporting ? "Loading…" : importedModel ? "Replace GLB" : "Import GLB"}
+              </button>
+              {importedModel && (
+                <button type="button" className="rover-model__clear-import" onClick={clearImportedModel}>
+                  <X size={14} aria-hidden="true" />
+                  Use concept
+                </button>
+              )}
             </div>
           </div>
-          <div className="rover-model__dimensions" aria-label={mode === "exterior" ? "Approximate exterior dimensions" : "Conceptual internal layout caveat"}>
-            {mode === "exterior" ? (
+          <input
+            ref={glbInputRef}
+            className="rover-model__file-input"
+            type="file"
+            accept=".glb,model/gltf-binary"
+            aria-label="Choose a local GLB file"
+            onChange={(event) => {
+              const file = event.currentTarget.files?.[0];
+              event.currentTarget.value = "";
+              if (file) void importGlb(file);
+            }}
+          />
+          <div className="rover-model__import-feedback">
+            <p id="rover-model-import-help">
+              GLB 2.0 only · maximum 50 MB · local to this browser · external file links are rejected.
+            </p>
+            {importStatus && <p role="status" aria-live="polite">{importStatus}</p>}
+            {importError && <p className="is-error" role="alert">{importError}</p>}
+          </div>
+          <div className="rover-model__dimensions" aria-label={importedModel ? "Imported model display note" : mode === "exterior" ? "Approximate exterior dimensions" : "Conceptual internal layout caveat"}>
+            {importedModel ? (
+              <>
+                <span><b>MODEL</b> {importedModel.fileName}</span>
+                <span><b>SCALE</b> Fit to viewer</span>
+                <span className="rover-model__approx">SOURCE UNITS UNKNOWN</span>
+              </>
+            ) : mode === "exterior" ? (
               <>
                 <span><b>BODY ENVELOPE</b> {ROVER_MODEL_SPEC.body.lengthMm} × {ROVER_MODEL_SPEC.body.widthMm} × {ROVER_MODEL_SPEC.body.heightMm} mm</span>
                 <span><b>WHEEL Ø</b> ~{ROVER_MODEL_SPEC.wheels.diameterMm} mm</span>
@@ -856,52 +1195,113 @@ export default function RoverModelViewer() {
         <aside className="rover-model__sidebar" aria-label="Rover components">
           <div className="rover-model__side-heading">
             <div>
-              <span className="rover-model__section-kicker">SYSTEM MAP</span>
-              <h2>{mode === "exterior" ? "Major components" : "Internal systems"}</h2>
+              <span className="rover-model__section-kicker">{importedModel ? "IMPORTED MODEL" : "SYSTEM MAP"}</span>
+              <h2>{importedModel ? "Named parts" : mode === "exterior" ? "Major components" : "Internal systems"}</h2>
             </div>
-            <span className="rover-model__count">{String(visibleParts.length).padStart(2, "0")}</span>
+            <span className="rover-model__count">
+              {String(importedModel ? importedModel.parts.length : visibleParts.length).padStart(2, "0")}
+            </span>
           </div>
 
-          <div className="rover-model__part-list" aria-label="Select a component">
-            {visibleParts.map((part, index) => {
-              const Icon = part.icon;
-              return (
-                <button
-                  key={part.id}
-                  type="button"
-                  className={`rover-model__part ${selected === part.id ? "is-selected" : ""}`}
-                  aria-pressed={selected === part.id}
-                  onClick={() => setSelected(part.id)}
-                >
-                  <span className="rover-model__part-number">{String(index + 1).padStart(2, "0")}</span>
-                  <Icon size={16} aria-hidden="true" />
-                  <span className="rover-model__part-name">{part.name}</span>
-                  <span className="rover-model__part-indicator" aria-hidden="true" />
-                </button>
-              );
-            })}
-          </div>
+          {importedModel ? (
+            <>
+              <label className="rover-model__part-search">
+                <span>Filter named parts</span>
+                <input
+                  type="search"
+                  value={partFilter}
+                  onChange={(event) => setPartFilter(event.currentTarget.value)}
+                  placeholder="Search part names"
+                />
+              </label>
+              <div className="rover-model__part-list is-imported" aria-label="Select an imported model part">
+                {filteredImportedParts.map((part, index) => (
+                  <button
+                    key={part.id}
+                    type="button"
+                    className={`rover-model__part ${selectedImportedPart === part.id ? "is-selected" : ""}`}
+                    aria-pressed={selectedImportedPart === part.id}
+                    onClick={() => setSelectedImportedPart(part.id)}
+                  >
+                    <span className="rover-model__part-number">{String(index + 1).padStart(2, "0")}</span>
+                    <Box size={16} aria-hidden="true" />
+                    <span className="rover-model__part-name">{part.name}</span>
+                    <span className="rover-model__part-indicator" aria-hidden="true" />
+                  </button>
+                ))}
+                {filteredImportedParts.length === 0 && (
+                  <p className="rover-model__empty-parts">No named parts match this search.</p>
+                )}
+              </div>
+              <section className="rover-model__detail" aria-live="polite" aria-atomic="true">
+                <div className="rover-model__detail-topline">
+                  <span>GLB / SELECTED PART</span>
+                  <span className="rover-model__approx-tag">LOCAL FILE</span>
+                </div>
+                <h3>{importedDetail?.name ?? "No part selected"}</h3>
+                <p>
+                  {importedDetail
+                    ? "Part name comes from the GLB node. The cyan outline marks its approximate bounds; it does not indicate a verified physical dimension."
+                    : "Try another search or clear the filter to see the imported part names."}
+                </p>
+                {importedDetail && (
+                  <div className="rover-model__location">
+                    <span>NODE TYPE</span>
+                    <strong>{importedDetail.object.type}</strong>
+                  </div>
+                )}
+              </section>
+            </>
+          ) : (
+            <>
+              <div className="rover-model__part-list" aria-label="Select a component">
+                {visibleParts.map((part, index) => {
+                  const Icon = part.icon;
+                  return (
+                    <button
+                      key={part.id}
+                      type="button"
+                      className={`rover-model__part ${selected === part.id ? "is-selected" : ""}`}
+                      aria-pressed={selected === part.id}
+                      onClick={() => setSelected(part.id)}
+                    >
+                      <span className="rover-model__part-number">{String(index + 1).padStart(2, "0")}</span>
+                      <Icon size={16} aria-hidden="true" />
+                      <span className="rover-model__part-name">{part.name}</span>
+                      <span className="rover-model__part-indicator" aria-hidden="true" />
+                    </button>
+                  );
+                })}
+              </div>
 
-          <section className="rover-model__detail" aria-live="polite" aria-atomic="true">
-            <div className="rover-model__detail-topline">
-              <span>{detail.label}</span>
-              <span className="rover-model__approx-tag">{mode === "internal" ? "CONCEPTUAL / APPROX." : "INFERRED"}</span>
-            </div>
-            <h3>{detail.name}</h3>
-            <p>{detail.description}</p>
-            <div className="rover-model__location">
-              <span>{mode === "internal" ? "CONCEPTUAL PLACEMENT" : "LOCATION"}</span>
-              <strong>{detail.position}</strong>
-            </div>
-          </section>
+              <section className="rover-model__detail" aria-live="polite" aria-atomic="true">
+                <div className="rover-model__detail-topline">
+                  <span>{detail.label}</span>
+                  <span className="rover-model__approx-tag">{mode === "internal" ? "CONCEPTUAL / APPROX." : "INFERRED"}</span>
+                </div>
+                <h3>{detail.name}</h3>
+                <p>{detail.description}</p>
+                <div className="rover-model__location">
+                  <span>{mode === "internal" ? "CONCEPTUAL PLACEMENT" : "LOCATION"}</span>
+                  <strong>{detail.position}</strong>
+                </div>
+              </section>
+            </>
+          )}
           <div className="rover-model__footnote">
             <ShieldAlert size={14} aria-hidden="true" />
-            <span>Selection highlights a visual element only. No live rover data.</span>
+            <span>
+              {importedModel
+                ? "Imported geometry is displayed locally. Part selection uses names embedded in the GLB."
+                : "Selection highlights a visual element only. No live rover data."}
+            </span>
           </div>
         </aside>
       </div>
       <p className="rover-model__sr-hint" aria-live="polite">
-        Selected component: {detail.name}. Use the component list to inspect another part.
+        {importedModel
+          ? `Selected imported part: ${importedDetail?.name ?? "none"}. Use the named-parts list to inspect another part.`
+          : `Selected component: ${detail.name}. Use the component list to inspect another part.`}
       </p>
     </section>
   );
