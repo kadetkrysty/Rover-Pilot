@@ -12,6 +12,22 @@ export interface RoverModelPart {
   dimensionsMm?: readonly number[];
 }
 
+export interface RoverInternalComponent {
+  id: string;
+  name: string;
+  role: string;
+  placementMm: {
+    fromFrontMm: number;
+    lateralMm: number;
+    aboveGroundMm: number;
+  };
+  visualEnvelopeMm: readonly [number, number, number];
+  connections: readonly {
+    targetId: string;
+    label: string;
+  }[];
+}
+
 export const ROVER_MODEL_SPEC = {
   units: "mm",
   coordinateSystem: {
@@ -47,6 +63,86 @@ export const ROVER_MODEL_SPEC = {
     headEnvelopeMm: [140, 70, 60],
     totalStackAboveRoofMm: 290,
     evidence: "concept-estimate",
+  },
+  internalHardware: {
+    placementEvidence: "concept-estimate",
+    dimensionsEvidence: "concept-estimate",
+    coordinateSystem: "fromFrontMm follows model X; lateralMm is model Y; aboveGroundMm is model Z.",
+    components: [
+      {
+        id: "mini-pc",
+        name: "ACEPC AK1 Mini PC",
+        role: "RoverOS host computer for high-level processing and system services.",
+        placementMm: { fromFrontMm: 421, lateralMm: -105, aboveGroundMm: 570 },
+        visualEnvelopeMm: [205, 183, 83],
+        connections: [
+          { targetId: "mega-2560", label: "USB serial link (conceptual)" },
+          { targetId: "feru-foc", label: "Drive-control data path (conceptual)" },
+          { targetId: "battery-bms", label: "Power supply path (conceptual)" },
+        ],
+      },
+      {
+        id: "mega-2560",
+        name: "Mega 2560",
+        role: "Microcontroller for low-level rover I/O and hardware interfaces.",
+        placementMm: { fromFrontMm: 256, lateralMm: 75, aboveGroundMm: 535 },
+        visualEnvelopeMm: [225, 124, 32],
+        connections: [
+          { targetId: "mini-pc", label: "USB serial link (conceptual)" },
+          { targetId: "mpu6050", label: "Sensor bus (conceptual)" },
+          { targetId: "feru-foc", label: "Control / status signals (conceptual)" },
+          { targetId: "battery-bms", label: "Low-voltage supply path (conceptual)" },
+        ],
+      },
+      {
+        id: "mpu6050",
+        name: "MPU6050 / IMU6050",
+        role: "Inertial measurement for rover orientation and motion sensing.",
+        placementMm: { fromFrontMm: 131, lateralMm: -15, aboveGroundMm: 670 },
+        visualEnvelopeMm: [81, 72, 25],
+        connections: [
+          { targetId: "mega-2560", label: "Sensor bus (conceptual)" },
+        ],
+      },
+      {
+        id: "feru-foc",
+        name: "Feru FOC controller",
+        role: "Hoverboard drive controller running Feru FOC firmware.",
+        placementMm: { fromFrontMm: 491, lateralMm: 115, aboveGroundMm: 575 },
+        visualEnvelopeMm: [210, 170, 93],
+        connections: [
+          { targetId: "mini-pc", label: "Drive-control data path (conceptual)" },
+          { targetId: "mega-2560", label: "Control / status signals (conceptual)" },
+          { targetId: "battery-bms", label: "Battery power path (conceptual)" },
+        ],
+      },
+      {
+        id: "battery-bms",
+        name: "Battery + BMS",
+        role: "Battery pack and battery-management system; chemistry and ratings are unverified.",
+        placementMm: { fromFrontMm: 181, lateralMm: -106, aboveGroundMm: 490 },
+        visualEnvelopeMm: [290, 189, 93],
+        connections: [
+          { targetId: "mini-pc", label: "Power supply path (conceptual)" },
+          { targetId: "mega-2560", label: "Low-voltage supply path (conceptual)" },
+          { targetId: "feru-foc", label: "Battery power path (conceptual)" },
+        ],
+      },
+      {
+        id: "wiring",
+        name: "Interconnect wiring",
+        role: "Simplified cable paths between the depicted controller, computer, sensor, and power components.",
+        placementMm: { fromFrontMm: 301, lateralMm: 0, aboveGroundMm: 570 },
+        visualEnvelopeMm: [0, 0, 0],
+        connections: [
+          { targetId: "mini-pc", label: "Conceptual harness route" },
+          { targetId: "mega-2560", label: "Conceptual harness route" },
+          { targetId: "mpu6050", label: "Conceptual sensor lead" },
+          { targetId: "feru-foc", label: "Conceptual drive harness" },
+          { targetId: "battery-bms", label: "Conceptual power harness" },
+        ],
+      },
+    ] satisfies readonly RoverInternalComponent[],
   },
   parts: [
     {

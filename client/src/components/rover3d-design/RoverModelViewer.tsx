@@ -3,6 +3,7 @@ import type { ReactNode, RefObject } from "react";
 import { Canvas, useThree } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
+import * as THREE from "three";
 import { ROVER_MODEL_SPEC } from "@/lib/roverModelSpec";
 import {
   Box,
@@ -26,9 +27,16 @@ type PartId =
   | "roof"
   | "range"
   | "arms"
-  | "lights";
+  | "lights"
+  | "mini-pc"
+  | "mega"
+  | "imu"
+  | "feru"
+  | "battery"
+  | "wiring";
 
 type ViewPreset = "front" | "side" | "top";
+type ViewMode = "exterior" | "internal";
 
 const mm = (value: number) => value / 1000;
 const bodyLength = mm(ROVER_MODEL_SPEC.body.lengthMm);
@@ -46,6 +54,25 @@ const wheelStations = ROVER_MODEL_SPEC.wheels.centerXMm.map(
 const wheelCenterHeight = mm(ROVER_MODEL_SPEC.wheels.centerZMm);
 const mastForwardPosition = mm(ROVER_MODEL_SPEC.body.lengthMm / 2 - 115);
 const cameraHeadDimensions = ROVER_MODEL_SPEC.mast.headEnvelopeMm.map(mm);
+const internalSpecIds = {
+  "mini-pc": "mini-pc",
+  mega: "mega-2560",
+  imu: "mpu6050",
+  feru: "feru-foc",
+  battery: "battery-bms",
+  wiring: "wiring",
+} as const;
+
+function internalPosition(id: keyof typeof internalSpecIds): [number, number, number] {
+  const componentId = internalSpecIds[id];
+  const component = ROVER_MODEL_SPEC.internalHardware.components.find((part) => part.id === componentId);
+  if (!component) throw new Error(`Missing internal rover model component: ${componentId}`);
+  return [
+    mm(component.placementMm.lateralMm),
+    mm(component.placementMm.aboveGroundMm),
+    bodyLength / 2 - mm(component.placementMm.fromFrontMm),
+  ];
+}
 
 const parts: {
   id: PartId;
@@ -129,10 +156,72 @@ const parts: {
   },
 ];
 
+const internalParts: typeof parts = [
+  {
+    id: "mini-pc",
+    name: "ACEPC AK1 Mini PC",
+    label: "09 / COMPUTE",
+    description:
+      "Approximate generic enclosure representing the project-listed ACEPC AK1 Mini PC. Conceptual role: host computer for higher-level software and operator-facing processes. Conceptual connection points: power input and USB/network links toward the Mega 2560 and other peripherals; exact ports, routes, and placement are not verified.",
+    position: "Conceptual upper deck position",
+    icon: Box,
+  },
+  {
+    id: "mega",
+    name: "Mega 2560",
+    label: "10 / MAIN CONTROLLER",
+    description:
+      "Approximate board-shaped representation of a Mega 2560. Conceptual role: central microcontroller interface for rover sensors and control signals. Conceptual connection points: USB/serial toward the mini PC, sensor headers toward the IMU, and signal wiring toward the drive controller; connector assignments and harness routing are not verified.",
+    position: "Conceptual center deck position",
+    icon: ScanLine,
+  },
+  {
+    id: "imu",
+    name: "MPU6050 / IMU6050",
+    label: "11 / MOTION SENSOR",
+    description:
+      "Small approximate sensor-board marker for the MPU6050/IMU6050 listed in the project. Conceptual role: inertial motion and orientation sensing. Conceptual connection points: low-voltage power and I²C signal leads toward the Mega 2560; exact connector orientation, mounting plane, and position are not measured.",
+    position: "Conceptual forward-center position",
+    icon: Compass,
+  },
+  {
+    id: "feru",
+    name: "Feru FOC controller",
+    label: "12 / DRIVE CONTROL",
+    description:
+      "Approximate controller enclosure representing the hoverboard drive controller running Feru FOC firmware. Conceptual role: motor-drive control. Conceptual connection points: battery supply, motor phase outputs, and a low-voltage command/signal harness toward the Mega 2560; actual connector locations and wiring are unverified.",
+    position: "Conceptual rear deck position",
+    icon: Focus,
+  },
+  {
+    id: "battery",
+    name: "Battery + BMS",
+    label: "13 / POWER",
+    description:
+      "Approximate battery pack and BMS representation; chemistry, capacity, voltage, and dimensions are not specified here. Conceptual role: stored energy and pack protection. Conceptual connection points: protected power output toward the drive controller and a low-voltage branch toward onboard electronics; polarity, fuse details, connector type, and physical position must be verified on the machine.",
+    position: "Conceptual lower deck position",
+    icon: ShieldAlert,
+  },
+  {
+    id: "wiring",
+    name: "Power + signal wiring",
+    label: "14 / HARNESS",
+    description:
+      "Colored lines are a simplified conceptual harness, not a wiring diagram. Conceptual role: show likely relationships between battery/BMS, drive controller, Mega 2560, mini PC, and IMU. Connection points are illustrative endpoints only: confirm every pin, voltage, polarity, fuse, cable gauge, and route against the actual rover before servicing.",
+    position: "Conceptual routes between modules",
+    icon: ChevronDown,
+  },
+];
+
 const initialView: Record<ViewPreset, [number, number, number]> = {
   front: [0, 0.82, 1.82],
   side: [1.9, 0.72, 0],
   top: [0.01, 2.35, 0.12],
+};
+const internalViews: Record<ViewPreset, [number, number, number]> = {
+  front: [0.05, 0.87, 1.2],
+  side: [1.23, 0.78, 0.04],
+  top: [0.02, 1.72, 0.08],
 };
 
 function PartMaterial({
@@ -189,25 +278,29 @@ function RoverScene({
   selected,
   onSelect,
   view,
+  mode,
   controlsRef,
   reduceMotion,
 }: {
   selected: PartId;
   onSelect: (id: PartId) => void;
   view: ViewPreset;
+  mode: ViewMode;
   controlsRef: RefObject<OrbitControlsImpl | null>;
   reduceMotion: boolean;
 }) {
   const { camera } = useThree();
 
   useEffect(() => {
-    camera.position.set(...initialView[view]);
-    camera.lookAt(0, 0.35, 0);
+    const position: [number, number, number] = mode === "internal" ? internalViews[view] : initialView[view];
+    const target: [number, number, number] = mode === "internal" ? [0, 0.55, 0] : [0, 0.35, 0];
+    camera.position.set(...position);
+    camera.lookAt(...target);
     if (controlsRef.current) {
-      controlsRef.current.target.set(0, 0.35, 0);
+      controlsRef.current.target.set(...target);
       controlsRef.current.update();
     }
-  }, [camera, controlsRef, view]);
+  }, [camera, controlsRef, mode, view]);
 
   const is = (id: PartId) => selected === id;
   const select = (id: PartId) => onSelect(id);
@@ -226,6 +319,8 @@ function RoverScene({
       </mesh>
       <gridHelper args={[8, 32, "#164151", "#102637"]} position={[0, 0.002, 0]} />
 
+      {mode === "exterior" ? (
+      <>
       {/* Deep equipment deck beneath the protective shell. */}
       <ScenePart id="shell" selected={is("shell")} onSelect={select}>
         <mesh position={[0, bodyBase + innerShellHeight / 2, 0]} castShadow>
@@ -441,6 +536,168 @@ function RoverScene({
           </group>
         ))}
       </ScenePart>
+      </>
+      ) : (
+      <>
+        {/* Internal modules are intentionally exploded and not dimensionally located. */}
+        <mesh position={[0, 0.405, 0]} receiveShadow>
+          <boxGeometry args={[bodyWidth - 0.05, 0.018, bodyLength - 0.06]} />
+          <meshStandardMaterial color="#203c50" metalness={0.48} roughness={0.62} />
+        </mesh>
+        <mesh position={[0, 0.418, 0]}>
+          <boxGeometry args={[bodyWidth - 0.075, 0.002, bodyLength - 0.085]} />
+          <meshStandardMaterial color="#142a3b" roughness={0.8} />
+        </mesh>
+        {/* ACEPC AK1: compact ribbed mini-computer enclosure. */}
+        <ScenePart id="mini-pc" selected={is("mini-pc")} onSelect={select} position={internalPosition("mini-pc")}>
+          <mesh castShadow>
+            <boxGeometry args={[0.17, 0.075, 0.205]} />
+            <PartMaterial selected={is("mini-pc")} color="#82929a" metalness={0.68} roughness={0.34} />
+          </mesh>
+          <mesh position={[0, 0.039, 0]}>
+            <boxGeometry args={[0.14, 0.006, 0.17]} />
+            <meshStandardMaterial color="#263b48" metalness={0.5} roughness={0.4} />
+          </mesh>
+          {[-0.065, -0.035, -0.005, 0.025, 0.055].map((x) => (
+            <mesh key={x} position={[x, 0.043, 0]}>
+              <boxGeometry args={[0.003, 0.002, 0.14]} />
+              <meshStandardMaterial color="#a9bbc0" metalness={0.55} roughness={0.38} />
+            </mesh>
+          ))}
+          <mesh position={[0.088, 0, 0.045]}>
+            <boxGeometry args={[0.008, 0.022, 0.035]} />
+            <meshStandardMaterial color="#d2a35d" metalness={0.25} roughness={0.48} />
+          </mesh>
+          <mesh position={[0.088, 0, -0.035]}>
+            <boxGeometry args={[0.008, 0.022, 0.035]} />
+            <meshStandardMaterial color="#5c7d91" metalness={0.38} roughness={0.42} />
+          </mesh>
+          <mesh position={[0.09, 0.02, 0.046]}>
+            <sphereGeometry args={[0.008, 10, 8]} />
+            <meshStandardMaterial color="#8cebf0" emissive="#1b6670" emissiveIntensity={0.35} />
+          </mesh>
+        </ScenePart>
+
+        {/* Mega 2560: long PCB, headers, and representative chips. */}
+        <ScenePart id="mega" selected={is("mega")} onSelect={select} position={internalPosition("mega")}>
+          <mesh castShadow>
+            <boxGeometry args={[0.105, 0.018, 0.225]} />
+            <PartMaterial selected={is("mega")} color="#21865c" metalness={0.18} roughness={0.62} />
+          </mesh>
+          {[-0.045, 0.045].flatMap((x) =>
+            [-0.085, -0.055, -0.025, 0.005, 0.035, 0.065, 0.095].map((z) => (
+              <mesh key={`${x}-${z}`} position={[x, 0.012, z]}>
+                <boxGeometry args={[0.008, 0.008, 0.008]} />
+                <meshStandardMaterial color="#d1ad65" metalness={0.72} roughness={0.3} />
+              </mesh>
+            )),
+          )}
+          <mesh position={[0, 0.014, 0.012]}>
+            <boxGeometry args={[0.047, 0.015, 0.054]} />
+            <meshStandardMaterial color="#252f35" metalness={0.36} roughness={0.48} />
+          </mesh>
+          <mesh position={[0, 0.015, -0.067]}>
+            <boxGeometry args={[0.042, 0.016, 0.037]} />
+            <meshStandardMaterial color="#252f35" metalness={0.36} roughness={0.48} />
+          </mesh>
+          <mesh position={[0.055, 0.002, -0.09]}>
+            <boxGeometry args={[0.014, 0.025, 0.036]} />
+            <meshStandardMaterial color="#73838a" metalness={0.64} roughness={0.3} />
+          </mesh>
+        </ScenePart>
+
+        {/* MPU6050: compact board and inertial-sensor package. */}
+        <ScenePart id="imu" selected={is("imu")} onSelect={select} position={internalPosition("imu")}>
+          <mesh castShadow>
+            <boxGeometry args={[0.072, 0.014, 0.07]} />
+            <PartMaterial selected={is("imu")} color="#246f53" metalness={0.18} roughness={0.6} />
+          </mesh>
+          <mesh position={[0, 0.011, -0.004]}>
+            <boxGeometry args={[0.027, 0.013, 0.032]} />
+            <meshStandardMaterial color="#222b31" metalness={0.38} roughness={0.46} />
+          </mesh>
+          {[-0.025, 0, 0.025].map((x) => (
+            <mesh key={x} position={[x, 0.005, 0.036]}>
+              <boxGeometry args={[0.006, 0.009, 0.009]} />
+              <meshStandardMaterial color="#d4b36d" metalness={0.64} roughness={0.32} />
+            </mesh>
+          ))}
+        </ScenePart>
+
+        {/* Feru controller: finned drive-control enclosure with conceptual terminals. */}
+        <ScenePart id="feru" selected={is("feru")} onSelect={select} position={internalPosition("feru")}>
+          <mesh castShadow>
+            <boxGeometry args={[0.17, 0.085, 0.19]} />
+            <PartMaterial selected={is("feru")} color="#465966" metalness={0.76} roughness={0.31} />
+          </mesh>
+          {[-0.065, -0.035, -0.005, 0.025, 0.055].map((x) => (
+            <mesh key={x} position={[x, 0.045, 0]}>
+              <boxGeometry args={[0.008, 0.012, 0.15]} />
+              <meshStandardMaterial color="#9cabb0" metalness={0.72} roughness={0.28} />
+            </mesh>
+          ))}
+          {[-0.055, 0, 0.055].map((x) => (
+            <mesh key={x} position={[x, -0.01, 0.099]}>
+              <boxGeometry args={[0.025, 0.025, 0.012]} />
+              <meshStandardMaterial color="#d0a255" metalness={0.48} roughness={0.38} />
+            </mesh>
+          ))}
+        </ScenePart>
+
+        {/* Battery/BMS: pack volume and separate conceptual protection board. */}
+        <ScenePart id="battery" selected={is("battery")} onSelect={select} position={internalPosition("battery")}>
+          <mesh castShadow>
+            <boxGeometry args={[0.18, 0.075, 0.29]} />
+            <PartMaterial selected={is("battery")} color="#435565" metalness={0.45} roughness={0.48} />
+          </mesh>
+          <mesh position={[0, 0.04, 0]}>
+            <boxGeometry args={[0.15, 0.008, 0.25]} />
+            <meshStandardMaterial color="#c6c5b2" metalness={0.2} roughness={0.56} />
+          </mesh>
+          <mesh position={[0.055, 0.048, -0.115]}>
+            <boxGeometry args={[0.065, 0.014, 0.048]} />
+            <meshStandardMaterial color="#367a5d" metalness={0.2} roughness={0.58} />
+          </mesh>
+          <mesh position={[0.09, 0.043, -0.105]}>
+            <sphereGeometry args={[0.009, 10, 8]} />
+            <meshStandardMaterial color="#d7b15f" metalness={0.48} roughness={0.38} />
+          </mesh>
+        </ScenePart>
+
+        {/* Conceptual connection runs: endpoints and paths are not a wiring diagram. */}
+        <ScenePart id="wiring" selected={is("wiring")} onSelect={select}>
+          {[
+            { a: internalPosition("mini-pc"), b: internalPosition("mega"), color: "#e6b856" },
+            { a: internalPosition("imu"), b: internalPosition("mega"), color: "#51d4c3" },
+            { a: internalPosition("battery"), b: internalPosition("feru"), color: "#d76b55" },
+            { a: internalPosition("mini-pc"), b: internalPosition("feru"), color: "#7c9ed0" },
+            { a: internalPosition("battery"), b: internalPosition("mega"), color: "#d9b94e" },
+          ].map(({ a, b, color }, index) => {
+            const start = new THREE.Vector3(a[0], a[1], a[2]);
+            const end = new THREE.Vector3(b[0], b[1], b[2]);
+            const delta = end.clone().sub(start);
+            const center = start.clone().add(end).multiplyScalar(0.5);
+            return (
+              <group key={index}>
+                <mesh
+                  position={center.toArray()}
+                  quaternion={new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), delta.clone().normalize())}
+                >
+                  <cylinderGeometry args={[is("wiring") ? 0.005 : 0.003, is("wiring") ? 0.005 : 0.003, delta.length(), 7]} />
+                  <meshStandardMaterial color={color} emissive={color} emissiveIntensity={is("wiring") ? 0.16 : 0.03} />
+                </mesh>
+                {[start, end].map((point, endpoint) => (
+                  <mesh key={endpoint} position={point.toArray()}>
+                    <sphereGeometry args={[0.009, 8, 6]} />
+                    <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.16} />
+                  </mesh>
+                ))}
+              </group>
+            );
+          })}
+        </ScenePart>
+      </>
+      )}
 
       <OrbitControls
         ref={controlsRef}
@@ -461,11 +718,13 @@ function RoverScene({
 export default function RoverModelViewer() {
   const [selected, setSelected] = useState<PartId>("camera");
   const [view, setView] = useState<ViewPreset>("front");
+  const [mode, setMode] = useState<ViewMode>("exterior");
   const [reduceMotion, setReduceMotion] = useState(
     () => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches,
   );
   const controlsRef = useRef<OrbitControlsImpl>(null);
-  const detail = parts.find((part) => part.id === selected) ?? parts[0];
+  const visibleParts = mode === "exterior" ? parts : internalParts;
+  const detail = visibleParts.find((part) => part.id === selected) ?? visibleParts[0];
 
   useEffect(() => {
     const preference = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -478,10 +737,16 @@ export default function RoverModelViewer() {
   const resetView = () => {
     setView("front");
     if (controlsRef.current) {
-      controlsRef.current.target.set(0, 0.35, 0);
-      controlsRef.current.object.position.set(...initialView.front);
+      controlsRef.current.target.set(0, mode === "internal" ? 0.55 : 0.35, 0);
+      controlsRef.current.object.position.set(...(mode === "internal" ? internalViews.front : initialView.front));
       controlsRef.current.update();
     }
+  };
+
+  const changeMode = (nextMode: ViewMode) => {
+    setMode(nextMode);
+    setSelected(nextMode === "exterior" ? "camera" : "mini-pc");
+    setView("front");
   };
 
   return (
@@ -514,12 +779,12 @@ export default function RoverModelViewer() {
 
       <div className="rover-model__workspace">
         <div className="rover-model__viewer-column">
-          <div className="rover-model__canvas-wrap">
+          <div className={`rover-model__canvas-wrap ${mode === "internal" ? "is-internal" : ""}`}>
           <div className="rover-model__canvas-label" aria-hidden="true">
-              <span>ROVER / EXTERIOR</span>
-              <span>{ROVER_MODEL_SPEC.body.lengthMm} × {ROVER_MODEL_SPEC.body.widthMm} × {ROVER_MODEL_SPEC.body.heightMm} MM NOMINAL</span>
+              <span>ROVER / {mode === "exterior" ? "EXTERIOR" : "INTERNAL SYSTEMS"}</span>
+              <span>{mode === "exterior" ? `${ROVER_MODEL_SPEC.body.lengthMm} × ${ROVER_MODEL_SPEC.body.widthMm} × ${ROVER_MODEL_SPEC.body.heightMm} MM NOMINAL` : "EXPLODED / CONCEPTUAL ARRANGEMENT"}</span>
             </div>
-            <div className="rover-model__canvas" role="img" aria-label="Interactive 3D visual concept of a six-wheel rover. Drag to rotate, use the controls for standard views.">
+            <div className="rover-model__canvas" role="img" aria-label={mode === "exterior" ? "Interactive 3D visual concept of the rover exterior. Drag to rotate, use the controls for standard views." : "Interactive 3D conceptual exploded view of internal rover modules and illustrative wiring. Drag to rotate, use the controls for standard views."}>
               <Canvas
                 camera={{ position: initialView.front, fov: 34, near: 0.1, far: 30 }}
                 dpr={[1, 1.5]}
@@ -532,6 +797,7 @@ export default function RoverModelViewer() {
                   selected={selected}
                   onSelect={setSelected}
                   view={view}
+                  mode={mode}
                   controlsRef={controlsRef}
                   reduceMotion={reduceMotion}
                 />
@@ -546,6 +812,14 @@ export default function RoverModelViewer() {
               </div>
             </div>
             <div className="rover-model__viewbar">
+              <div className="rover-model__mode-toggle" role="group" aria-label="Choose rover model view">
+                <button type="button" onClick={() => changeMode("exterior")} aria-pressed={mode === "exterior"} className={mode === "exterior" ? "is-active" : ""}>
+                  Exterior
+                </button>
+                <button type="button" onClick={() => changeMode("internal")} aria-pressed={mode === "internal"} className={mode === "internal" ? "is-active" : ""}>
+                  Internal / exploded
+                </button>
+              </div>
               <div className="rover-model__presets" role="group" aria-label="Choose model orientation">
                 {(["front", "side", "top"] as const).map((preset) => (
                   <button
@@ -565,11 +839,17 @@ export default function RoverModelViewer() {
               </button>
             </div>
           </div>
-          <div className="rover-model__dimensions" aria-label="Approximate exterior dimensions">
-            <span><b>BODY ENVELOPE</b> {ROVER_MODEL_SPEC.body.lengthMm} × {ROVER_MODEL_SPEC.body.widthMm} × {ROVER_MODEL_SPEC.body.heightMm} mm</span>
-            <span><b>WHEEL Ø</b> ~{ROVER_MODEL_SPEC.wheels.diameterMm} mm</span>
-            <span><b>WHEEL WIDTH</b> ~{ROVER_MODEL_SPEC.wheels.widthMm} mm</span>
-            <span className="rover-model__approx">ALL DIMENSIONS APPROXIMATE</span>
+          <div className="rover-model__dimensions" aria-label={mode === "exterior" ? "Approximate exterior dimensions" : "Conceptual internal layout caveat"}>
+            {mode === "exterior" ? (
+              <>
+                <span><b>BODY ENVELOPE</b> {ROVER_MODEL_SPEC.body.lengthMm} × {ROVER_MODEL_SPEC.body.widthMm} × {ROVER_MODEL_SPEC.body.heightMm} mm</span>
+                <span><b>WHEEL Ø</b> ~{ROVER_MODEL_SPEC.wheels.diameterMm} mm</span>
+                <span><b>WHEEL WIDTH</b> ~{ROVER_MODEL_SPEC.wheels.widthMm} mm</span>
+                <span className="rover-model__approx">ALL DIMENSIONS APPROXIMATE</span>
+              </>
+            ) : (
+              <span className="rover-model__approx">MODULE PLACEMENTS + CONNECTION POINTS ARE INDIVIDUALLY CONCEPTUAL — VERIFY ON MACHINE</span>
+            )}
           </div>
         </div>
 
@@ -577,13 +857,13 @@ export default function RoverModelViewer() {
           <div className="rover-model__side-heading">
             <div>
               <span className="rover-model__section-kicker">SYSTEM MAP</span>
-              <h2>Major components</h2>
+              <h2>{mode === "exterior" ? "Major components" : "Internal systems"}</h2>
             </div>
-            <span className="rover-model__count">08</span>
+            <span className="rover-model__count">{String(visibleParts.length).padStart(2, "0")}</span>
           </div>
 
           <div className="rover-model__part-list" aria-label="Select a component">
-            {parts.map((part, index) => {
+            {visibleParts.map((part, index) => {
               const Icon = part.icon;
               return (
                 <button
@@ -605,12 +885,12 @@ export default function RoverModelViewer() {
           <section className="rover-model__detail" aria-live="polite" aria-atomic="true">
             <div className="rover-model__detail-topline">
               <span>{detail.label}</span>
-              <span className="rover-model__approx-tag">INFERRED</span>
+              <span className="rover-model__approx-tag">{mode === "internal" ? "CONCEPTUAL / APPROX." : "INFERRED"}</span>
             </div>
             <h3>{detail.name}</h3>
             <p>{detail.description}</p>
             <div className="rover-model__location">
-              <span>LOCATION</span>
+              <span>{mode === "internal" ? "CONCEPTUAL PLACEMENT" : "LOCATION"}</span>
               <strong>{detail.position}</strong>
             </div>
           </section>

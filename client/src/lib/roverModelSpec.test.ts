@@ -31,3 +31,40 @@ test("dimensions inferred from the render are marked as estimates, not confirmed
   assert.equal(ROVER_MODEL_SPEC.body.evidence, "concept-estimate");
   assert.deepEqual(ROVER_MODEL_SPEC.minimumBodyEnvelopeMm, [600, 400, 200]);
 });
+
+test("internal hardware has distinct selectable identities and approximate placement metadata", () => {
+  const { internalHardware, body } = ROVER_MODEL_SPEC;
+  const components = internalHardware.components;
+  const ids = components.map((component) => component.id);
+  assert.deepEqual(ids, ["mini-pc", "mega-2560", "mpu6050", "feru-foc", "battery-bms", "wiring"]);
+  assert.equal(new Set(ids).size, ids.length);
+  assert.equal(internalHardware.placementEvidence, "concept-estimate");
+  assert.equal(internalHardware.dimensionsEvidence, "concept-estimate");
+
+  for (const component of components) {
+    assert.ok(component.role.length > 0);
+    assert.ok(component.connections.length > 0);
+    assert.ok(component.placementMm.fromFrontMm >= 0);
+    assert.ok(component.placementMm.fromFrontMm <= body.lengthMm);
+    assert.ok(
+      Math.abs(component.placementMm.lateralMm) + component.visualEnvelopeMm[1] / 2 <= body.widthMm / 2,
+      `${component.id} display envelope fits within the approximate body width`,
+    );
+    assert.ok(
+      component.placementMm.fromFrontMm - component.visualEnvelopeMm[0] / 2 >= 0,
+      `${component.id} display envelope starts within the approximate body length`,
+    );
+    assert.ok(
+      component.placementMm.fromFrontMm + component.visualEnvelopeMm[0] / 2 <= body.lengthMm,
+      `${component.id} display envelope fits within the approximate body length`,
+    );
+    assert.ok(
+      component.placementMm.aboveGroundMm - component.visualEnvelopeMm[2] / 2 >= body.baseAboveGroundMm + body.heightMm,
+      `${component.id} is visibly exploded above the body roof`,
+    );
+    for (const connection of component.connections) {
+      assert.ok(ids.includes(connection.targetId), `${component.id} connects to known ${connection.targetId}`);
+      assert.match(connection.label, /conceptual/i);
+    }
+  }
+});

@@ -22,6 +22,36 @@ or touch-drag to orbit; selecting a component highlights it and opens its
 description. The viewer is a visual concept, not a CAD release, rover-control
 surface, or live telemetry view.
 
+## Internal / exploded-view hardware
+
+The internal view is an explanatory layout, not a measured assembly drawing.
+The project identifies an ACEPC AK1 Mini PC, Mega 2560, MPU6050/IMU6050, a
+Hoverboard drive controller using Feru FOC firmware, and a battery/BMS. Their
+actual installation, battery chemistry and ratings, mounting positions,
+dimensions, connector locations, and pin assignments have not been verified.
+
+The following coordinates and display envelopes are **approximate visual
+placeholders only**. Coordinates use X from the front face toward the rear, Y
+across the rover centreline, and Z above ground. Display envelopes are ordered
+X × Y × Z. They must not be used for fabrication, installation, clearance, or
+electrical work.
+
+| Component | Approximate display centre X / Y / Z (mm) | Schematic display envelope X × Y × Z (mm) | Role |
+| --- | ---: | ---: | --- |
+| ACEPC AK1 Mini PC | 421 / −105 / 570 | 205 × 183 × 83 | RoverOS host computer |
+| Mega 2560 | 256 / 75 / 535 | 225 × 124 × 32 | Low-level I/O and hardware interfaces |
+| MPU6050 / IMU6050 | 131 / −15 / 670 | 81 × 72 × 25 | Inertial orientation and motion sensing |
+| Feru FOC controller | 491 / 115 / 575 | 210 × 170 × 93 | Hoverboard drive controller |
+| Battery + BMS | 181 / −106 / 490 | 290 × 189 × 93 | Battery pack and battery management |
+| Interconnect wiring | 301 / 0 / 570 | No enclosure | Simplified harness routes |
+
+The view can indicate conceptual paths such as USB serial between the Mini PC
+and Mega 2560, a sensor bus between the MPU6050 and Mega 2560, and power/data
+paths involving the battery/BMS and drive controller. These labels describe
+system roles only. The displayed points and routes are not verified terminals,
+connectors, pinouts, cable gauges, or wiring instructions; confirm all of them
+against the actual equipment and wiring before servicing.
+
 ## Parameter schedule
 
 | Feature | Initial model value | Evidence / confidence |
@@ -44,6 +74,10 @@ surface, or live telemetry view.
 
 The project records an ACEPC AK1 Mini PC with 8 GB RAM, a Mega 2560 controller,
 an MPU6050/IMU6050, and a hoverboard drive controller using Feru FOC firmware.
+The internal view represents these devices, a battery/BMS, and simplified
+wiring as individually selectable schematic placeholders. Component
+placements, display envelopes, and connection points are all concept estimates,
+not measured hardware data.
 Other listed/previously discussed devices include HUSKYLENS, HC-SR04 modules,
 TF Mini Pro, NEO-6M GPS, FlySky receiver, camera, and lights. Their presence in
 the software inventory does not confirm that each has been physically

@@ -232,11 +232,45 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
   gap: 12px;
   min-height: 48px;
   padding: 7px 12px;
   border-top: 1px solid rgba(41, 71, 89, 0.6);
   background: #0a1826;
+}
+
+.rover-model__mode-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid #254355;
+  background: #071421;
+}
+
+.rover-model__mode-toggle button {
+  min-height: 34px;
+  padding: 6px 11px;
+  border: 1px solid transparent;
+  color: #a2b4bb;
+  background: transparent;
+  cursor: pointer;
+  font-family: var(--font-mono, monospace) !important;
+  font-size: 10px !important;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  transition: color 140ms ease, border-color 140ms ease, background-color 140ms ease;
+}
+
+.rover-model__mode-toggle button:hover {
+  color: #e9fcff;
+}
+
+.rover-model__mode-toggle button.is-active {
+  border-color: #347183;
+  color: #a5f7fa;
+  background: rgba(34, 137, 156, 0.2);
 }
 
 .rover-model__presets {
@@ -607,8 +641,22 @@
   }
 
   .rover-model__viewbar {
+    justify-content: flex-start;
     min-height: 46px;
     padding: 5px 7px;
+  }
+
+  .rover-model__mode-toggle {
+    order: 0;
+  }
+
+  .rover-model__presets {
+    order: 1;
+  }
+
+  .rover-model__reset {
+    margin-left: auto;
+    order: 2;
   }
 
   .rover-model__dimensions {
