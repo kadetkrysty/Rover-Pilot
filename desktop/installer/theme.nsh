@@ -57,6 +57,7 @@ ManifestDPIAware true
       ${OrIf} $2 == 3
       ${OrIf} $2 == 4
       ${OrIf} $2 == 5
+      ${OrIf} $2 == 7
       ${OrIf} $2 == 9
       ${OrIf} $2 == 10
         System::Call 'uxtheme::SetWindowTheme(p r0, w" ", w" ")'
@@ -65,7 +66,7 @@ ManifestDPIAware true
     ${ElseIf} $2 == "msctls_progress32"
       ; The themed Windows progress bar ignores PBM_SETBARCOLOR. Disable its
       ; visual style only on this control, then apply the CSS-derived cyan.
-      System::Call 'uxtheme::SetWindowTheme(p r0, w "", w "")'
+      System::Call 'uxtheme::SetWindowTheme(p r0, w" ", w" ")'
       SendMessage $0 0x0409 0 0x${ROVER_ACCENT_WIN32}
       SendMessage $0 0x2001 0 0x${ROVER_BG_WIN32}
     ${EndIf}

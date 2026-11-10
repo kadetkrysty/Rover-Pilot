@@ -11,7 +11,6 @@ import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Gauge, Compass, Activity } from 'lucide-react';
 import { isDemoMode } from '@/lib/demoMode';
-import DriveControlPanel from '@/components/DriveControlPanel';
 import { useDriveControl } from '@/lib/DriveControlProvider';
 
 export default function Dashboard() {
@@ -32,7 +31,6 @@ export default function Dashboard() {
   return (
     <div className={`${isDemoMode() ? "h-full" : "h-[calc(100dvh-56px)]"} flex flex-col bg-background text-foreground font-sans selection:bg-primary/30 overflow-hidden relative`} data-testid="page-dashboard">
       <div className="scanline"></div>
-      <DriveControlPanel />
 
       {/* Desktop Layout (≥1024px): 3 columns - strict viewport fit, NO scrolling */}
       <main className="hidden lg:grid grid-cols-12 gap-1.5 p-1.5 flex-1 min-h-0">

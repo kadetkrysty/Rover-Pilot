@@ -13,7 +13,6 @@ import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getRecordingLibrary, startServerRecording, stopServerRecording } from '@/lib/recordingApi';
 import { isDemoMode as isOfflineDemoMode } from '@/lib/demoMode';
-import DriveControlPanel from '@/components/DriveControlPanel';
 import { useDriveControl } from '@/lib/DriveControlProvider';
 
 const ThreeRoverSimulation = lazy(() => import('@/components/ThreeRoverSimulation'));
@@ -180,7 +179,6 @@ export default function GamepadControl() {
         </div>
       </div>
 
-      <DriveControlPanel />
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 mt-4">
         <div className="space-y-4 lg:col-span-8">
           <div className="hud-panel p-3 flex items-center justify-between">
